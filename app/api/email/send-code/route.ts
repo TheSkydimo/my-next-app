@@ -32,6 +32,18 @@ export async function POST(request: Request) {
   // 创建验证码表（如果不存在）
   await ensureEmailCodeTable(db);
 
+  // 如果是管理员找回密码，先确认该邮箱为管理员账号
+  if (purpose === "admin-forgot") {
+    const { results } = await db
+      .prepare("SELECT id FROM users WHERE email = ? AND is_admin = 1")
+      .bind(email)
+      .all();
+
+    if (!results || results.length === 0) {
+      return new Response("该管理员邮箱不存在或不是管理员账号", { status: 404 });
+    }
+  }
+
   const code = generateCode(6);
 
   // 简单的限制：同一邮箱 1 分钟内只允许发送一次
@@ -55,15 +67,19 @@ export async function POST(request: Request) {
     .bind(email, code, purpose)
     .run();
 
-  const {
-    APP_NAME,
-    SMTP_HOST,
-    SMTP_PORT,
-    SMTP_USER,
-    SMTP_PASS,
-    SMTP_ENCRYPTION,
-    SMTP_FROM,
-  } = env as any;
+  // 优先从 Cloudflare env 读取，其次回退到本地的 process.env（方便本地开发）
+  const getVar = (key: string): string | undefined => {
+    const e = env as any;
+    return e?.[key] ?? process.env[key];
+  };
+
+  const APP_NAME = getVar("APP_NAME");
+  const SMTP_HOST = getVar("SMTP_HOST");
+  const SMTP_PORT = getVar("SMTP_PORT");
+  const SMTP_USER = getVar("SMTP_USER");
+  const SMTP_PASS = getVar("SMTP_PASS");
+  const SMTP_ENCRYPTION = getVar("SMTP_ENCRYPTION");
+  const SMTP_FROM = getVar("SMTP_FROM");
 
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
     console.error("SMTP 配置缺失");
