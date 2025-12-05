@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-// 简单验证码生成（0-9, a-z, A-Z）
 function generateCaptcha(length = 5): string {
   const chars =
     "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -14,8 +13,7 @@ function generateCaptcha(length = 5): string {
   return result;
 }
 
-export default function RegisterPage() {
-  const [username, setUsername] = useState("");
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -27,7 +25,6 @@ export default function RegisterPage() {
   const [sendingCode, setSendingCode] = useState(false);
   const [codeMsg, setCodeMsg] = useState("");
 
-  // 初始生成验证码
   useEffect(() => {
     setCaptcha(generateCaptcha());
   }, []);
@@ -51,7 +48,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/email/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose: "register" }),
+        body: JSON.stringify({ email, purpose: "user-forgot" }),
       });
 
       if (!res.ok) {
@@ -61,7 +58,7 @@ export default function RegisterPage() {
       }
 
       setCodeMsg("验证码已发送到邮箱，请注意查收");
-    } catch (e) {
+    } catch {
       setError("发送邮箱验证码失败");
     } finally {
       setSendingCode(false);
@@ -73,7 +70,7 @@ export default function RegisterPage() {
     setError("");
     setOk(false);
 
-    if (!username || !email || !password || !confirmPassword || !emailCode) {
+    if (!email || !password || !confirmPassword || !emailCode) {
       setError("请完整填写所有字段（包括邮箱验证码）");
       return;
     }
@@ -94,21 +91,20 @@ export default function RegisterPage() {
       return;
     }
 
-    const res = await fetch("/api/register", {
+    const res = await fetch("/api/forgot-password", {
       method: "POST",
-      body: JSON.stringify({ username, email, password, emailCode }),
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, emailCode }),
     });
 
     if (!res.ok) {
       const text = await res.text();
-      setError(text || "注册失败");
+      setError(text || "重置密码失败");
       refreshCaptcha();
       return;
     }
 
     setOk(true);
-    // 注册成功，1.5 秒后跳到登录页
     setTimeout(() => {
       window.location.href = "/login";
     }, 1500);
@@ -116,20 +112,15 @@ export default function RegisterPage() {
 
   return (
     <div style={{ maxWidth: 400, margin: "80px auto" }}>
-      <h1>用户注册</h1>
+      <h1>忘记密码</h1>
 
       <form
         onSubmit={submit}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
         <input
-          placeholder="用户名"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-
-        <input
-          placeholder="邮箱"
+          type="email"
+          placeholder="注册邮箱"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -157,14 +148,14 @@ export default function RegisterPage() {
 
         <input
           type="password"
-          placeholder="密码"
+          placeholder="新密码"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
         <input
           type="password"
-          placeholder="确认密码"
+          placeholder="确认新密码"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
@@ -193,12 +184,14 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <button type="submit">注册</button>
+        <button type="submit">重置密码</button>
       </form>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
       {codeMsg && <p style={{ color: "green" }}>{codeMsg}</p>}
-      {ok && <p style={{ color: "green" }}>注册成功，即将跳转到登录页…</p>}
+      {ok && <p style={{ color: "green" }}>密码重置成功，即将跳转到登录页…</p>}
     </div>
   );
 }
+
+

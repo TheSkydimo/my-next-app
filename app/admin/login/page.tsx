@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -13,35 +13,34 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    const res = await fetch("/api/login", {
+    const res = await fetch("/api/admin/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
 
     if (!res.ok) {
-      setError("邮箱或密码错误");
+      setError("管理员邮箱或密码错误");
       return;
     }
 
     const data = (await res.json()) as {
       ok: boolean;
-      user: { username: string; email: string };
+      admin: { username: string; email: string };
     };
 
-    // 简单登录状态：保存在 localStorage
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("loggedInUserEmail", data.user.email);
-      window.localStorage.setItem("loggedInUserName", data.user.username);
+      window.localStorage.setItem("adminEmail", data.admin.email);
+      window.localStorage.setItem("adminName", data.admin.username);
+      window.localStorage.setItem("isAdmin", "true");
     }
 
-    // 登录成功后跳转首页
-    window.location.href = "/";
+    window.location.href = "/admin";
   };
 
   return (
     <div style={{ maxWidth: 400, margin: "80px auto" }}>
-      <h1>用户登录</h1>
+      <h1>管理员登录</h1>
 
       <form
         onSubmit={submit}
@@ -49,7 +48,7 @@ export default function LoginPage() {
       >
         <input
           type="email"
-          placeholder="邮箱"
+          placeholder="管理员邮箱"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -76,18 +75,16 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <button>登录</button>
+        <button>登录后台</button>
       </form>
 
       <div style={{ marginTop: 16 }}>
         <p>
-          还没有账号？ <Link href="/register">去注册</Link>
+          忘记管理员密码？{" "}
+          <Link href="/admin/forgot-password">管理员找回密码</Link>
         </p>
         <p style={{ marginTop: 4 }}>
-          忘记密码？ <Link href="/forgot-password">找回密码</Link>
-        </p>
-        <p style={{ marginTop: 4, fontSize: 12, color: "#6b7280" }}>
-          管理员入口： <Link href="/admin/login">管理员登录</Link>
+          返回用户登录：<Link href="/login">用户登录</Link>
         </p>
       </div>
 
@@ -95,3 +92,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+

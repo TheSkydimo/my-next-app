@@ -1,29 +1,21 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-
-// 简单的 SHA256 工具，用于密码哈希
-async function sha256(text: string) {
-  const data = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(hash)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-// 简单邮箱格式校验
-function isValidEmail(email: string): boolean {
-  // 这里只做一个基础校验，避免引入额外依赖
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+import { isValidEmail, sha256 } from "../_utils/auth";
+import { verifyAndUseEmailCode } from "../_utils/emailCode";
 
 export async function POST(request: Request) {
-  const { username, email, password } = (await request.json()) as {
+  const { username, email, password, emailCode } = (await request.json()) as {
     username: string;
     email: string;
     password: string;
+    emailCode?: string;
   };
 
   if (!username || !email || !password) {
     return new Response("用户名、邮箱和密码不能为空", { status: 400 });
+  }
+
+  if (!emailCode) {
+    return new Response("请先完成邮箱验证码验证", { status: 400 });
   }
 
   if (!isValidEmail(email)) {
@@ -36,6 +28,17 @@ export async function POST(request: Request) {
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
+
+  const okCode = await verifyAndUseEmailCode({
+    db,
+    email,
+    code: emailCode,
+    purpose: "register",
+  });
+
+  if (!okCode) {
+    return new Response("邮箱验证码错误或已过期", { status: 400 });
+  }
 
   const password_hash = await sha256(password);
 

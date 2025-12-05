@@ -1,11 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-
-// SHA256 hash 工具
-async function sha256(text: string) {
-  const data = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, "0")).join("");
-}
+import { sha256 } from "../_utils/auth";
 
 export async function POST(request: Request) {
   // 解析请求体并显式标注类型，避免 request.json() 推断为 unknown
