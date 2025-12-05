@@ -9,8 +9,8 @@ async function sha256(text: string) {
 
 export async function POST(request: Request) {
   // 解析请求体并显式标注类型，避免 request.json() 推断为 unknown
-  const { username, password } = (await request.json()) as {
-    username: string;
+  const { email, password } = (await request.json()) as {
+    email: string;
     password: string;
   };
 
@@ -20,14 +20,16 @@ export async function POST(request: Request) {
   const password_hash = await sha256(password);
 
   const { results } = await db
-    .prepare(`SELECT id FROM users WHERE username = ? AND password_hash = ?`)
-    .bind(username, password_hash)
+    .prepare(`SELECT id, username, email FROM users WHERE email = ? AND password_hash = ?`)
+    .bind(email, password_hash)
     .all();
 
   if (!results || results.length === 0) {
     return new Response("Invalid credentials", { status: 401 });
   }
 
+  const user = results[0];
+
   // 登录成功（下一步可设置 Cookie Session）
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, user });
 }

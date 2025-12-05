@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
+// 简单的 SHA256 工具，用于密码哈希
 async function sha256(text: string) {
   const data = new TextEncoder().encode(text);
   const hash = await crypto.subtle.digest("SHA-256", data);
@@ -8,14 +9,29 @@ async function sha256(text: string) {
     .join("");
 }
 
+// 简单邮箱格式校验
+function isValidEmail(email: string): boolean {
+  // 这里只做一个基础校验，避免引入额外依赖
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export async function POST(request: Request) {
-  const { username, password } = (await request.json()) as {
+  const { username, email, password } = (await request.json()) as {
     username: string;
+    email: string;
     password: string;
   };
 
-  if (!username || !password) {
-    return new Response("缺少用户名或密码", { status: 400 });
+  if (!username || !email || !password) {
+    return new Response("用户名、邮箱和密码不能为空", { status: 400 });
+  }
+
+  if (!isValidEmail(email)) {
+    return new Response("邮箱格式不正确", { status: 400 });
+  }
+
+  if (password.length < 6) {
+    return new Response("密码长度不能少于 6 位", { status: 400 });
   }
 
   const { env } = await getCloudflareContext();
@@ -23,19 +39,27 @@ export async function POST(request: Request) {
 
   const password_hash = await sha256(password);
 
-  const { results } = await db
-    .prepare(
-      "SELECT id, username, email FROM users WHERE username = ? AND password_hash = ?"
-    )
-    .bind(username, password_hash)
-    .all();
+  try {
+    await db
+      .prepare(
+        "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)"
+      )
+      .bind(username, email, password_hash)
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
 
-  if (!results || results.length === 0) {
-    return new Response("用户名或密码错误", { status: 401 });
+    if (msg.includes("UNIQUE constraint failed: users.username")) {
+      return new Response("用户名已被注册", { status: 400 });
+    }
+
+    if (msg.includes("UNIQUE constraint failed: users.email")) {
+      return new Response("邮箱已被注册", { status: 400 });
+    }
+
+    console.error("注册用户失败:", e);
+    return new Response("注册失败，请稍后再试", { status: 500 });
   }
 
-  const user = results[0];
-
-  // 这里先简单返回用户信息，后面再加 Cookie / Session
-  return Response.json({ ok: true, user });
+  return Response.json({ ok: true });
 }
