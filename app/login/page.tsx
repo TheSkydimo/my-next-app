@@ -86,9 +86,6 @@ export default function LoginPage() {
         <p style={{ marginTop: 4 }}>
           忘记密码？ <Link href="/forgot-password">找回密码</Link>
         </p>
-        <p style={{ marginTop: 4, fontSize: 12, color: "#6b7280" }}>
-          管理员入口： <Link href="/admin/login">管理员登录</Link>
-        </p>
       </div>
 
       {error && <p style={{ color: "red" }}>{error}</p>}

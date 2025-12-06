@@ -25,7 +25,16 @@
 			"database_id": "694057fb-479a-4672-b68a-8af5eaa7a01f",
 			"remote": true
 		}
-	]
+	],
+	"vars": {
+		"APP_NAME": "订阅管理",
+		"SMTP_HOST": "smtp.qiye.aliyun.com",
+		"SMTP_PORT": "465",
+		"SMTP_USER": "noreply@skydimo.com",
+		"SMTP_PASS": "fbn2WqHG1CnhGfyK",
+		"SMTP_ENCRYPTION": "ssl",
+		"SMTP_FROM": "noreply@skydimo.com"
+	}
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
