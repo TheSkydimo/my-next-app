@@ -69,8 +69,8 @@ export async function POST(request: Request) {
 
   // 优先从 Cloudflare env 读取，其次回退到本地的 process.env（方便本地开发）
   const getVar = (key: string): string | undefined => {
-    const e = env as any;
-    return e?.[key] ?? process.env[key];
+    const envRecord = env as unknown as Record<string, string | undefined>;
+    return envRecord?.[key] ?? process.env[key];
   };
 
   const APP_NAME = getVar("APP_NAME");

@@ -1,6 +1,12 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { sha256 } from "../../_utils/auth";
 
+type AdminRow = {
+  id: number;
+  username: string;
+  email: string;
+};
+
 export async function POST(request: Request) {
   const { email, password } = (await request.json()) as {
     email: string;
@@ -16,7 +22,7 @@ export async function POST(request: Request) {
 
   const password_hash = await sha256(password);
 
-  let results: any[] | undefined;
+  let results: AdminRow[] | undefined;
 
   try {
     const queryResult = await db
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
         `SELECT id, username, email FROM users WHERE email = ? AND password_hash = ? AND is_admin = 1`
       )
       .bind(email, password_hash)
-      .all();
+      .all<AdminRow>();
     results = queryResult.results;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
