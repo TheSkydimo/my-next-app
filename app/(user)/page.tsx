@@ -5,12 +5,14 @@ import Link from "next/link";
 
 export default function Home() {
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const nickname = window.localStorage.getItem("loggedInUserName");
       const email = window.localStorage.getItem("loggedInUserEmail");
       setDisplayName(nickname || email);
+      setUserEmail(email);
     }
   }, []);
 
@@ -48,6 +50,14 @@ export default function Home() {
       {displayName ? (
         <>
           <p>欢迎，{displayName}！</p>
+          {userEmail && (
+            <p style={{ fontSize: 14, color: "#6b7280" }}>
+              当前登录邮箱：{userEmail}
+            </p>
+          )}
+          <div style={{ marginTop: 16 }}>
+            <Link href="/profile">信息管理</Link>
+          </div>
         </>
       ) : (
         <>
@@ -61,3 +71,5 @@ export default function Home() {
     </div>
   );
 }
+
+

@@ -81,7 +81,7 @@ export default function AdminLoginPage() {
       <div style={{ marginTop: 16 }}>
         <p>
           忘记管理员密码？{" "}
-          <Link href="/admin/forgot-password">管理员找回密码</Link>
+          <Link href="/admin/forgot-password">找回密码</Link>
         </p>
       </div>
 

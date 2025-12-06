@@ -29,6 +29,12 @@ async function assertAdmin(db: D1Database, adminEmail: string | null) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const adminEmail = searchParams.get("adminEmail");
+  const role = searchParams.get("role"); // admin | user | null
+  const pageParam = searchParams.get("page");
+  const pageSizeParam = searchParams.get("pageSize");
+
+  const page = Math.max(Number(pageParam) || 1, 1);
+  const pageSize = Math.max(Number(pageSizeParam) || 15, 1);
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -38,40 +44,74 @@ export async function GET(request: Request) {
 
   const q = searchParams.get("q");
 
-  let query =
-    "SELECT id, username, email, is_admin, created_at FROM users ORDER BY created_at DESC";
-  let bindValues: unknown[] = [];
+  const whereParts: string[] = [];
+  const bindValues: unknown[] = [];
 
-  if (q) {
-    query =
-      "SELECT id, username, email, is_admin, created_at FROM users WHERE username LIKE ? OR email LIKE ? ORDER BY created_at DESC";
-    const pattern = `%${q}%`;
-    bindValues = [pattern, pattern];
+  if (role === "admin") {
+    whereParts.push("is_admin = 1");
+  } else if (role === "user") {
+    whereParts.push("is_admin = 0");
   }
 
-  const { results } = await db.prepare(query).bind(...bindValues).all<UserRow>();
+  if (q) {
+    whereParts.push("(username LIKE ? OR email LIKE ?)");
+    const pattern = `%${q}%`;
+    bindValues.push(pattern, pattern);
+  }
+
+  const whereSql = whereParts.length > 0 ? `WHERE ${whereParts.join(" AND ")}` : "";
+
+  // 统计总数，用于分页
+  const countQuery = `SELECT COUNT(*) as total FROM users ${whereSql}`;
+  const countResult = await db.prepare(countQuery).bind(...bindValues).all<{
+    total: number;
+  }>();
+  const total = (countResult.results?.[0]?.total as number | undefined) ?? 0;
+
+  const offset = (page - 1) * pageSize;
+
+  const listQuery = `SELECT id, username, email, is_admin, created_at
+    FROM users
+    ${whereSql}
+    ORDER BY created_at DESC
+    LIMIT ? OFFSET ?`;
+
+  const { results } = await db
+    .prepare(listQuery)
+    .bind(...bindValues, pageSize, offset)
+    .all<UserRow>();
+
+  const users =
+    results?.map((u) => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      isAdmin: !!u.is_admin,
+      createdAt: u.created_at,
+    })) ?? [];
+
+  const totalPages = Math.max(Math.ceil(total / pageSize), 1);
 
   return Response.json({
-    users:
-      results?.map((u) => ({
-        id: u.id,
-        username: u.username,
-        email: u.email,
-        isAdmin: !!u.is_admin,
-        createdAt: u.created_at,
-      })) ?? [],
+    users,
+    pagination: {
+      total,
+      page,
+      pageSize,
+      totalPages,
+    },
   });
 }
 
 type AdminActionBody = {
   adminEmail?: string;
-  action?: "remove" | "set-admin";
-  userId?: number;
+  action?: "remove" | "set-admin" | "unset-admin";
+  userEmail?: string;
 };
 
 // 管理员操作用户：删除用户 / 设置为管理员
 export async function POST(request: Request) {
-  const { adminEmail, action, userId } =
+  const { adminEmail, action, userEmail } =
     (await request.json()) as AdminActionBody;
 
   const { env } = await getCloudflareContext();
@@ -80,15 +120,15 @@ export async function POST(request: Request) {
   const authError = await assertAdmin(db, adminEmail ?? null);
   if (authError) return authError;
 
-  if (!action || !userId) {
+  if (!action || !userEmail) {
     return new Response("缺少必要参数", { status: 400 });
   }
 
   const { results } = await db
     .prepare(
-      "SELECT id, username, email, is_admin, created_at FROM users WHERE id = ?"
+      "SELECT id, username, email, is_admin, created_at FROM users WHERE email = ?"
     )
-    .bind(userId)
+    .bind(userEmail)
     .all<UserRow>();
 
   const target = results?.[0];
@@ -104,13 +144,35 @@ export async function POST(request: Request) {
 
   switch (action) {
     case "remove": {
-      await db.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+      await db.prepare("DELETE FROM users WHERE email = ?").bind(userEmail).run();
       break;
     }
     case "set-admin": {
+      // 最多允许 15 个管理员
+      const { results: countResults } = await db
+        .prepare("SELECT COUNT(*) AS total FROM users WHERE is_admin = 1")
+        .all<{ total: number }>();
+      const totalAdmins =
+        (countResults?.[0]?.total as number | undefined) ?? 0;
+      if (totalAdmins >= 15) {
+        return new Response("管理员数量已达上限（15 个）", { status: 400 });
+      }
+
       await db
-        .prepare("UPDATE users SET is_admin = 1 WHERE id = ?")
-        .bind(userId)
+        .prepare("UPDATE users SET is_admin = 1 WHERE email = ?")
+        .bind(userEmail)
+        .run();
+      break;
+    }
+    case "unset-admin": {
+      // 不允许把自己从管理员降级，避免锁死后台
+      if (target.email === adminEmail) {
+        return new Response("不能取消当前登录账号的管理员身份", { status: 400 });
+      }
+
+      await db
+        .prepare("UPDATE users SET is_admin = 0 WHERE email = ?")
+        .bind(userEmail)
         .run();
       break;
     }

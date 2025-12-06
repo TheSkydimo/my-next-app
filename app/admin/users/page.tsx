@@ -11,12 +11,21 @@ type UserItem = {
   createdAt: string;
 };
 
+type Pagination = {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 export default function AdminUsersPage() {
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [keyword, setKeyword] = useState("");
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -28,13 +37,18 @@ export default function AdminUsersPage() {
     }
   }, []);
 
-  const fetchUsers = async (q?: string) => {
+  const fetchUsers = async (opts?: { q?: string; page?: number }) => {
     if (!adminEmail) return;
+    const { q, page: pageArg } = opts ?? {};
+    const pageToUse = pageArg ?? page;
     setLoading(true);
     setError("");
     try {
       const params = new URLSearchParams({
         adminEmail,
+        role: "user",
+        page: String(pageToUse),
+        pageSize: "15",
       });
       if (q) {
         params.set("q", q);
@@ -44,8 +58,13 @@ export default function AdminUsersPage() {
         const text = await res.text();
         throw new Error(text || "获取用户列表失败");
       }
-      const data = (await res.json()) as { users: UserItem[] };
+      const data = (await res.json()) as {
+        users: UserItem[];
+        pagination: Pagination;
+      };
       setUsers(data.users);
+      setPagination(data.pagination);
+      setPage(data.pagination.page);
     } catch (e) {
       setError(e instanceof Error ? e.message : "获取用户列表失败");
     } finally {
@@ -75,7 +94,7 @@ export default function AdminUsersPage() {
         body: JSON.stringify({
           adminEmail,
           action,
-          userId: user.id,
+          userEmail: user.email,
         }),
       });
 
@@ -84,7 +103,7 @@ export default function AdminUsersPage() {
         throw new Error(text || "操作失败");
       }
 
-      await fetchUsers(keyword);
+      await fetchUsers({ q: keyword });
     } catch (e) {
       setError(e instanceof Error ? e.message : "操作失败");
     }
@@ -93,7 +112,7 @@ export default function AdminUsersPage() {
   if (!adminEmail) {
     return (
       <div style={{ maxWidth: 720, margin: "80px auto" }}>
-        <h1>用户管理</h1>
+        <h1>普通用户管理</h1>
         <p>未检测到管理员登录，请先登录管理员后台。</p>
         <Link href="/admin/login">去管理员登录</Link>
       </div>
@@ -101,7 +120,7 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div style={{ maxWidth: 960, margin: "80px auto" }}>
+    <div style={{ maxWidth: 960, margin: "0 auto" }}>
       <div
         style={{
           display: "flex",
@@ -111,7 +130,7 @@ export default function AdminUsersPage() {
         }}
       >
         <div>
-          <h1>用户管理</h1>
+          <h1>普通用户管理</h1>
           <p style={{ fontSize: 14, color: "#6b7280" }}>
             当前管理员：{adminEmail}
           </p>
@@ -133,10 +152,19 @@ export default function AdminUsersPage() {
           onChange={(e) => setKeyword(e.target.value)}
           style={{ flex: 1 }}
         />
-        <button onClick={() => fetchUsers(keyword)} disabled={loading}>
+        <button
+          onClick={() => fetchUsers({ q: keyword, page: 1 })}
+          disabled={loading}
+        >
           搜索
         </button>
-        <button onClick={() => fetchUsers()} disabled={loading}>
+        <button
+          onClick={() => {
+            setKeyword("");
+            fetchUsers({ q: "", page: 1 });
+          }}
+          disabled={loading}
+        >
           重置
         </button>
       </div>
@@ -158,7 +186,7 @@ export default function AdminUsersPage() {
           <thead>
             <tr>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                ID
+                序号
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
                 用户名
@@ -178,7 +206,7 @@ export default function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {users.map((u, index) => (
               <tr key={u.id}>
                 <td
                   style={{
@@ -187,7 +215,9 @@ export default function AdminUsersPage() {
                     textAlign: "center",
                   }}
                 >
-                  {u.id}
+                  {pagination
+                    ? (pagination.page - 1) * pagination.pageSize + index + 1
+                    : index + 1}
                 </td>
                 <td
                   style={{
@@ -264,6 +294,42 @@ export default function AdminUsersPage() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {pagination && pagination.totalPages > 1 && (
+        <div
+          style={{
+            marginTop: 16,
+            display: "flex",
+            justifyContent: "center",
+            gap: 12,
+            alignItems: "center",
+            fontSize: 14,
+          }}
+        >
+          <button
+            onClick={() =>
+              fetchUsers({ q: keyword, page: Math.max(page - 1, 1) })
+            }
+            disabled={page <= 1 || loading}
+          >
+            上一页
+          </button>
+          <span>
+            第 {page} / {pagination.totalPages} 页（共 {pagination.total} 个用户）
+          </span>
+          <button
+            onClick={() =>
+              fetchUsers({
+                q: keyword,
+                page: Math.min(page + 1, pagination.totalPages),
+              })
+            }
+            disabled={page >= pagination.totalPages || loading}
+          >
+            下一页
+          </button>
+        </div>
       )}
     </div>
   );

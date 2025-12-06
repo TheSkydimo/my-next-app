@@ -30,23 +30,16 @@ export default function AdminHomePage() {
 
   if (!adminName) {
     return (
-      <div style={{ maxWidth: 480, margin: "80px auto" }}>
-        <h1>管理员后台</h1>
+      <div>
+        <h1>管理后台</h1>
         <p>未检测到管理员登录，请先登录。</p>
-        <Link href="/admin/login">去管理员登录</Link>
+        <Link href="/admin/login">去登录</Link>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        maxWidth: 640,
-        margin: "80px auto",
-        position: "relative",
-        paddingTop: 40,
-      }}
-    >
+    <div style={{ maxWidth: 640, position: "relative", paddingTop: 40 }}>
       <button
         onClick={logout}
         style={{
@@ -64,10 +57,7 @@ export default function AdminHomePage() {
         <p style={{ fontSize: 14, color: "#6b7280" }}>邮箱：{adminEmail}</p>
       )}
 
-      <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 8 }}>
-        <h2 style={{ fontSize: 18 }}>功能</h2>
-        <Link href="/admin/users">用户管理</Link>
-      </div>
+      {/* 其他功能入口已经在左侧菜单中展示，这里只作为首页展示信息 */}
     </div>
   );
 }
