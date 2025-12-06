@@ -17,6 +17,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const logout = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("adminEmail");
+      window.localStorage.removeItem("isAdmin");
+      window.location.href = "/admin/login";
+    }
+  };
+
   const isPublicRoute =
     pathname === "/admin/login" || pathname === "/admin/forgot-password";
 
@@ -51,42 +59,111 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   // 已登录管理员，展示侧边栏 + 子页面内容
+  const isActive = (href: string) => pathname === href;
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <aside
+    <div style={{ position: "relative", minHeight: "100vh" }}>
+      <button
+        type="button"
+        onClick={logout}
         style={{
-          width: 200,
-          borderRight: "1px solid #e5e7eb",
-          padding: "24px 16px",
-          boxSizing: "border-box",
+          position: "fixed",
+          top: 16,
+          right: 24,
+          zIndex: 60,
         }}
       >
-        <h2 style={{ fontSize: 18, marginBottom: 16 }}>管理后台</h2>
-        <nav
+        退出登录
+      </button>
+
+      <div style={{ display: "flex", minHeight: "100vh" }}>
+        <aside
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            fontSize: 14,
+            width: 200,
+            borderRight: "1px solid #e5e7eb",
+            padding: "24px 16px",
+            boxSizing: "border-box",
           }}
         >
-          <Link href="/admin">首页</Link>
-          <Link href="/admin/profile">信息管理</Link>
-          <Link href="/admin/admins">管理员管理</Link>
-          <Link href="/admin/users">用户管理</Link>
-        </nav>
-      </aside>
+          <h2 style={{ fontSize: 18, marginBottom: 16 }}>管理后台</h2>
+          <nav
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              fontSize: 14,
+            }}
+          >
+            <Link
+              href="/admin"
+              style={{
+                padding: "4px 8px",
+                borderRadius: 4,
+                backgroundColor: isActive("/admin")
+                  ? "#1d4ed8"
+                  : "transparent",
+                color: isActive("/admin") ? "#ffffff" : "#111827",
+                fontWeight: isActive("/admin") ? 600 : 400,
+              }}
+            >
+              首页
+            </Link>
+            <Link
+              href="/admin/profile"
+              style={{
+                padding: "4px 8px",
+                borderRadius: 4,
+                backgroundColor: isActive("/admin/profile")
+                  ? "#1d4ed8"
+                  : "transparent",
+                color: isActive("/admin/profile") ? "#ffffff" : "#111827",
+                fontWeight: isActive("/admin/profile") ? 600 : 400,
+              }}
+            >
+              信息管理
+            </Link>
+            <Link
+              href="/admin/admins"
+              style={{
+                padding: "4px 8px",
+                borderRadius: 4,
+                backgroundColor: isActive("/admin/admins")
+                  ? "#1d4ed8"
+                  : "transparent",
+                color: isActive("/admin/admins") ? "#ffffff" : "#111827",
+                fontWeight: isActive("/admin/admins") ? 600 : 400,
+              }}
+            >
+              管理员管理
+            </Link>
+            <Link
+              href="/admin/users"
+              style={{
+                padding: "4px 8px",
+                borderRadius: 4,
+                backgroundColor: isActive("/admin/users")
+                  ? "#1d4ed8"
+                  : "transparent",
+                color: isActive("/admin/users") ? "#ffffff" : "#111827",
+                fontWeight: isActive("/admin/users") ? 600 : 400,
+              }}
+            >
+              用户管理
+            </Link>
+          </nav>
+        </aside>
 
-      <main
-        style={{
-          flex: 1,
-          padding: "24px 32px",
-          boxSizing: "border-box",
-          overflowX: "auto",
-        }}
-      >
-        {children}
-      </main>
+        <main
+          style={{
+            flex: 1,
+            padding: "24px 32px",
+            boxSizing: "border-box",
+            overflowX: "auto",
+          }}
+        >
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

@@ -16,36 +16,14 @@ export default function Home() {
     }
   }, []);
 
-  const logout = () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("loggedInUserEmail");
-      window.localStorage.removeItem("loggedInUserName");
-      window.location.href = "/login";
-    }
-  };
-
   return (
     <div
       style={{
         maxWidth: 480,
         margin: "80px auto",
-        position: "relative",
         paddingTop: 40,
       }}
     >
-      {displayName && (
-        <button
-          onClick={logout}
-          style={{
-            position: "absolute",
-            right: 0,
-            top: 0,
-          }}
-        >
-          退出登录
-        </button>
-      )}
-
       {displayName ? (
         <>
           <p>欢迎，{displayName}！</p>
