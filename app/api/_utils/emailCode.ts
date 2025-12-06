@@ -1,4 +1,4 @@
-type EmailCodePurpose = "register" | "user-forgot" | "admin-forgot";
+type EmailCodePurpose = "register" | "user-forgot" | "admin-forgot" | "change-email";
 
 export async function ensureEmailCodeTable(db: D1Database) {
   await db
