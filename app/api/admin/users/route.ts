@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     bindValues = [pattern, pattern];
   }
 
-  const { results } = await db.prepare<UserRow>(query).bind(...bindValues).all<UserRow>();
+  const { results } = await db.prepare(query).bind(...bindValues).all<UserRow>();
 
   return Response.json({
     users:
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
   }
 
   const { results } = await db
-    .prepare<UserRow>(
+    .prepare(
       "SELECT id, username, email, is_admin, created_at FROM users WHERE id = ?"
     )
     .bind(userId)
