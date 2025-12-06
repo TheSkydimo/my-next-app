@@ -143,10 +143,6 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
 
-    if (msg.includes("UNIQUE constraint failed: users.username")) {
-      return new Response("用户名已被使用", { status: 400 });
-    }
-
     if (msg.includes("UNIQUE constraint failed: users.email")) {
       return new Response("该邮箱已被使用", { status: 400 });
     }
