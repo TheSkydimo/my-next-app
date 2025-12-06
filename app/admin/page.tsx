@@ -5,13 +5,16 @@ import Link from "next/link";
 
 export default function AdminHomePage() {
   const [adminName, setAdminName] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const isAdmin = window.localStorage.getItem("isAdmin");
       const name = window.localStorage.getItem("adminName");
+      const email = window.localStorage.getItem("adminEmail");
       if (isAdmin === "true") {
         setAdminName(name);
+        setAdminEmail(email);
       }
     }
   }, []);
@@ -57,10 +60,14 @@ export default function AdminHomePage() {
 
       <h1>管理员后台</h1>
       <p>欢迎，{adminName}（管理员）</p>
+      {adminEmail && (
+        <p style={{ fontSize: 14, color: "#6b7280" }}>邮箱：{adminEmail}</p>
+      )}
 
-      <p style={{ marginTop: 16, fontSize: 14, color: "#6b7280" }}>
-        这里可以扩展为真正的后台管理页面，比如用户列表、权限管理等。
-      </p>
+      <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 8 }}>
+        <h2 style={{ fontSize: 18 }}>功能</h2>
+        <Link href="/admin/users">用户管理</Link>
+      </div>
     </div>
   );
 }
