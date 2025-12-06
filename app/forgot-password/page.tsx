@@ -24,6 +24,8 @@ export default function ForgotPasswordPage() {
   const [ok, setOk] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
   const [codeMsg, setCodeMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     setCaptcha(generateCaptcha());
@@ -146,19 +148,49 @@ export default function ForgotPasswordPage() {
           </button>
         </div>
 
-        <input
-          type="password"
-          placeholder="新密码"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="新密码"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            style={{
+              minWidth: 80,
+              background: "#e5e7eb",
+              color: "#111827",
+              borderColor: "#d1d5db",
+            }}
+          >
+            {showPassword ? "隐藏" : "显示"}
+          </button>
+        </div>
 
-        <input
-          type="password"
-          placeholder="确认新密码"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="确认新密码"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword((v) => !v)}
+            style={{
+              minWidth: 80,
+              background: "#e5e7eb",
+              color: "#111827",
+              borderColor: "#d1d5db",
+            }}
+          >
+            {showConfirmPassword ? "隐藏" : "显示"}
+          </button>
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input

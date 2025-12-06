@@ -83,9 +83,6 @@ export default function AdminLoginPage() {
           忘记管理员密码？{" "}
           <Link href="/admin/forgot-password">管理员找回密码</Link>
         </p>
-        <p style={{ marginTop: 4 }}>
-          返回用户登录：<Link href="/login">用户登录</Link>
-        </p>
       </div>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
