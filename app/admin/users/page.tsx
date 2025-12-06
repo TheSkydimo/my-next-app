@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 type UserItem = {
@@ -37,46 +37,49 @@ export default function AdminUsersPage() {
     }
   }, []);
 
-  const fetchUsers = async (opts?: { q?: string; page?: number }) => {
-    if (!adminEmail) return;
-    const { q, page: pageArg } = opts ?? {};
-    const pageToUse = pageArg ?? page;
-    setLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams({
-        adminEmail,
-        role: "user",
-        page: String(pageToUse),
-        pageSize: "15",
-      });
-      if (q) {
-        params.set("q", q);
+  const fetchUsers = useCallback(
+    async (opts?: { q?: string; page?: number }) => {
+      if (!adminEmail) return;
+      const { q, page: pageArg } = opts ?? {};
+      const pageToUse = pageArg ?? page;
+      setLoading(true);
+      setError("");
+      try {
+        const params = new URLSearchParams({
+          adminEmail,
+          role: "user",
+          page: String(pageToUse),
+          pageSize: "15",
+        });
+        if (q) {
+          params.set("q", q);
+        }
+        const res = await fetch(`/api/admin/users?${params.toString()}`);
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || "获取用户列表失败");
+        }
+        const data = (await res.json()) as {
+          users: UserItem[];
+          pagination: Pagination;
+        };
+        setUsers(data.users);
+        setPagination(data.pagination);
+        setPage(data.pagination.page);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "获取用户列表失败");
+      } finally {
+        setLoading(false);
       }
-      const res = await fetch(`/api/admin/users?${params.toString()}`);
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "获取用户列表失败");
-      }
-      const data = (await res.json()) as {
-        users: UserItem[];
-        pagination: Pagination;
-      };
-      setUsers(data.users);
-      setPagination(data.pagination);
-      setPage(data.pagination.page);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "获取用户列表失败");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [adminEmail, page]
+  );
 
   useEffect(() => {
     if (adminEmail) {
       fetchUsers();
     }
-  }, [adminEmail]);
+  }, [adminEmail, fetchUsers]);
 
   const doAction = async (action: "remove" | "set-admin", user: UserItem) => {
     if (!adminEmail) return;

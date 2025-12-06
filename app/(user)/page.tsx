@@ -45,7 +45,6 @@ export default function Home() {
           退出登录
         </button>
       )}
-      <h1>首页</h1>
 
       {displayName ? (
         <>
@@ -55,9 +54,6 @@ export default function Home() {
               当前登录邮箱：{userEmail}
             </p>
           )}
-          <div style={{ marginTop: 16 }}>
-            <Link href="/profile">信息管理</Link>
-          </div>
         </>
       ) : (
         <>

@@ -7,12 +7,6 @@ import { usePathname } from "next/navigation";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-
-  // 登录页、找回密码页不做管理员登录校验，直接渲染内容
-  if (pathname === "/admin/login" || pathname === "/admin/forgot-password") {
-    return <>{children}</>;
-  }
-
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -22,6 +16,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       setIsAuthed(isAdmin === "true" && !!email);
     }
   }, []);
+
+  const isPublicRoute =
+    pathname === "/admin/login" || pathname === "/admin/forgot-password";
+
+  // 登录页、找回密码页不做管理员登录校验，直接渲染内容
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
 
   // 初始加载阶段，避免闪烁，什么都不渲染
   if (isAuthed === null) {

@@ -73,6 +73,11 @@ export async function POST(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
+  // 如需修改邮箱，必须同时修改密码
+  if (newEmail && !newPassword) {
+    return new Response("修改邮箱时必须同时设置新密码", { status: 400 });
+  }
+
   // 如需修改密码，必须校验旧密码
   if (newPassword) {
     if (!oldPassword) {

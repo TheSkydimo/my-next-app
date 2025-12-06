@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type AdminItem = {
   id: number;
@@ -26,7 +26,7 @@ export default function AdminAdminsPage() {
     }
   }, []);
 
-  const fetchAdmins = async () => {
+  const fetchAdmins = useCallback(async () => {
     if (!adminEmail) return;
     setLoading(true);
     setError("");
@@ -51,13 +51,13 @@ export default function AdminAdminsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminEmail]);
 
   useEffect(() => {
     if (adminEmail) {
       fetchAdmins();
     }
-  }, [adminEmail]);
+  }, [adminEmail, fetchAdmins]);
 
   const doAction = async (action: "remove" | "unset-admin", item: AdminItem) => {
     if (!adminEmail) return;

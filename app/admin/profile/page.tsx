@@ -162,6 +162,17 @@ export default function AdminProfilePage() {
       setError("请填写新邮箱和邮箱验证码");
       return;
     }
+
+    if (!oldPassword || !newPassword || !confirmNewPassword) {
+      setError("修改邮箱时必须同时填写旧密码和新密码");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setError("两次输入的新密码不一致");
+      return;
+    }
+
     setError("");
     setOkMsg("");
     try {
@@ -170,6 +181,8 @@ export default function AdminProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: adminEmail,
+          oldPassword,
+          newPassword,
           newEmail,
           emailCode,
         }),
@@ -179,14 +192,14 @@ export default function AdminProfilePage() {
         throw new Error(text || "修改邮箱失败");
       }
       setOkMsg("邮箱已修改，请使用新邮箱登录");
-      setProfile((p) =>
-        p ? { ...p, email: newEmail } : { username: usernameInput || "", email: newEmail }
-      );
-      setNewEmail("");
-      setEmailCode("");
 
       if (typeof window !== "undefined") {
-        window.localStorage.setItem("adminEmail", newEmail);
+        // 修改邮箱后强制退出管理员登录，要求使用新邮箱重新登录
+        window.localStorage.removeItem("adminEmail");
+        window.localStorage.removeItem("isAdmin");
+        setTimeout(() => {
+          window.location.href = "/admin/login";
+        }, 1200);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "修改邮箱失败");

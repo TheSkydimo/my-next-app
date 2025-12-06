@@ -63,7 +63,8 @@ export default function RegisterPage() {
       }
 
       setCodeMsg("验证码已发送到邮箱，请注意查收");
-    } catch (e) {
+    } catch (error) {
+      console.error(error);
       setError("发送邮箱验证码失败");
     } finally {
       setSendingCode(false);
