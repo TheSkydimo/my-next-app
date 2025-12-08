@@ -5,6 +5,7 @@ type UserRow = {
   username: string;
   email: string;
   is_admin: number;
+  avatar_url: string | null;
   created_at: string;
 };
 
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
 
   const offset = (page - 1) * pageSize;
 
-  const listQuery = `SELECT id, username, email, is_admin, created_at
+  const listQuery = `SELECT id, username, email, is_admin, avatar_url, created_at
     FROM users
     ${whereSql}
     ORDER BY created_at DESC
@@ -87,6 +88,7 @@ export async function GET(request: Request) {
       username: u.username,
       email: u.email,
       isAdmin: !!u.is_admin,
+      avatarUrl: u.avatar_url,
       createdAt: u.created_at,
     })) ?? [];
 

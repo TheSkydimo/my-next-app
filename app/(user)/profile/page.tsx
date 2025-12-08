@@ -6,6 +6,7 @@ import Link from "next/link";
 type Profile = {
   username: string;
   email: string;
+  avatarUrl: string | null;
 };
 
 function PasswordField({
@@ -52,6 +53,8 @@ export default function UserProfilePage() {
 
   const [usernameInput, setUsernameInput] = useState("");
 
+  const [avatarUrlInput, setAvatarUrlInput] = useState("");
+
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -60,6 +63,7 @@ export default function UserProfilePage() {
   const [emailCode, setEmailCode] = useState("");
   const [sendingCode, setSendingCode] = useState(false);
   const [showUsernameDialog, setShowUsernameDialog] = useState(false);
+  const [showAvatarDialog, setShowAvatarDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [emailOldPassword, setEmailOldPassword] = useState("");
@@ -90,9 +94,15 @@ export default function UserProfilePage() {
       const data = (await res.json()) as {
         username: string;
         email: string;
+        avatarUrl: string | null;
       };
-      setProfile({ username: data.username, email: data.email });
+      setProfile({
+        username: data.username,
+        email: data.email,
+        avatarUrl: data.avatarUrl,
+      });
       setUsernameInput(data.username);
+      setAvatarUrlInput(data.avatarUrl ?? "");
     } catch (e) {
       setError(e instanceof Error ? e.message : "获取个人信息失败");
     } finally {
@@ -127,7 +137,7 @@ export default function UserProfilePage() {
       setProfile((p) =>
         p
           ? { ...p, username: usernameInput }
-          : { username: usernameInput, email: userEmail }
+          : { username: usernameInput, email: userEmail, avatarUrl: null }
       );
 
       if (typeof window !== "undefined") {
@@ -135,6 +145,52 @@ export default function UserProfilePage() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "更新用户名失败");
+    }
+  };
+
+  const updateAvatar = async () => {
+    if (!userEmail) return;
+    setError("");
+    setOkMsg("");
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail,
+          avatarUrl: avatarUrlInput.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "更新头像失败");
+      }
+      setOkMsg("头像已更新");
+      setProfile((p) =>
+        p
+          ? { ...p, avatarUrl: avatarUrlInput.trim() || null }
+          : { username: usernameInput || "", email: userEmail, avatarUrl: avatarUrlInput.trim() || null }
+      );
+
+      if (typeof window !== "undefined") {
+        if (avatarUrlInput.trim()) {
+          window.localStorage.setItem("loggedInUserAvatar", avatarUrlInput.trim());
+        } else {
+          window.localStorage.removeItem("loggedInUserAvatar");
+        }
+
+        // 通知布局更新右上角头像
+        window.dispatchEvent(
+          new CustomEvent("user-avatar-updated", {
+            detail: {
+              avatarUrl: avatarUrlInput.trim() || null,
+              displayName: profile?.username ?? usernameInput ?? null,
+            },
+          })
+        );
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "更新头像失败");
     }
   };
 
@@ -286,10 +342,55 @@ export default function UserProfilePage() {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 8,
+                gap: 12,
                 marginTop: 8,
               }}
             >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                }}
+              >
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: "9999px",
+                    overflow: "hidden",
+                    border: "1px solid #e5e7eb",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#f9fafb",
+                    fontSize: 12,
+                    color: "#9ca3af",
+                  }}
+                >
+                  {profile.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={profile.avatarUrl}
+                      alt="用户头像"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <span>无头像</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError("");
+                    setOkMsg("");
+                    setAvatarUrlInput(profile.avatarUrl ?? "");
+                    setShowAvatarDialog(true);
+                  }}
+                >
+                  {profile.avatarUrl ? "修改头像" : "设置头像"}
+                </button>
+              </div>
               <label style={{ fontSize: 14 }}>
                 当前邮箱：<strong>{profile.email}</strong>
               </label>
@@ -311,6 +412,105 @@ export default function UserProfilePage() {
               </div>
             </div>
           </section>
+
+          {showAvatarDialog && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.35)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 50,
+              }}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  padding: 24,
+                  borderRadius: 8,
+                  maxWidth: 420,
+                  width: "90%",
+                  boxShadow:
+                    "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
+                }}
+              >
+                <h3 style={{ fontSize: 16, marginBottom: 8 }}>设置头像</h3>
+                <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>
+                  你可以直接上传本地图片，或手动输入图片 URL。留空后保存则清除头像。
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    marginTop: 8,
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      if (file.size > 300 * 1024) {
+                        setError("头像图片大小请控制在 300KB 以内");
+                        return;
+                      }
+
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const result = reader.result;
+                        if (typeof result === "string") {
+                          setAvatarUrlInput(result);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <input
+                    placeholder="或输入图片 URL，例如：https://example.com/avatar.png"
+                    value={avatarUrlInput}
+                    onChange={(e) => setAvatarUrlInput(e.target.value)}
+                  />
+                </div>
+                <div
+                  style={{
+                    marginTop: 16,
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: 8,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAvatarDialog(false);
+                      setAvatarUrlInput(profile.avatarUrl ?? "");
+                    }}
+                    style={{
+                      background: "#e5e7eb",
+                      borderColor: "#d1d5db",
+                      color: "#111827",
+                    }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await updateAvatar();
+                      setShowAvatarDialog(false);
+                    }}
+                  >
+                    保存
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {showUsernameDialog && (
             <div

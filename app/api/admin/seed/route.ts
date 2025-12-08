@@ -29,6 +29,20 @@ export async function POST() {
     }
   }
 
+  // 1.2 确保 avatar_url 字段存在（允许为空）
+  try {
+    await db
+      .prepare("ALTER TABLE users ADD COLUMN avatar_url TEXT")
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // 已经有该字段时忽略错误
+    if (!msg.includes("duplicate column name: avatar_url")) {
+      console.error("添加 avatar_url 字段失败:", e);
+      return new Response("初始化头像字段失败", { status: 500 });
+    }
+  }
+
   // 2. 创建内置管理员账号（如果不存在）
   const adminEmail = "zhouzhiou9588@163.com";
   const adminUsername = "admin";

@@ -7,6 +7,7 @@ type UserRow = {
   username: string;
   email: string;
   is_admin: number;
+  avatar_url: string | null;
   created_at: string;
 };
 
@@ -22,9 +23,20 @@ export async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
+  // 确保 avatar_url 字段存在（兼容旧库，避免在没有该字段时直接报错）
+  try {
+    await db.prepare("ALTER TABLE users ADD COLUMN avatar_url TEXT").run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: avatar_url")) {
+      console.error("确保 avatar_url 字段存在失败:", e);
+      return new Response("服务器内部错误", { status: 500 });
+    }
+  }
+
   const queryResult = await db
     .prepare(
-      "SELECT id, username, email, is_admin, created_at FROM users WHERE email = ?"
+      "SELECT id, username, email, is_admin, avatar_url, created_at FROM users WHERE email = ?"
     )
     .bind(email)
     .all<UserRow>();
@@ -40,33 +52,36 @@ export async function GET(request: Request) {
     username: user.username,
     email: user.email,
     isAdmin: !!user.is_admin,
+    avatarUrl: user.avatar_url,
     createdAt: user.created_at,
   });
 }
 
 // 更新用户个人信息
 export async function POST(request: Request) {
-  const {
-    email,
-    username,
-    oldPassword,
-    newPassword,
-    newEmail,
-    emailCode,
-  } = (await request.json()) as {
+  const body = (await request.json()) as {
     email?: string; // 当前邮箱
     username?: string;
     oldPassword?: string;
     newPassword?: string;
     newEmail?: string;
     emailCode?: string;
+    avatarUrl?: string | null;
   };
+
+  const { email, username, oldPassword, newPassword, newEmail, emailCode, avatarUrl } =
+    body;
 
   if (!email) {
     return new Response("邮箱不能为空", { status: 400 });
   }
 
-  if (!username && !newPassword && !newEmail) {
+  const hasAvatarField = Object.prototype.hasOwnProperty.call(
+    body,
+    "avatarUrl"
+  );
+
+  if (!username && !newPassword && !newEmail && !hasAvatarField) {
     return new Response("没有需要更新的字段", { status: 400 });
   }
 
@@ -131,6 +146,13 @@ export async function POST(request: Request) {
   if (newEmail) {
     fields.push("email = ?");
     values.push(newEmail);
+  }
+
+  // 头像允许设置为空字符串代表清空，所以只要客户端传了 avatarUrl 字段（即使为空字符串）
+  // 就认为需要更新；未传该字段则不更新
+  if (hasAvatarField) {
+    fields.push("avatar_url = ?");
+    values.push(avatarUrl ? avatarUrl : null);
   }
 
   values.push(email);

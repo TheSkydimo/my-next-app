@@ -19,15 +19,6 @@ export default function AdminHomePage() {
     }
   }, []);
 
-  const logout = () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("adminEmail");
-      window.localStorage.removeItem("adminName");
-      window.localStorage.removeItem("isAdmin");
-      window.location.href = "/admin/login";
-    }
-  };
-
   if (!adminName) {
     return (
       <div>
@@ -40,17 +31,6 @@ export default function AdminHomePage() {
 
   return (
     <div style={{ maxWidth: 640, position: "relative", paddingTop: 40 }}>
-      <button
-        onClick={logout}
-        style={{
-          position: "absolute",
-          right: 0,
-          top: 0,
-        }}
-      >
-        退出管理员
-      </button>
-
       <h1>管理员后台</h1>
       <p>欢迎，{adminName}（管理员）</p>
       {adminEmail && (

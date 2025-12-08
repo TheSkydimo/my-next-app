@@ -8,13 +8,65 @@ import { usePathname } from "next/navigation";
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const isAdmin = window.localStorage.getItem("isAdmin");
       const email = window.localStorage.getItem("adminEmail");
+      const storedAvatar = window.localStorage.getItem("adminAvatarUrl");
+
       setIsAuthed(isAdmin === "true" && !!email);
+      setAvatarUrl(storedAvatar || null);
+
+      // 尝试从后端刷新一次管理员头像（忽略错误）
+      if (email) {
+        fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
+          .then(async (res) => {
+            if (!res.ok) return;
+            const data = (await res.json()) as {
+              username: string;
+              email: string;
+              avatarUrl: string | null;
+            };
+            setDisplayName(data.username || data.email);
+            setAvatarUrl(data.avatarUrl ?? null);
+            if (data.avatarUrl) {
+              window.localStorage.setItem("adminAvatarUrl", data.avatarUrl);
+            } else {
+              window.localStorage.removeItem("adminAvatarUrl");
+            }
+          })
+          .catch(() => {});
+      }
     }
+  }, []);
+
+  // 监听来自管理员资料页的头像更新事件，实时同步右上角头像
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{
+        avatarUrl: string | null;
+        displayName?: string | null;
+      }>;
+      const detail = custom.detail;
+      if (!detail) return;
+      setAvatarUrl(detail.avatarUrl);
+      if (detail.displayName) {
+        setDisplayName(detail.displayName);
+      }
+    };
+
+    window.addEventListener("admin-avatar-updated", handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        "admin-avatar-updated",
+        handler as EventListener
+      );
+    };
   }, []);
 
   const logout = () => {
@@ -63,18 +115,59 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div style={{ position: "relative", minHeight: "100vh" }}>
-      <button
-        type="button"
-        onClick={logout}
+      <div
         style={{
           position: "fixed",
-          top: 16,
+          top: 12,
           right: 24,
           zIndex: 60,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 8,
         }}
       >
-        退出登录
-      </button>
+        <div
+          title={displayName || undefined}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: "9999px",
+            overflow: "hidden",
+            border: "1px solid #e5e7eb",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#f9fafb",
+            fontSize: 14,
+            color: "#4b5563",
+            cursor: "pointer",
+          }}
+          onClick={() => {
+            if (pathname !== "/admin/profile") {
+              window.location.href = "/admin/profile";
+            }
+          }}
+        >
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl}
+              alt="管理员头像"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <span>
+              {displayName
+                ? displayName.trim().charAt(0).toUpperCase()
+                : "A"}
+            </span>
+          )}
+        </div>
+        <button type="button" onClick={logout}>
+          退出登录
+        </button>
+      </div>
 
       <div style={{ display: "flex", minHeight: "100vh" }}>
         <aside
