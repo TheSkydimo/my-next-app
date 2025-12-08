@@ -103,8 +103,8 @@ export default function UserLayout({ children }: { children: ReactNode }) {
         <div
           style={{
             position: "fixed",
-            top: 12,
-            right: 24,
+            top: 10,
+            right: 20,
             zIndex: 60,
             display: "flex",
             flexDirection: "column",
@@ -115,8 +115,8 @@ export default function UserLayout({ children }: { children: ReactNode }) {
           <div
             title={displayName || undefined}
             style={{
-              width: 40,
-              height: 40,
+              width: 56,
+              height: 56,
               borderRadius: "9999px",
               overflow: "hidden",
               border: "1px solid #e5e7eb",
