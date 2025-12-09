@@ -6,12 +6,32 @@ import { sha256 } from "../../_utils/auth";
 // 2. 为 users 表增加 is_super_admin 字段（如果不存在）
 // 3. 创建一个内置超级管理员账号（如果不存在）
 //
-// 仅用于开发环境或首次初始化时调用：
+// ⚠️ 安全提示
+// 该接口仅用于开发/初始化场景。
+// 通过环境变量 ALLOW_ADMIN_SEED 控制是否允许调用：
+// - 开发环境：在 .dev.vars 中配置 ALLOW_ADMIN_SEED="true"
+// - 生产环境：不要配置 ALLOW_ADMIN_SEED（或设置为其他值），接口会直接返回 404
+//
+// 使用方式：
 // - POST /api/admin/seed
-// - 或直接在浏览器访问 GET /api/admin/seed
+// - 或直接在浏览器访问 GET /api/admin/seed（仅在 ALLOW_ADMIN_SEED 为 "true" 时生效）
+
+function assertSeedAllowed(env: unknown): Response | null {
+  const envRecord = env as Record<string, unknown>;
+  const flag = String(envRecord.ALLOW_ADMIN_SEED ?? "");
+  if (flag !== "true") {
+    // 对外表现为 404，避免暴露此接口存在
+    return new Response("Not found", { status: 404 });
+  }
+  return null;
+}
 
 export async function POST() {
   const { env } = await getCloudflareContext();
+
+  const notAllowed = assertSeedAllowed(env);
+  if (notAllowed) return notAllowed;
+
   const db = env.my_user_db as D1Database;
 
   // 1. 确保 is_admin 字段存在
@@ -93,7 +113,7 @@ export async function POST() {
     adminEmail,
     adminPassword,
     message:
-      "超级管理员初始化完成，如需修改账号信息请在数据库中手动更新 users 表。",
+      "超级管理员初始化完成，如需修改账号信息请在数据库中手动更新 users 表。请务必在生产环境关闭 ALLOW_ADMIN_SEED。",
   });
 }
 
