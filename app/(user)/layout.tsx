@@ -106,49 +106,8 @@ export default function UserLayout({ children }: { children: ReactNode }) {
             top: 10,
             right: 20,
             zIndex: 60,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 8,
           }}
         >
-          <div
-            title={displayName || undefined}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "9999px",
-              overflow: "hidden",
-              border: "1px solid #e5e7eb",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#f9fafb",
-              fontSize: 14,
-              color: "#4b5563",
-              cursor: "pointer",
-            }}
-            onClick={() => {
-              if (pathname !== "/profile") {
-                window.location.href = "/profile";
-              }
-            }}
-          >
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt="用户头像"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <span>
-                {displayName
-                  ? displayName.trim().charAt(0).toUpperCase()
-                  : "U"}
-              </span>
-            )}
-          </div>
           <button type="button" onClick={logout}>
             退出登录
           </button>
@@ -164,7 +123,77 @@ export default function UserLayout({ children }: { children: ReactNode }) {
             boxSizing: "border-box",
           }}
         >
-          <h2 style={{ fontSize: 18, marginBottom: 16 }}>用户中心</h2>
+          {hasUser && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                title={displayName || undefined}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "9999px",
+                  overflow: "hidden",
+                  border: "1px solid #e5e7eb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#f9fafb",
+                  fontSize: 14,
+                  color: "#4b5563",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+                onClick={() => {
+                  if (pathname !== "/profile") {
+                    window.location.href = "/profile";
+                  }
+                }}
+              >
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt="用户头像"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  <span>
+                    {displayName
+                      ? displayName.trim().charAt(0).toUpperCase()
+                      : "U"}
+                  </span>
+                )}
+              </div>
+
+              {displayName && (
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "#111827",
+                    maxWidth: "100%",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis", // 用户名过长时用“...”省略
+                  }}
+                  title={displayName}
+                >
+                  {displayName}
+                </div>
+              )}
+            </div>
+          )}
           <nav
             style={{
               display: "flex",

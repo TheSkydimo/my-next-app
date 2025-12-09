@@ -116,62 +116,27 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   // 已登录管理员，展示侧边栏 + 子页面内容
   const isActive = (href: string) => pathname === href;
   const isSuperAdmin = adminRole === "super_admin";
+  const roleLabel =
+    adminRole === "super_admin"
+      ? "超级管理员"
+      : adminRole === "admin"
+      ? "管理员"
+      : null;
 
   return (
     <div
       className="admin-layout"
       style={{ position: "relative", minHeight: "100vh" }}
     >
+      {/* 右上角仅保留退出登录按钮，头像移动到左侧栏顶部 */}
       <div
-        className="admin-layout__avatar-bar"
         style={{
           position: "fixed",
           top: 10,
           right: 20,
           zIndex: 60,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 8,
         }}
       >
-        <div
-          title={displayName || undefined}
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: "9999px",
-            overflow: "hidden",
-            border: "1px solid #e5e7eb",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#f9fafb",
-            fontSize: 14,
-            color: "#4b5563",
-            cursor: "pointer",
-          }}
-          onClick={() => {
-            if (pathname !== "/admin/profile") {
-              window.location.href = "/admin/profile";
-            }
-          }}
-        >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt="管理员头像"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <span>
-              {displayName
-                ? displayName.trim().charAt(0).toUpperCase()
-                : "A"}
-            </span>
-          )}
-        </div>
         <button type="button" onClick={logout}>
           退出登录
         </button>
@@ -187,7 +152,99 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             boxSizing: "border-box",
           }}
         >
-          <h2 style={{ fontSize: 18, marginBottom: 16 }}>管理后台</h2>
+          {isAuthed && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                title={displayName || undefined}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "9999px",
+                  overflow: "hidden",
+                  border: "1px solid #e5e7eb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#f9fafb",
+                  fontSize: 14,
+                  color: "#4b5563",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+                onClick={() => {
+                  if (pathname !== "/admin/profile") {
+                    window.location.href = "/admin/profile";
+                  }
+                }}
+              >
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt="管理员头像"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  <span>
+                    {displayName
+                      ? displayName.trim().charAt(0).toUpperCase()
+                      : "A"}
+                  </span>
+                )}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  minWidth: 0,
+                }}
+              >
+                {displayName && (
+                  <div
+                    style={{
+                      fontSize: 14,
+                      color: "#111827",
+                      maxWidth: "100%",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis", // 用户名过长时用“...”省略
+                    }}
+                    title={displayName}
+                  >
+                    {displayName}
+                  </div>
+                )}
+                {roleLabel && (
+                  <span
+                    style={{
+                      padding: "2px 8px",
+                      borderRadius: 9999,
+                      fontSize: 12,
+                      backgroundColor: isSuperAdmin ? "#dcfce7" : "#e0f2fe",
+                      color: isSuperAdmin ? "#166534" : "#1d4ed8",
+                      alignSelf: "flex-start",
+                    }}
+                  >
+                    {roleLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           <nav
             style={{
               display: "flex",
@@ -237,7 +294,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   fontWeight: isActive("/admin/admins") ? 600 : 400,
                 }}
               >
-                管理员管理（超级管理员）
+                管理员管理
               </Link>
             )}
             <Link

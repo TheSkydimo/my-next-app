@@ -32,7 +32,7 @@ export default function AdminHomePage() {
   return (
     <div style={{ maxWidth: 640, position: "relative", paddingTop: 40 }}>
       <h1>管理员后台</h1>
-      <p>欢迎，{adminName}（管理员）</p>
+      <p>欢迎，{adminName}</p>
       {adminEmail && (
         <p style={{ fontSize: 14, color: "#6b7280" }}>邮箱：{adminEmail}</p>
       )}
