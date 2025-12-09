@@ -3,7 +3,8 @@ import { sha256 } from "../../_utils/auth";
 
 // 简单的初始化脚本：
 // 1. 为 users 表增加 is_admin 字段（如果不存在）
-// 2. 创建一个内置管理员账号（如果不存在）
+// 2. 为 users 表增加 is_super_admin 字段（如果不存在）
+// 3. 创建一个内置超级管理员账号（如果不存在）
 //
 // 仅用于开发环境或首次初始化时调用：
 // - POST /api/admin/seed
@@ -29,6 +30,22 @@ export async function POST() {
     }
   }
 
+  // 1.1 确保 is_super_admin 字段存在
+  try {
+    await db
+      .prepare(
+        "ALTER TABLE users ADD COLUMN is_super_admin INTEGER NOT NULL DEFAULT 0"
+      )
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // 已经有该字段时忽略错误
+    if (!msg.includes("duplicate column name: is_super_admin")) {
+      console.error("添加 is_super_admin 字段失败:", e);
+      return new Response("初始化超级管理员表结构失败", { status: 500 });
+    }
+  }
+
   // 1.2 确保 avatar_url 字段存在（允许为空）
   try {
     await db
@@ -43,7 +60,7 @@ export async function POST() {
     }
   }
 
-  // 2. 创建内置管理员账号（如果不存在）
+  // 2. 创建内置超级管理员账号（如果不存在）
   const adminEmail = "zhouzhiou9588@163.com";
   const adminUsername = "admin";
   const adminPassword = "123456";
@@ -58,13 +75,15 @@ export async function POST() {
   if (!existing.results || existing.results.length === 0) {
     await db
       .prepare(
-        "INSERT INTO users (username, email, password_hash, is_admin) VALUES (?, ?, ?, 1)"
+        "INSERT INTO users (username, email, password_hash, is_admin, is_super_admin) VALUES (?, ?, ?, 1, 1)"
       )
       .bind(adminUsername, adminEmail, password_hash)
       .run();
   } else {
     await db
-      .prepare("UPDATE users SET is_admin = 1, password_hash = ? WHERE email = ?")
+      .prepare(
+        "UPDATE users SET is_admin = 1, is_super_admin = 1, password_hash = ? WHERE email = ?"
+      )
       .bind(password_hash, adminEmail)
       .run();
   }
@@ -74,7 +93,7 @@ export async function POST() {
     adminEmail,
     adminPassword,
     message:
-      "管理员初始化完成，如需修改账号信息请在数据库中手动更新 users 表。",
+      "超级管理员初始化完成，如需修改账号信息请在数据库中手动更新 users 表。",
   });
 }
 
@@ -82,5 +101,4 @@ export async function POST() {
 export async function GET() {
   return POST();
 }
-
 

@@ -5,6 +5,7 @@ type AdminRow = {
   id: number;
   username: string;
   email: string;
+  is_super_admin: number;
 };
 
 export async function POST(request: Request) {
@@ -27,16 +28,19 @@ export async function POST(request: Request) {
   try {
     const queryResult = await db
       .prepare(
-        `SELECT id, username, email FROM users WHERE email = ? AND password_hash = ? AND is_admin = 1`
+        `SELECT id, username, email, is_super_admin FROM users WHERE email = ? AND password_hash = ? AND is_admin = 1`
       )
       .bind(email, password_hash)
       .all<AdminRow>();
     results = queryResult.results;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes("no such column: is_admin")) {
+    if (
+      msg.includes("no such column: is_admin") ||
+      msg.includes("no such column: is_super_admin")
+    ) {
       return new Response(
-        "数据库缺少 is_admin 字段，请先访问 /api/admin/seed 初始化管理员表结构和账号",
+        "数据库缺少管理员相关字段，请先访问 /api/admin/seed 初始化管理员表结构和超级管理员账号",
         { status: 500 }
       );
     }
@@ -48,8 +52,19 @@ export async function POST(request: Request) {
   }
 
   const admin = results[0];
+  const isSuperAdmin = !!admin.is_super_admin;
+  const role = isSuperAdmin ? "super_admin" : "admin";
 
-  return Response.json({ ok: true, admin });
+  return Response.json({
+    ok: true,
+    admin: {
+      id: admin.id,
+      username: admin.username,
+      email: admin.email,
+      isSuperAdmin,
+      role,
+    },
+  });
 }
 
 

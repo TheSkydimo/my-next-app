@@ -26,13 +26,20 @@ export default function AdminLoginPage() {
 
     const data = (await res.json()) as {
       ok: boolean;
-      admin: { username: string; email: string };
+      admin: { username: string; email: string; role?: string; isSuperAdmin?: boolean };
     };
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem("adminEmail", data.admin.email);
       window.localStorage.setItem("adminName", data.admin.username);
       window.localStorage.setItem("isAdmin", "true");
+      if (data.admin.role) {
+        window.localStorage.setItem("adminRole", data.admin.role);
+      } else if (data.admin.isSuperAdmin) {
+        window.localStorage.setItem("adminRole", "super_admin");
+      } else {
+        window.localStorage.setItem("adminRole", "admin");
+      }
     }
 
     window.location.href = "/admin";

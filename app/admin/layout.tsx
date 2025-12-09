@@ -10,15 +10,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [adminRole, setAdminRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const isAdmin = window.localStorage.getItem("isAdmin");
       const email = window.localStorage.getItem("adminEmail");
       const storedAvatar = window.localStorage.getItem("adminAvatarUrl");
+      const storedRole = window.localStorage.getItem("adminRole");
 
       setIsAuthed(isAdmin === "true" && !!email);
       setAvatarUrl(storedAvatar || null);
+      setAdminRole(storedRole || null);
 
       // 尝试从后端刷新一次管理员头像（忽略错误）
       if (email) {
@@ -112,6 +115,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // 已登录管理员，展示侧边栏 + 子页面内容
   const isActive = (href: string) => pathname === href;
+  const isSuperAdmin = adminRole === "super_admin";
 
   return (
     <div style={{ position: "relative", minHeight: "100vh" }}>
@@ -215,20 +219,22 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             >
               信息管理
             </Link>
-            <Link
-              href="/admin/admins"
-              style={{
-                padding: "4px 8px",
-                borderRadius: 4,
-                backgroundColor: isActive("/admin/admins")
-                  ? "#1d4ed8"
-                  : "transparent",
-                color: isActive("/admin/admins") ? "#ffffff" : "#111827",
-                fontWeight: isActive("/admin/admins") ? 600 : 400,
-              }}
-            >
-              管理员管理
-            </Link>
+            {isSuperAdmin && (
+              <Link
+                href="/admin/admins"
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  backgroundColor: isActive("/admin/admins")
+                    ? "#1d4ed8"
+                    : "transparent",
+                  color: isActive("/admin/admins") ? "#ffffff" : "#111827",
+                  fontWeight: isActive("/admin/admins") ? 600 : 400,
+                }}
+              >
+                管理员管理（超级管理员）
+              </Link>
+            )}
             <Link
               href="/admin/users"
               style={{

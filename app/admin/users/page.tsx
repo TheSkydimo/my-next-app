@@ -26,6 +26,7 @@ export default function AdminUsersPage() {
   const [keyword, setKeyword] = useState("");
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -33,6 +34,8 @@ export default function AdminUsersPage() {
       const email = window.localStorage.getItem("adminEmail");
       if (isAdmin === "true" && email) {
         setAdminEmail(email);
+        const role = window.localStorage.getItem("adminRole");
+        setIsSuperAdmin(role === "super_admin");
       }
     }
   }, []);
@@ -266,7 +269,7 @@ export default function AdminUsersPage() {
                     justifyContent: "center",
                   }}
                 >
-                  {!u.isAdmin && (
+                  {!u.isAdmin && isSuperAdmin && (
                     <button
                       onClick={() => doAction("set-admin", u)}
                       style={{

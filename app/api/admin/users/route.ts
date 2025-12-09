@@ -26,6 +26,18 @@ async function assertAdmin(db: D1Database, adminEmail: string | null) {
   return null;
 }
 
+async function isSuperAdmin(db: D1Database, adminEmail: string): Promise<boolean> {
+  const { results } = await db
+    .prepare(
+      "SELECT is_super_admin FROM users WHERE email = ? AND is_admin = 1"
+    )
+    .bind(adminEmail)
+    .all<{ is_super_admin: number }>();
+
+  const row = results?.[0];
+  return !!row?.is_super_admin;
+}
+
 // 获取用户列表（仅管理员）
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -128,10 +140,14 @@ export async function POST(request: Request) {
 
   const { results } = await db
     .prepare(
-      "SELECT id, username, email, is_admin, created_at FROM users WHERE email = ?"
+      "SELECT id, username, email, is_admin, is_super_admin, created_at FROM users WHERE email = ?"
     )
     .bind(userEmail)
-    .all<UserRow>();
+    .all<
+      UserRow & {
+        is_super_admin: number;
+      }
+    >();
 
   const target = results?.[0];
 
@@ -142,6 +158,33 @@ export async function POST(request: Request) {
   // 避免管理员误删自己
   if (action === "remove" && target.email === adminEmail) {
     return new Response("不能删除当前登录的管理员账号", { status: 400 });
+  }
+
+  const isCurrentSuperAdmin =
+    adminEmail != null ? await isSuperAdmin(db, adminEmail) : false;
+
+  // 只有超级管理员可以：
+  // - 提升/降级管理员（set-admin / unset-admin）
+  // - 删除管理员账号
+  if (!isCurrentSuperAdmin) {
+    if (action === "set-admin" || action === "unset-admin") {
+      return new Response("无权执行该操作：需要超级管理员权限", { status: 403 });
+    }
+    if (action === "remove" && target.is_admin === 1) {
+      return new Response("无权删除管理员账号：需要超级管理员权限", {
+        status: 403,
+      });
+    }
+  }
+
+  // 禁止对超级管理员账号执行危险操作，避免误删或降级锁死后台
+  if ((target as any).is_super_admin === 1) {
+    if (action === "remove") {
+      return new Response("不能删除超级管理员账号", { status: 400 });
+    }
+    if (action === "unset-admin") {
+      return new Response("不能取消超级管理员的管理员身份", { status: 400 });
+    }
   }
 
   switch (action) {

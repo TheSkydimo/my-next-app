@@ -15,13 +15,19 @@ export default function AdminAdminsPage() {
   const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [unauthorized, setUnauthorized] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const isAdmin = window.localStorage.getItem("isAdmin");
       const email = window.localStorage.getItem("adminEmail");
       if (isAdmin === "true" && email) {
-        setAdminEmail(email);
+        const role = window.localStorage.getItem("adminRole");
+        if (role === "super_admin") {
+          setAdminEmail(email);
+        } else {
+          setUnauthorized(true);
+        }
       }
     }
   }, []);
@@ -89,6 +95,15 @@ export default function AdminAdminsPage() {
       setError(e instanceof Error ? e.message : "操作失败");
     }
   };
+
+  if (unauthorized) {
+    return (
+      <div>
+        <h1>管理员管理</h1>
+        <p>当前账号不是超级管理员，无权访问该页面。</p>
+      </div>
+    );
+  }
 
   if (!adminEmail) {
     return (
