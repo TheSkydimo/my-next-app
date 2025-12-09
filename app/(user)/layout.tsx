@@ -95,61 +95,30 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  // 未登录普通用户时，不展示左侧菜单和退出按钮，只渲染当前页面内容
+  if (!hasUser) {
+    return <>{children}</>;
+  }
+
   const isActive = (href: string) => pathname === href;
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh" }}>
+    <div className="user-layout">
       {hasUser && (
-        <div
-          style={{
-            position: "fixed",
-            top: 10,
-            right: 20,
-            zIndex: 60,
-          }}
-        >
+        <div className="user-layout__logout">
           <button type="button" onClick={logout}>
             退出登录
           </button>
         </div>
       )}
 
-      <div style={{ display: "flex", minHeight: "100vh" }}>
-        <aside
-          style={{
-            width: 200,
-            borderRight: "1px solid #e5e7eb",
-            padding: "24px 16px",
-            boxSizing: "border-box",
-          }}
-        >
+      <div className="user-layout__body">
+        <aside className="user-layout__sidebar">
           {hasUser && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 16,
-              }}
-            >
+            <div className="user-layout__profile">
               <div
+                className="user-layout__avatar"
                 title={displayName || undefined}
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "9999px",
-                  overflow: "hidden",
-                  border: "1px solid #e5e7eb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#f9fafb",
-                  fontSize: 14,
-                  color: "#4b5563",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
                 onClick={() => {
                   if (pathname !== "/profile") {
                     window.location.href = "/profile";
@@ -161,14 +130,10 @@ export default function UserLayout({ children }: { children: ReactNode }) {
                   <img
                     src={avatarUrl}
                     alt="用户头像"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                    className="user-layout__avatar-img"
                   />
                 ) : (
-                  <span>
+                  <span className="user-layout__avatar-initial">
                     {displayName
                       ? displayName.trim().charAt(0).toUpperCase()
                       : "U"}
@@ -178,15 +143,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
 
               {displayName && (
                 <div
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: "#111827",
-                    maxWidth: "100%",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis", // 用户名过长时用“...”省略
-                  }}
+                  className="user-layout__display-name"
                   title={displayName}
                 >
                   {displayName}
@@ -194,51 +151,27 @@ export default function UserLayout({ children }: { children: ReactNode }) {
               )}
             </div>
           )}
-          <nav
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              fontSize: 14,
-            }}
-          >
+          <nav className="user-layout__nav">
             <Link
               href="/"
-              style={{
-                padding: "4px 8px",
-                borderRadius: 4,
-                backgroundColor: isActive("/") ? "#1d4ed8" : "transparent",
-                color: isActive("/") ? "#ffffff" : "#111827",
-                fontWeight: isActive("/") ? 600 : 400,
-              }}
+              className={`user-layout__nav-link ${
+                isActive("/") ? "user-layout__nav-link--active" : ""
+              }`}
             >
               首页
             </Link>
             <Link
               href="/profile"
-              style={{
-                padding: "4px 8px",
-                borderRadius: 4,
-                backgroundColor: isActive("/profile")
-                  ? "#1d4ed8"
-                  : "transparent",
-                color: isActive("/profile") ? "#ffffff" : "#111827",
-                fontWeight: isActive("/profile") ? 600 : 400,
-              }}
+              className={`user-layout__nav-link ${
+                isActive("/profile") ? "user-layout__nav-link--active" : ""
+              }`}
             >
               信息管理
             </Link>
           </nav>
         </aside>
 
-        <main
-          style={{
-            flex: 1,
-            padding: "24px 32px",
-            boxSizing: "border-box",
-            overflowX: "auto",
-          }}
-        >
+        <main className="user-layout__main">
           {children}
         </main>
       </div>

@@ -8,6 +8,8 @@ type UserItem = {
   username: string;
   email: string;
   isAdmin: boolean;
+  isVip: boolean;
+  vipExpiresAt: string | null;
   createdAt: string;
 };
 
@@ -115,6 +117,49 @@ export default function AdminUsersPage() {
     }
   };
 
+  const setVipForUser = async (user: UserItem) => {
+    if (!adminEmail) return;
+    setError("");
+
+    const currentDateText = user.vipExpiresAt
+      ? user.vipExpiresAt.slice(0, 10)
+      : "";
+    const input = window.prompt(
+      "请输入会员到期日期（格式：YYYY-MM-DD），留空表示取消会员：",
+      currentDateText
+    );
+    if (input === null) return;
+
+    const trimmed = input.trim();
+    let vipExpiresAt: string | null = null;
+    if (trimmed) {
+      // 简单拼一个 UTC 的结束时间，后端会做格式校验
+      vipExpiresAt = `${trimmed}T23:59:59.999Z`;
+    }
+
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminEmail,
+          action: "set-vip",
+          userEmail: user.email,
+          vipExpiresAt,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "设置会员失败");
+      }
+
+      await fetchUsers({ q: keyword });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "设置会员失败");
+    }
+  };
+
   if (!adminEmail) {
     return (
       <div style={{ maxWidth: 720, margin: "80px auto" }}>
@@ -207,6 +252,12 @@ export default function AdminUsersPage() {
                 角色
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                会员状态
+              </th>
+              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                会员到期时间
+              </th>
+              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
                 注册时间
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
@@ -257,6 +308,28 @@ export default function AdminUsersPage() {
                   style={{
                     borderBottom: "1px solid #f3f4f6",
                     padding: 8,
+                    textAlign: "center",
+                    color: u.isVip ? "#16a34a" : "#6b7280",
+                  }}
+                >
+                  {u.isVip ? "会员中" : "非会员"}
+                </td>
+                <td
+                  style={{
+                    borderBottom: "1px solid #f3f4f6",
+                    padding: 8,
+                    fontSize: 12,
+                    color: "#6b7280",
+                  }}
+                >
+                  {u.vipExpiresAt
+                    ? new Date(u.vipExpiresAt).toLocaleString()
+                    : "-"}
+                </td>
+                <td
+                  style={{
+                    borderBottom: "1px solid #f3f4f6",
+                    padding: 8,
                     fontSize: 12,
                     color: "#6b7280",
                   }}
@@ -272,6 +345,17 @@ export default function AdminUsersPage() {
                     justifyContent: "center",
                   }}
                 >
+                  <button
+                    onClick={() => setVipForUser(u)}
+                    style={{
+                      background: "#0ea5e9",
+                      borderColor: "#0ea5e9",
+                      color: "#fff",
+                      padding: "4px 8px",
+                    }}
+                  >
+                    设置会员
+                  </button>
                   {!u.isAdmin && isSuperAdmin && (
                     <button
                       onClick={() => doAction("set-admin", u)}
@@ -285,7 +369,7 @@ export default function AdminUsersPage() {
                       设为管理员
                     </button>
                   )}
-                  {u.email !== adminEmail && (
+                  {u.email !== adminEmail && !u.isVip && (
                     <button
                       onClick={() => doAction("remove", u)}
                       style={{

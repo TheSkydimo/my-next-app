@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   is_admin INTEGER NOT NULL DEFAULT 0,
   is_super_admin INTEGER NOT NULL DEFAULT 0,
+  -- 会员到期时间（为空或早于当前时间视为非会员）
+  vip_expires_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

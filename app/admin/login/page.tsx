@@ -46,53 +46,49 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "80px auto" }}>
-      <h1>管理员登录</h1>
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1>管理员登录</h1>
 
-      <form
-        onSubmit={submit}
-        style={{ display: "flex", flexDirection: "column", gap: 12 }}
-      >
-        <input
-          type="email"
-          placeholder="管理员邮箱"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <form onSubmit={submit} className="auth-card__form">
           <input
-            type={showPassword ? "text" : "password"}
-            placeholder="密码"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ flex: 1 }}
+            type="email"
+            placeholder="管理员邮箱"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            style={{
-              minWidth: 80,
-              background: "#e5e7eb",
-              color: "#111827",
-              borderColor: "#d1d5db",
-            }}
-          >
-            {showPassword ? "隐藏" : "显示"}
+
+          <div className="auth-card__field-row">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="密码"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="auth-card__field-grow"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="auth-card__ghost-button"
+            >
+              {showPassword ? "隐藏" : "显示"}
+            </button>
+          </div>
+
+          <button type="submit" className="auth-card__submit-button">
+            登录后台
           </button>
+        </form>
+
+        <div className="auth-card__links">
+          <p>
+            忘记管理员密码？{" "}
+            <Link href="/admin/forgot-password">找回密码</Link>
+          </p>
         </div>
 
-        <button>登录后台</button>
-      </form>
-
-      <div style={{ marginTop: 16 }}>
-        <p>
-          忘记管理员密码？{" "}
-          <Link href="/admin/forgot-password">找回密码</Link>
-        </p>
+        {error && <p className="auth-card__error">{error}</p>}
       </div>
-
-      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 }

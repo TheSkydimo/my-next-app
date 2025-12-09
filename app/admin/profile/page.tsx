@@ -410,40 +410,13 @@ export default function AdminProfilePage() {
           </section>
 
           {showAvatarDialog && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.35)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 50,
-              }}
-            >
-              <div
-                style={{
-                  background: "#fff",
-                  padding: 24,
-                  borderRadius: 8,
-                  maxWidth: 420,
-                  width: "90%",
-                  boxShadow:
-                    "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
-                }}
-              >
-                <h3 style={{ fontSize: 16, marginBottom: 8 }}>设置头像</h3>
-                <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>
-                  你可以直接上传本地图片，或手动输入图片 URL。留空后保存则清除头像。
-                </p>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    marginTop: 8,
-                  }}
-                >
+          <div className="dialog-overlay">
+            <div className="dialog-card">
+              <h3 className="dialog-card__title">设置头像</h3>
+              <p className="dialog-card__desc dialog-card__desc--muted">
+                你可以直接上传本地图片，或手动输入图片 URL。留空后保存则清除头像。
+              </p>
+              <div className="dialog-card__body">
                   <input
                     type="file"
                     accept="image/*"
@@ -472,25 +445,14 @@ export default function AdminProfilePage() {
                     onChange={(e) => setAvatarUrlInput(e.target.value)}
                   />
                 </div>
-                <div
-                  style={{
-                    marginTop: 16,
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: 8,
-                  }}
-                >
+              <div className="dialog-card__actions">
                   <button
                     type="button"
                     onClick={() => {
                       setShowAvatarDialog(false);
                       setAvatarUrlInput(profile.avatarUrl ?? "");
                     }}
-                    style={{
-                      background: "#e5e7eb",
-                      borderColor: "#d1d5db",
-                      color: "#111827",
-                    }}
+                  className="dialog-card__cancel"
                   >
                     取消
                   </button>
@@ -500,6 +462,7 @@ export default function AdminProfilePage() {
                       await updateAvatar();
                       setShowAvatarDialog(false);
                     }}
+                  className="dialog-card__primary"
                   >
                     保存
                   </button>
@@ -509,62 +472,24 @@ export default function AdminProfilePage() {
           )}
 
           {showUsernameDialog && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.35)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 50,
-              }}
-            >
-              <div
-                style={{
-                  background: "#fff",
-                  padding: 24,
-                  borderRadius: 8,
-                  maxWidth: 420,
-                  width: "90%",
-                  boxShadow:
-                    "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
-                }}
-              >
-                <h3 style={{ fontSize: 16, marginBottom: 8 }}>修改用户名</h3>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    marginTop: 8,
-                  }}
-                >
+          <div className="dialog-overlay">
+            <div className="dialog-card">
+              <h3 className="dialog-card__title">修改用户名</h3>
+              <div className="dialog-card__body">
                   <input
                     placeholder="新用户名"
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
                   />
                 </div>
-                <div
-                  style={{
-                    marginTop: 16,
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: 8,
-                  }}
-                >
+              <div className="dialog-card__actions">
                   <button
                     type="button"
                     onClick={() => {
                       setShowUsernameDialog(false);
                       setUsernameInput(profile.username);
                     }}
-                    style={{
-                      background: "#e5e7eb",
-                      borderColor: "#d1d5db",
-                      color: "#111827",
-                    }}
+                  className="dialog-card__cancel"
                   >
                     取消
                   </button>
@@ -574,6 +499,7 @@ export default function AdminProfilePage() {
                       await updateUsername();
                       setShowUsernameDialog(false);
                     }}
+                  className="dialog-card__primary"
                   >
                     保存
                   </button>
@@ -609,37 +535,10 @@ export default function AdminProfilePage() {
           </section>
 
           {showPasswordDialog && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.35)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 50,
-              }}
-            >
-              <div
-                style={{
-                  background: "#fff",
-                  padding: 24,
-                  borderRadius: 8,
-                  maxWidth: 420,
-                  width: "90%",
-                  boxShadow:
-                    "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
-                }}
-              >
-                <h3 style={{ fontSize: 16, marginBottom: 8 }}>修改密码</h3>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    marginTop: 8,
-                  }}
-                >
+          <div className="dialog-overlay">
+            <div className="dialog-card">
+              <h3 className="dialog-card__title">修改密码</h3>
+              <div className="dialog-card__body">
                   <PasswordField
                     placeholder="旧密码"
                     value={oldPassword}
@@ -656,14 +555,7 @@ export default function AdminProfilePage() {
                     onChange={setConfirmNewPassword}
                   />
                 </div>
-                <div
-                  style={{
-                    marginTop: 16,
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: 8,
-                  }}
-                >
+              <div className="dialog-card__actions">
                   <button
                     type="button"
                     onClick={() => {
@@ -672,11 +564,7 @@ export default function AdminProfilePage() {
                       setNewPassword("");
                       setConfirmNewPassword("");
                     }}
-                    style={{
-                      background: "#e5e7eb",
-                      borderColor: "#d1d5db",
-                      color: "#111827",
-                    }}
+                  className="dialog-card__cancel"
                   >
                     取消
                   </button>
@@ -686,6 +574,7 @@ export default function AdminProfilePage() {
                       await updatePassword();
                       setShowPasswordDialog(false);
                     }}
+                  className="dialog-card__primary"
                   >
                     确认修改
                   </button>
@@ -720,46 +609,20 @@ export default function AdminProfilePage() {
           </section>
 
           {showEmailDialog && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.35)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 50,
-              }}
-            >
-              <div
-                style={{
-                  background: "#fff",
-                  padding: 24,
-                  borderRadius: 8,
-                  maxWidth: 420,
-                  width: "90%",
-                  boxShadow:
-                    "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
-                }}
-              >
-                <h3 style={{ fontSize: 16, marginBottom: 8 }}>确认修改邮箱</h3>
-                <p style={{ fontSize: 13, color: "#f97316", marginBottom: 12 }}>
-                  修改邮箱时会同时更新登录密码，请先验证新邮箱并设置新密码。
-                </p>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                  }}
-                >
+          <div className="dialog-overlay">
+            <div className="dialog-card">
+              <h3 className="dialog-card__title">确认修改邮箱</h3>
+              <p className="dialog-card__desc dialog-card__desc--warn">
+                修改邮箱时会同时更新登录密码，请先验证新邮箱并设置新密码。
+              </p>
+              <div className="dialog-card__body">
                   <input
                     type="email"
                     placeholder="新邮箱"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                   />
-                  <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8 }}>
                     <input
                       placeholder="邮箱验证码"
                       value={emailCode}
@@ -790,14 +653,7 @@ export default function AdminProfilePage() {
                     onChange={setEmailConfirmNewPassword}
                   />
                 </div>
-                <div
-                  style={{
-                    marginTop: 16,
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: 8,
-                  }}
-                >
+              <div className="dialog-card__actions">
                   <button
                     type="button"
                     onClick={() => {
@@ -808,11 +664,7 @@ export default function AdminProfilePage() {
                       setEmailNewPassword("");
                       setEmailConfirmNewPassword("");
                     }}
-                    style={{
-                      background: "#e5e7eb",
-                      borderColor: "#d1d5db",
-                      color: "#111827",
-                    }}
+                  className="dialog-card__cancel"
                   >
                     取消
                   </button>
@@ -822,6 +674,7 @@ export default function AdminProfilePage() {
                       await updateEmail();
                       setShowEmailDialog(false);
                     }}
+                  className="dialog-card__primary"
                   >
                     确认修改
                   </button>

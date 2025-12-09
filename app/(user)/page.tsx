@@ -17,30 +17,29 @@ export default function Home() {
   }, []);
 
   return (
-    <div
-      style={{
-        maxWidth: 480,
-        margin: "80px auto",
-        paddingTop: 40,
-      }}
-    >
+    <div className="home-page">
       {displayName ? (
-        <>
-          <p>欢迎，{displayName}！</p>
+        <div className="home-card home-card--welcome">
+          <h1>欢迎，{displayName}！</h1>
           {userEmail && (
-            <p style={{ fontSize: 14, color: "#6b7280" }}>
-              当前登录邮箱：{userEmail}
-            </p>
+            <p className="home-card__subtext">当前登录邮箱：{userEmail}</p>
           )}
-        </>
+        </div>
       ) : (
-        <>
-          <p>你还没有登录，请先登录或注册。</p>
-          <div style={{ display: "flex", gap: 12 }}>
-            <Link href="/login">去登录</Link>
-            <Link href="/register">去注册</Link>
+        <div className="home-card home-card--guest">
+          <h1>欢迎来到Skydimo用户管理系统</h1>
+          <p className="home-card__subtext">
+            你还没有登录，请先登录或注册。
+          </p>
+          <div className="home-card__actions">
+            <Link href="/login" className="home-card__primary-link">
+              去登录
+            </Link>
+            <Link href="/register" className="home-card__secondary-link">
+              去注册
+            </Link>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ type UserRow = {
   // 是否为超级管理员（只有在特定查询中会被填充）
   is_super_admin?: number;
   avatar_url: string | null;
+  vip_expires_at: string | null;
   created_at: string;
 };
 
@@ -103,6 +104,11 @@ export async function GET(request: Request) {
       email: u.email,
       isAdmin: !!u.is_admin,
       avatarUrl: u.avatar_url,
+      isVip:
+        !!u.vip_expires_at &&
+        !Number.isNaN(new Date(u.vip_expires_at).getTime()) &&
+        new Date(u.vip_expires_at).getTime() > Date.now(),
+      vipExpiresAt: u.vip_expires_at,
       createdAt: u.created_at,
     })) ?? [];
 
@@ -121,13 +127,15 @@ export async function GET(request: Request) {
 
 type AdminActionBody = {
   adminEmail?: string;
-  action?: "remove" | "set-admin" | "unset-admin";
+  action?: "remove" | "set-admin" | "unset-admin" | "set-vip";
   userEmail?: string;
+  // 会员到期时间字符串（可为空），例如：2025-12-31T23:59:59.999Z
+  vipExpiresAt?: string | null;
 };
 
 // 管理员操作用户：删除用户 / 设置为管理员
 export async function POST(request: Request) {
-  const { adminEmail, action, userEmail } =
+  const { adminEmail, action, userEmail, vipExpiresAt } =
     (await request.json()) as AdminActionBody;
 
   const { env } = await getCloudflareContext();
@@ -142,7 +150,7 @@ export async function POST(request: Request) {
 
   const { results } = await db
     .prepare(
-      "SELECT id, username, email, is_admin, is_super_admin, created_at FROM users WHERE email = ?"
+      "SELECT id, username, email, is_admin, is_super_admin, vip_expires_at, created_at FROM users WHERE email = ?"
     )
     .bind(userEmail)
     .all<UserRow>();
@@ -160,6 +168,16 @@ export async function POST(request: Request) {
 
   const isCurrentSuperAdmin =
     adminEmail != null ? await isSuperAdmin(db, adminEmail) : false;
+
+  // 如果是删除操作，且用户当前为有效会员，则不允许删除
+  if (action === "remove" && target.vip_expires_at) {
+    const expireTime = new Date(target.vip_expires_at).getTime();
+    if (!Number.isNaN(expireTime) && expireTime > Date.now()) {
+      return new Response("该用户当前为有效会员，会员未到期前无法删除用户信息", {
+        status: 400,
+      });
+    }
+  }
 
   // 只有超级管理员可以：
   // - 提升/降级管理员（set-admin / unset-admin）
@@ -216,6 +234,27 @@ export async function POST(request: Request) {
       await db
         .prepare("UPDATE users SET is_admin = 0 WHERE email = ?")
         .bind(userEmail)
+        .run();
+      break;
+    }
+    case "set-vip": {
+      // 会员到期时间可为空：表示取消会员
+      if (vipExpiresAt == null || vipExpiresAt === "") {
+        await db
+          .prepare("UPDATE users SET vip_expires_at = NULL WHERE email = ?")
+          .bind(userEmail)
+          .run();
+        break;
+      }
+
+      const parsed = new Date(vipExpiresAt);
+      if (Number.isNaN(parsed.getTime())) {
+        return new Response("会员到期时间格式不正确", { status: 400 });
+      }
+
+      await db
+        .prepare("UPDATE users SET vip_expires_at = ? WHERE email = ?")
+        .bind(parsed.toISOString(), userEmail)
         .run();
       break;
     }

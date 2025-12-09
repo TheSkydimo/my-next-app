@@ -114,121 +114,102 @@ export default function AdminForgotPasswordPage() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "80px auto" }}>
-      <h1>管理员忘记密码</h1>
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1>管理员忘记密码</h1>
 
-      <form
-        onSubmit={submit}
-        style={{ display: "flex", flexDirection: "column", gap: 12 }}
-      >
-        <input
-          type="email"
-          placeholder="管理员邮箱"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <form onSubmit={submit} className="auth-card__form">
           <input
-            placeholder="邮箱验证码"
-            value={emailCode}
-            onChange={(e) => setEmailCode(e.target.value)}
-            style={{ flex: 1 }}
+            type="email"
+            placeholder="管理员邮箱"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
-          <button
-            type="button"
-            onClick={sendEmailCode}
-            disabled={sendingCode}
-            style={{
-              minWidth: 110,
-              background: "#10b981",
-              borderColor: "#10b981",
-            }}
-          >
-            {sendingCode ? "发送中..." : "获取邮箱验证码"}
-          </button>
-        </div>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type={showPassword ? "text" : "password"}
-            placeholder="新密码"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ flex: 1 }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            style={{
-              minWidth: 80,
-              background: "#e5e7eb",
-              color: "#111827",
-              borderColor: "#d1d5db",
-            }}
-          >
-            {showPassword ? "隐藏" : "显示"}
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type={showConfirmPassword ? "text" : "password"}
-            placeholder="确认新密码"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            style={{ flex: 1 }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirmPassword((v) => !v)}
-            style={{
-              minWidth: 80,
-              background: "#e5e7eb",
-              color: "#111827",
-              borderColor: "#d1d5db",
-            }}
-          >
-            {showConfirmPassword ? "隐藏" : "显示"}
-          </button>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <input
-            placeholder="验证码"
-            value={captchaInput}
-            onChange={(e) => setCaptchaInput(e.target.value)}
-            style={{ flex: 1 }}
-          />
-          <div
-            onClick={refreshCaptcha}
-            style={{
-              cursor: "pointer",
-              padding: "6px 10px",
-              borderRadius: 4,
-              border: "1px solid #ccc",
-              userSelect: "none",
-              fontWeight: "bold",
-              letterSpacing: 2,
-            }}
-            title="点击更换验证码"
-          >
-            {captcha}
+          <div className="auth-card__field-row">
+            <input
+              placeholder="邮箱验证码"
+              value={emailCode}
+              onChange={(e) => setEmailCode(e.target.value)}
+              className="auth-card__field-grow"
+            />
+            <button
+              type="button"
+              onClick={sendEmailCode}
+              disabled={sendingCode}
+              className="auth-card__secondary-button"
+            >
+              {sendingCode ? "发送中..." : "获取邮箱验证码"}
+            </button>
           </div>
-        </div>
 
-        <button type="submit">重置管理员密码</button>
-      </form>
+          <div className="auth-card__field-row">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="新密码"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="auth-card__field-grow"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="auth-card__ghost-button"
+            >
+              {showPassword ? "隐藏" : "显示"}
+            </button>
+          </div>
 
-      <p style={{ marginTop: 16 }}>
-        返回管理员登录：<Link href="/admin/login">管理员登录</Link>
-      </p>
+          <div className="auth-card__field-row">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="确认新密码"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="auth-card__field-grow"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((v) => !v)}
+              className="auth-card__ghost-button"
+            >
+              {showConfirmPassword ? "隐藏" : "显示"}
+            </button>
+          </div>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {codeMsg && <p style={{ color: "green" }}>{codeMsg}</p>}
-      {ok && (
-        <p style={{ color: "green" }}>密码重置成功，即将跳转到管理员登录页…</p>
-      )}
+          <div className="auth-card__field-row">
+            <input
+              placeholder="验证码"
+              value={captchaInput}
+              onChange={(e) => setCaptchaInput(e.target.value)}
+              className="auth-card__field-grow"
+            />
+            <div
+              onClick={refreshCaptcha}
+              className="auth-card__captcha"
+              title="点击更换验证码"
+            >
+              {captcha}
+            </div>
+          </div>
+
+          <button type="submit" className="auth-card__submit-button">
+            重置管理员密码
+          </button>
+        </form>
+
+        <p className="auth-card__links">
+          返回管理员登录：<Link href="/admin/login">管理员登录</Link>
+        </p>
+
+        {error && <p className="auth-card__error">{error}</p>}
+        {codeMsg && <p className="auth-card__success">{codeMsg}</p>}
+        {ok && (
+          <p className="auth-card__success">
+            密码重置成功，即将跳转到管理员登录页…
+          </p>
+        )}
+      </div>
     </div>
   );
 }

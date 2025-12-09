@@ -80,6 +80,23 @@ export async function POST() {
     }
   }
 
+  // 1.3 确保会员到期时间字段存在（允许为空）
+  // 说明：
+  // - 会员有效期在 vip_expires_at 之前，视为会员中
+  // - 为空或早于当前时间则视为非会员
+  try {
+    await db
+      .prepare("ALTER TABLE users ADD COLUMN vip_expires_at TIMESTAMP")
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // 已经有该字段时忽略错误
+    if (!msg.includes("duplicate column name: vip_expires_at")) {
+      console.error("添加 vip_expires_at 字段失败:", e);
+      return new Response("初始化会员字段失败", { status: 500 });
+    }
+  }
+
   // 2. 创建内置超级管理员账号（如果不存在）
   const adminEmail = "zhouzhiou9588@163.com";
   const adminUsername = "admin";

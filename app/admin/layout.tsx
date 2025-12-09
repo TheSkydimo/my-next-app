@@ -96,18 +96,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   // 未登录管理员时，不展示内部内容和菜单
   if (!isAuthed) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
+      <div className="auth-page">
+        <div className="auth-card">
           <h1>管理后台</h1>
           <p>未检测到管理员登录，请先登录。</p>
-          <Link href="/admin/login">去登录</Link>
+          <p style={{ marginTop: 12 }}>
+            <Link href="/admin/login">去登录</Link>
+          </p>
         </div>
       </div>
     );
@@ -124,61 +119,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       : null;
 
   return (
-    <div
-      className="admin-layout"
-      style={{ position: "relative", minHeight: "100vh" }}
-    >
+    <div className="admin-layout">
       {/* 右上角仅保留退出登录按钮，头像移动到左侧栏顶部 */}
-      <div
-        style={{
-          position: "fixed",
-          top: 10,
-          right: 20,
-          zIndex: 60,
-        }}
-      >
+      <div className="admin-layout__logout">
         <button type="button" onClick={logout}>
           退出登录
         </button>
       </div>
 
-      <div className="admin-layout__body" style={{ display: "flex", minHeight: "100vh" }}>
-        <aside
-          className="admin-layout__sidebar"
-          style={{
-            width: 200,
-            borderRight: "1px solid #e5e7eb",
-            padding: "24px 16px",
-            boxSizing: "border-box",
-          }}
-        >
+      <div className="admin-layout__body">
+        <aside className="admin-layout__sidebar">
           {isAuthed && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 16,
-              }}
-            >
+            <div className="admin-layout__profile">
               <div
                 title={displayName || undefined}
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "9999px",
-                  overflow: "hidden",
-                  border: "1px solid #e5e7eb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#f9fafb",
-                  fontSize: 14,
-                  color: "#4b5563",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
+                className="admin-layout__avatar"
                 onClick={() => {
                   if (pathname !== "/admin/profile") {
                     window.location.href = "/admin/profile";
@@ -190,14 +145,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <img
                     src={avatarUrl}
                     alt="管理员头像"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                    className="admin-layout__avatar-img"
                   />
                 ) : (
-                  <span>
+                  <span className="admin-layout__avatar-initial">
                     {displayName
                       ? displayName.trim().charAt(0).toUpperCase()
                       : "A"}
@@ -205,24 +156,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 )}
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 4,
-                  minWidth: 0,
-                }}
-              >
+              <div className="admin-layout__profile-meta">
                 {displayName && (
                   <div
-                    style={{
-                      fontSize: 14,
-                      color: "#111827",
-                      maxWidth: "100%",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis", // 用户名过长时用“...”省略
-                    }}
+                    className="admin-layout__display-name"
                     title={displayName}
                   >
                     {displayName}
@@ -230,14 +167,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 )}
                 {roleLabel && (
                   <span
-                    style={{
-                      padding: "2px 8px",
-                      borderRadius: 9999,
-                      fontSize: 12,
-                      backgroundColor: isSuperAdmin ? "#dcfce7" : "#e0f2fe",
-                      color: isSuperAdmin ? "#166534" : "#1d4ed8",
-                      alignSelf: "flex-start",
-                    }}
+                    className={`admin-layout__role-badge ${
+                      isSuperAdmin
+                        ? "admin-layout__role-badge--super"
+                        : "admin-layout__role-badge--normal"
+                    }`}
                   >
                     {roleLabel}
                   </span>
@@ -245,84 +179,51 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </div>
             </div>
           )}
-          <nav
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              fontSize: 14,
-            }}
-          >
+          <nav className="admin-layout__nav">
             <Link
               href="/admin"
-              style={{
-                padding: "4px 8px",
-                borderRadius: 4,
-                backgroundColor: isActive("/admin")
-                  ? "#1d4ed8"
-                  : "transparent",
-                color: isActive("/admin") ? "#ffffff" : "#111827",
-                fontWeight: isActive("/admin") ? 600 : 400,
-              }}
+              className={`admin-layout__nav-link ${
+                isActive("/admin") ? "admin-layout__nav-link--active" : ""
+              }`}
             >
               首页
             </Link>
             <Link
               href="/admin/profile"
-              style={{
-                padding: "4px 8px",
-                borderRadius: 4,
-                backgroundColor: isActive("/admin/profile")
-                  ? "#1d4ed8"
-                  : "transparent",
-                color: isActive("/admin/profile") ? "#ffffff" : "#111827",
-                fontWeight: isActive("/admin/profile") ? 600 : 400,
-              }}
+              className={`admin-layout__nav-link ${
+                isActive("/admin/profile")
+                  ? "admin-layout__nav-link--active"
+                  : ""
+              }`}
             >
               信息管理
             </Link>
             {isSuperAdmin && (
               <Link
                 href="/admin/admins"
-                style={{
-                  padding: "4px 8px",
-                  borderRadius: 4,
-                  backgroundColor: isActive("/admin/admins")
-                    ? "#1d4ed8"
-                    : "transparent",
-                  color: isActive("/admin/admins") ? "#ffffff" : "#111827",
-                  fontWeight: isActive("/admin/admins") ? 600 : 400,
-                }}
+                className={`admin-layout__nav-link ${
+                  isActive("/admin/admins")
+                    ? "admin-layout__nav-link--active"
+                    : ""
+                }`}
               >
                 管理员管理
               </Link>
             )}
             <Link
               href="/admin/users"
-              style={{
-                padding: "4px 8px",
-                borderRadius: 4,
-                backgroundColor: isActive("/admin/users")
-                  ? "#1d4ed8"
-                  : "transparent",
-                color: isActive("/admin/users") ? "#ffffff" : "#111827",
-                fontWeight: isActive("/admin/users") ? 600 : 400,
-              }}
+              className={`admin-layout__nav-link ${
+                isActive("/admin/users")
+                  ? "admin-layout__nav-link--active"
+                  : ""
+              }`}
             >
               用户管理
             </Link>
           </nav>
         </aside>
 
-        <main
-          className="admin-layout__main"
-          style={{
-            flex: 1,
-            padding: "24px 32px",
-            boxSizing: "border-box",
-            overflowX: "auto",
-          }}
-        >
+        <main className="admin-layout__main">
           {children}
         </main>
       </div>
