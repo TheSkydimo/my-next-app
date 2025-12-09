@@ -25,6 +25,56 @@ body {
 	font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ========== Admin 布局响应式 ========== */
+
+/* 小屏下：侧边栏与内容上下堆叠，避免挤压重叠 */
+@media (max-width: 768px) {
+	.admin-layout__body {
+		flex-direction: column;
+		min-height: auto;
+	}
+
+	.admin-layout__sidebar {
+		width: 100% !important;
+		border-right: none !important;
+		border-bottom: 1px solid #e5e7eb;
+		padding: 12px 16px !important;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 12px;
+		overflow-x: auto;
+		white-space: nowrap;
+		box-sizing: border-box;
+	}
+
+	.admin-layout__sidebar nav {
+		flex-direction: row !important;
+	}
+
+	.admin-layout__main {
+		padding: 16px !important;
+	}
+
+	/* 头像固定区域在小屏幕缩小间距，减少遮挡 */
+	.admin-layout__avatar-bar {
+		top: 8px !important;
+		right: 8px !important;
+	}
+}
+
+/* Admin 用户列表页面响应式 */
+@media (max-width: 640px) {
+	.admin-users__header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.admin-users__search-row {
+		flex-wrap: wrap;
+	}
+}
+
 /* 让表单控件更明显一些，避免看不到输入框 */
 input,
 button {

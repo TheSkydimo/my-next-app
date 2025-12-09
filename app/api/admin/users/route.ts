@@ -5,6 +5,8 @@ type UserRow = {
   username: string;
   email: string;
   is_admin: number;
+  // 是否为超级管理员（只有在特定查询中会被填充）
+  is_super_admin?: number;
   avatar_url: string | null;
   created_at: string;
 };
@@ -143,11 +145,7 @@ export async function POST(request: Request) {
       "SELECT id, username, email, is_admin, is_super_admin, created_at FROM users WHERE email = ?"
     )
     .bind(userEmail)
-    .all<
-      UserRow & {
-        is_super_admin: number;
-      }
-    >();
+    .all<UserRow>();
 
   const target = results?.[0];
 
@@ -178,7 +176,7 @@ export async function POST(request: Request) {
   }
 
   // 禁止对超级管理员账号执行危险操作，避免误删或降级锁死后台
-  if ((target as any).is_super_admin === 1) {
+  if (target.is_super_admin === 1) {
     if (action === "remove") {
       return new Response("不能删除超级管理员账号", { status: 400 });
     }

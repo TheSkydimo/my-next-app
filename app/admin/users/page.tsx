@@ -126,13 +126,15 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto" }}>
+    <div className="admin-users" style={{ maxWidth: 960, margin: "0 auto" }}>
       <div
+        className="admin-users__header"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           marginBottom: 24,
+          gap: 12,
         }}
       >
         <div>
@@ -145,6 +147,7 @@ export default function AdminUsersPage() {
       </div>
 
       <div
+        className="admin-users__search-row"
         style={{
           display: "flex",
           gap: 8,

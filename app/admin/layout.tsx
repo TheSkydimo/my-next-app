@@ -118,8 +118,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isSuperAdmin = adminRole === "super_admin";
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh" }}>
+    <div
+      className="admin-layout"
+      style={{ position: "relative", minHeight: "100vh" }}
+    >
       <div
+        className="admin-layout__avatar-bar"
         style={{
           position: "fixed",
           top: 10,
@@ -173,8 +177,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </button>
       </div>
 
-      <div style={{ display: "flex", minHeight: "100vh" }}>
+      <div className="admin-layout__body" style={{ display: "flex", minHeight: "100vh" }}>
         <aside
+          className="admin-layout__sidebar"
           style={{
             width: 200,
             borderRight: "1px solid #e5e7eb",
@@ -253,6 +258,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </aside>
 
         <main
+          className="admin-layout__main"
           style={{
             flex: 1,
             padding: "24px 32px",
