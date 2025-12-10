@@ -27,39 +27,56 @@ body {
 
 /* ========== Admin 布局响应式 ========== */
 
-/* 小屏下：侧边栏与内容上下堆叠，避免挤压重叠 */
+/* 小屏下：管理员布局保持左侧菜单，只缩放尺寸，避免占用过多空间 */
 @media (max-width: 768px) {
 	.admin-layout__body {
-		flex-direction: column;
-		min-height: auto;
+		padding: 14px;
+		min-height: 100vh;
 	}
 
+	/* 左侧菜单保持竖向，小屏按比例占宽，而不是固定像素，避免只压缩右侧内容 */
 	.admin-layout__sidebar {
-		width: 100% !important;
-		border-right: none !important;
-		border-bottom: 1px solid #e5e7eb;
-		padding: 12px 16px !important;
-		display: flex;
-		flex-direction: row;
-		align-items: center;
-		gap: 12px;
-		overflow-x: auto;
-		white-space: nowrap;
-		box-sizing: border-box;
+		flex: 0 0 38%;
+		max-width: 210px;
+		min-width: 120px;
+		padding: 14px 12px;
+		border-radius: 16px;
+		gap: 10px;
 	}
 
-	.admin-layout__sidebar nav {
-		flex-direction: row !important;
+	/* 头像缩小，避免在小屏太夸张 */
+	.admin-layout__avatar {
+		width: 44px;
+		height: 44px;
+		box-shadow:
+			0 0 0 1px rgba(15, 23, 42, 0.95),
+			0 0 0 4px rgba(129, 140, 248, 0.55),
+			0 10px 18px rgba(15, 23, 42, 0.8);
 	}
 
+	.admin-layout__display-name {
+		font-size: 13px;
+	}
+
+	.admin-layout__nav {
+		gap: 6px;
+		font-size: 13px;
+	}
+
+	/* 右侧内容区收紧内边距，预留更多空间给表格等内容，并允许自由压缩 */
 	.admin-layout__main {
-		padding: 16px !important;
+		flex: 1 1 0%;
+		/* 管理员端右侧内容也增加最小宽度，避免被压缩得完全不可读，同时避免过早出现横向滚动 */
+		min-width: 190px;
+		margin-left: 14px;
+		padding: 18px 14px;
+		border-radius: 18px;
 	}
 
-	/* 头像固定区域在小屏幕缩小间距，减少遮挡 */
-	.admin-layout__avatar-bar {
-		top: 8px !important;
-		right: 8px !important;
+	/* 右上角退出按钮在小屏更靠边一点 */
+	.admin-layout__logout {
+		top: 10px;
+		right: 10px;
 	}
 }
 
@@ -703,6 +720,11 @@ button:hover {
 	font-size: 11px;
 	align-self: flex-start;
 	font-weight: 500;
+	/* 和用户名一样：不换行、不被压高，窄屏时用省略号处理 */
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
 }
 
 .admin-layout__role-badge--super {
@@ -1051,42 +1073,56 @@ button:hover {
 	}
 }
 
-/* 小屏下 User 布局响应式适配 */
+/* 小屏下 User 布局响应式适配（仍保持左侧菜单，只缩放尺寸） */
 @media (max-width: 900px) {
 	.user-layout__body {
-		flex-direction: column;
 		padding: 14px;
 		backdrop-filter: blur(18px);
 	}
 
+	/* 左侧菜单保持在左边，小屏按比例占宽，而不是固定像素，避免只压缩右侧内容 */
 	.user-layout__sidebar {
-		width: 100% !important;
-		flex-direction: row;
-		align-items: center;
-		gap: 16px;
-		padding: 12px 14px;
-		margin-bottom: 12px;
+		flex: 0 0 38%;
+		max-width: 210px;
+		min-width: 120px;
+		padding: 14px 12px;
+		border-radius: 16px;
+		gap: 10px;
 	}
 
-	.user-layout__profile {
-		margin-bottom: 0;
+	/* 头像和昵称缩小，避免占太多空间 */
+	.user-layout__avatar {
+		width: 44px;
+		height: 44px;
+		box-shadow:
+			0 0 0 1px rgba(15, 23, 42, 0.9),
+			0 0 0 4px rgba(59, 130, 246, 0.35),
+			0 10px 18px rgba(15, 23, 42, 0.75);
 	}
 
+	.user-layout__display-name {
+		font-size: 14px;
+	}
+
+	/* 菜单仍然纵向排列，只是间距略微减小 */
 	.user-layout__nav {
-		flex-direction: row;
-		flex-wrap: wrap;
-		justify-content: flex-end;
-		margin-left: auto;
+		gap: 6px;
+		font-size: 13px;
 	}
 
+	/* 右侧内容区稍微缩小内边距，并允许自由压缩 */
 	.user-layout__main {
-		margin-left: 0;
+		flex: 1 1 0%;
+		/* 给右侧内容一个合理的最小宽度，避免被压得太窄完全看不清，同时避免过早出现横向滚动 */
+		min-width: 180px;
+		margin-left: 14px;
 		padding: 18px 14px;
 		border-radius: 18px;
 	}
 
+	/* 顶部退出按钮在小屏稍微贴边一点 */
 	.user-layout__logout {
-		top: 12px;
-		right: 12px;
+		top: 10px;
+		right: 10px;
 	}
 }
