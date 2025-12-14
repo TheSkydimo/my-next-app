@@ -168,6 +168,14 @@ export default function UserLayout({ children }: { children: ReactNode }) {
             >
               信息管理
             </Link>
+            <Link
+              href="/devices"
+              className={`user-layout__nav-link ${
+                isActive("/devices") ? "user-layout__nav-link--active" : ""
+              }`}
+            >
+              设备信息管理
+            </Link>
           </nav>
         </aside>
 

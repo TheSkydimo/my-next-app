@@ -341,6 +341,53 @@ button:hover {
 	color: #eff6ff;
 }
 
+/* 用户端通用内容卡片（用于设备信息等页面），保持与整体暗色背景风格一致 */
+.user-page-section {
+	margin-top: 24px;
+}
+
+.user-page-section__header {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 10px;
+}
+
+.user-page-section__title {
+	font-size: 16px;
+	font-weight: 500;
+	color: #e5e7eb;
+}
+
+.user-page-section__subtext {
+	font-size: 13px;
+	color: #9ca3af;
+}
+
+.user-page-card {
+	border-radius: 16px;
+	padding: 14px 16px;
+	border: 1px solid rgba(148, 163, 184, 0.4);
+	background:
+		linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.9)),
+		radial-gradient(circle at 0 0, rgba(59, 130, 246, 0.35), transparent 60%);
+	background-blend-mode: soft-light, normal;
+	box-shadow:
+		0 18px 38px rgba(15, 23, 42, 0.9),
+		inset 0 0 0 1px rgba(15, 23, 42, 0.95);
+}
+
+.user-page-card__item-title {
+	font-size: 14px;
+	color: #e5e7eb;
+}
+
+.user-page-card__item-meta {
+	margin-top: 4px;
+	font-size: 13px;
+	color: #cbd5f5;
+}
+
 .user-layout__logout {
 	position: fixed;
 	top: 18px;
