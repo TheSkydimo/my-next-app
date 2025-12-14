@@ -10,6 +10,7 @@ type DeviceRow = {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const email = searchParams.get("email");
+  const rawPage = searchParams.get("page");
 
   if (!email) {
     return new Response("缺少 email 参数", { status: 400 });
@@ -59,6 +60,48 @@ export async function GET(request: Request) {
     return new Response("用户不存在", { status: 404 });
   }
 
+  const hasPageParam = rawPage !== null;
+  const pageSize = 5;
+  const pageNumber = (() => {
+    if (!rawPage) return 1;
+    const n = Number.parseInt(rawPage, 10);
+    return Number.isNaN(n) || n < 1 ? 1 : n;
+  })();
+
+  if (hasPageParam) {
+    const offset = (pageNumber - 1) * pageSize;
+
+    const devicesQuery = await db
+      .prepare(
+        "SELECT id, device_id, warranty_expires_at FROM user_devices WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+      )
+      .bind(user.id, pageSize, offset)
+      .all<DeviceRow>();
+
+    const countQuery = await db
+      .prepare("SELECT COUNT(*) as count FROM user_devices WHERE user_id = ?")
+      .bind(user.id)
+      .all<{ count: number }>();
+
+    const total = countQuery.results?.[0]?.count ?? 0;
+
+    const items =
+      devicesQuery.results?.map((d) => ({
+        id: d.id,
+        deviceId: d.device_id,
+        warrantyExpiresAt: d.warranty_expires_at,
+      })) ?? [];
+
+    return Response.json({
+      items,
+      page: pageNumber,
+      pageSize,
+      total,
+      hasNextPage: pageNumber * pageSize < total,
+    });
+  }
+
+  // 兼容旧接口：未传 page 参数时，返回完整数组
   const devicesQuery = await db
     .prepare(
       "SELECT id, device_id, warranty_expires_at FROM user_devices WHERE user_id = ? ORDER BY created_at DESC"

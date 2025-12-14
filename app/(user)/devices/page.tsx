@@ -16,6 +16,9 @@ export default function UserDevicesPage() {
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [newDeviceId, setNewDeviceId] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 5;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -27,24 +30,41 @@ export default function UserDevicesPage() {
   }, []);
 
   useEffect(() => {
-    const loadDevices = async (email: string) => {
+    const loadDevices = async (email: string, pageNumber: number) => {
       setLoading(true);
       setError("");
       setOkMsg("");
       try {
         const res = await fetch(
-          `/api/user/devices?email=${encodeURIComponent(email)}`
+          `/api/user/devices?email=${encodeURIComponent(
+            email
+          )}&page=${pageNumber}`
         );
         if (!res.ok) {
           if (res.status === 404) {
             setDevices([]);
+            setTotal(0);
             return;
           }
           const text = await res.text();
           throw new Error(text || "获取设备信息失败");
         }
-        const data = (await res.json()) as Device[];
-        setDevices(data);
+        const data: unknown = await res.json();
+        if (Array.isArray(data)) {
+          // 兼容旧结构
+          const list = data as Device[];
+          setDevices(list);
+          setTotal(list.length);
+          setPage(1);
+        } else {
+          const obj = data as {
+            items?: Device[];
+            total?: number;
+          };
+          const items = obj.items ?? [];
+          setDevices(items);
+          setTotal(typeof obj.total === "number" ? obj.total : items.length);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "获取设备信息失败");
       } finally {
@@ -53,9 +73,13 @@ export default function UserDevicesPage() {
     };
 
     if (userEmail) {
-      loadDevices(userEmail);
+      loadDevices(userEmail, page);
     }
-  }, [userEmail]);
+  }, [userEmail, page]);
+
+  const maxPage = Math.max(1, Math.ceil(total / pageSize) || 1);
+  const hasPrev = page > 1;
+  const hasNext = page < maxPage;
 
   if (!userEmail) {
     return (
@@ -128,10 +152,11 @@ export default function UserDevicesPage() {
                     const text = await res.text();
                     throw new Error(text || "添加设备失败");
                   }
-                  const data = (await res.json()) as Device;
-                  setDevices((prev) => [...prev, data]);
+                  await res.json();
                   setOkMsg("设备已添加");
                   setNewDeviceId("");
+                  setTotal((prev) => prev + 1);
+                  setPage(1);
                 } catch (e) {
                   setError(e instanceof Error ? e.message : "添加设备失败");
                 }
@@ -224,9 +249,14 @@ export default function UserDevicesPage() {
                           const text = await res.text();
                           throw new Error(text || "删除设备失败");
                         }
-                        setDevices((prev) =>
-                          prev.filter((item) => item.id !== d.id)
-                        );
+                        setDevices((prev) => {
+                          const next = prev.filter((item) => item.id !== d.id);
+                          if (next.length === 0 && page > 1) {
+                            setPage((p) => Math.max(1, p - 1));
+                          }
+                          return next;
+                        });
+                        setTotal((prev) => Math.max(0, prev - 1));
                         setOkMsg("设备已删除");
                       } catch (e) {
                         setError(
@@ -241,6 +271,51 @@ export default function UserDevicesPage() {
               </div>
             ))
           )}
+        </div>
+
+        <div
+          style={{
+            marginTop: 12,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontSize: 12,
+            color: "#9ca3af",
+          }}
+        >
+          <span>
+            共 {total} 台设备，当前第 {Math.min(page, maxPage)} / {maxPage} 页
+          </span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              disabled={!hasPrev}
+              onClick={() => hasPrev && setPage((p) => Math.max(1, p - 1))}
+              style={{
+                padding: "4px 10px",
+                borderRadius: 9999,
+                fontSize: 12,
+                opacity: hasPrev ? 1 : 0.5,
+              }}
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              disabled={!hasNext}
+              onClick={() =>
+                hasNext && setPage((p) => Math.min(maxPage, p + 1))
+              }
+              style={{
+                padding: "4px 10px",
+                borderRadius: 9999,
+                fontSize: 12,
+                opacity: hasNext ? 1 : 0.5,
+              }}
+            >
+              下一页
+            </button>
+          </div>
         </div>
       </section>
     </div>
