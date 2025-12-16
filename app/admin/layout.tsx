@@ -11,6 +11,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [adminRole, setAdminRole] = useState<string | null>(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -120,13 +121,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="admin-layout">
-      {/* 右上角仅保留退出登录按钮，头像移动到左侧栏顶部 */}
-      <div className="admin-layout__logout">
-        <button type="button" onClick={logout}>
-          退出登录
-        </button>
-      </div>
-
       <div className="admin-layout__body">
         <aside className="admin-layout__sidebar">
           {isAuthed && (
@@ -223,9 +217,105 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </nav>
         </aside>
 
-        <main className="admin-layout__main">
-          {children}
-        </main>
+        <div className="admin-layout__right">
+          <main className="admin-layout__main">
+            {/* 右侧顶部横向工具栏：搜索 + 快捷操作 + 用户头像 */}
+            <div className="admin-layout__logout">
+              <div className="admin-topbar">
+                <div className="admin-topbar__search">
+                  <span className="admin-topbar__search-icon">🔍</span>
+                  <input
+                    className="admin-topbar__search-input"
+                    placeholder="搜索功能 / Ctrl + K"
+                  />
+                </div>
+
+                <div className="admin-topbar__actions">
+                  <button
+                    type="button"
+                    className="admin-topbar__icon-btn"
+                    aria-label="通知"
+                  >
+                    🔔
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-topbar__icon-btn"
+                    aria-label="切换语言"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/translate.svg"
+                      alt="语言"
+                      className="admin-topbar__icon-img"
+                    />
+                  </button>
+                  <div className="admin-topbar__avatar-wrapper">
+                    <button
+                      type="button"
+                      className="admin-topbar__avatar-btn"
+                      onClick={() => setUserMenuOpen((v) => !v)}
+                      aria-haspopup="true"
+                      aria-expanded={userMenuOpen}
+                    >
+                      {avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatarUrl}
+                          alt="管理员头像"
+                          className="admin-topbar__avatar-img"
+                        />
+                      ) : (
+                        <span className="admin-topbar__avatar-initial">
+                          {displayName
+                            ? displayName.trim().charAt(0).toUpperCase()
+                            : "A"}
+                        </span>
+                      )}
+                    </button>
+
+                    {userMenuOpen && (
+                      <div className="admin-topbar__user-menu">
+                        <div className="admin-topbar__user-meta">
+                          <div className="admin-topbar__user-name">
+                            {displayName || "管理员"}
+                          </div>
+                          {roleLabel && (
+                            <div className="admin-topbar__user-role">
+                              {roleLabel}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="admin-topbar__user-menu-item"
+                          onClick={() => {
+                            window.location.href = "/admin/profile";
+                            setUserMenuOpen(false);
+                          }}
+                        >
+                          个人中心
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-topbar__user-menu-item admin-topbar__user-menu-item--danger"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            logout();
+                          }}
+                        >
+                          退出登录
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );

@@ -104,14 +104,6 @@ export default function UserLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="user-layout">
-      {hasUser && (
-        <div className="user-layout__logout">
-          <button type="button" onClick={logout}>
-            退出登录
-          </button>
-        </div>
-      )}
-
       <div className="user-layout__body">
         <aside className="user-layout__sidebar">
           {hasUser && (
@@ -179,9 +171,35 @@ export default function UserLayout({ children }: { children: ReactNode }) {
           </nav>
         </aside>
 
-        <main className="user-layout__main">
-          {children}
-        </main>
+        <div className="user-layout__right">
+          {hasUser && (
+            <div className="user-layout__logout">
+              <div className="user-topbar">
+                <div className="user-topbar__search">
+                  <span className="user-topbar__search-icon">🔍</span>
+                  <input
+                    className="user-topbar__search-input"
+                    placeholder="搜索功能 / Ctrl + K"
+                  />
+                </div>
+
+                <div className="user-topbar__actions">
+                  <button
+                    type="button"
+                    className="user-topbar__icon-btn"
+                    onClick={logout}
+                  >
+                    退出
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <main className="user-layout__main">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );
