@@ -2,14 +2,26 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import {
+  applyLanguage,
+  applyTheme,
+  getInitialLanguage,
+  getInitialTheme,
+  type AppLanguage,
+  type AppTheme,
+} from "../client-prefs";
 
 export default function UserLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [hasUser, setHasUser] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [theme, setTheme] = useState<AppTheme>("dark");
+  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [searchValue, setSearchValue] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -50,6 +62,29 @@ export default function UserLayout({ children }: { children: ReactNode }) {
           .catch(() => {});
       }
     }
+  }, []);
+
+  // 初始化主题 / 语言，并处理 Ctrl + K 聚焦搜索框
+  useEffect(() => {
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
+
+    const initialLang = getInitialLanguage();
+    setLanguage(initialLang);
+    applyLanguage(initialLang);
+
+    const keyHandler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", keyHandler);
+    return () => {
+      window.removeEventListener("keydown", keyHandler);
+    };
   }, []);
 
   // 监听来自资料页的头像更新事件，实时同步右上角头像
@@ -101,6 +136,40 @@ export default function UserLayout({ children }: { children: ReactNode }) {
   }
 
   const isActive = (href: string) => pathname === href;
+
+  const toggleTheme = () => {
+    const next: AppTheme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    applyTheme(next);
+  };
+
+  const toggleLanguage = () => {
+    const next: AppLanguage = language === "zh-CN" ? "en-US" : "zh-CN";
+    setLanguage(next);
+    applyLanguage(next);
+  };
+
+  const triggerSearch = () => {
+    if (typeof window === "undefined") return;
+    const keyword = searchValue.trim().toLowerCase();
+    if (!keyword) return;
+
+    const routes: { href: string; keywords: string[] }[] = [
+      { href: "/", keywords: ["首页", "home", "index"] },
+      { href: "/profile", keywords: ["信息", "资料", "profile", "account"] },
+      { href: "/devices", keywords: ["设备", "device", "devices"] },
+    ];
+
+    const matched = routes.find((r) =>
+      r.keywords.some((k) => keyword.includes(k.toLowerCase()))
+    );
+
+    if (matched) {
+      window.location.href = matched.href;
+    } else {
+      window.alert("未找到相关功能，请尝试：首页 / 信息 / 设备");
+    }
+  };
 
   return (
     <div className="user-layout">
@@ -175,15 +244,46 @@ export default function UserLayout({ children }: { children: ReactNode }) {
           {hasUser && (
             <div className="user-layout__logout">
               <div className="user-topbar">
+                <div className="topbar-brand">
+                  <div className="topbar-brand__mark" />
+                  <span className="topbar-brand__text">Skydimo</span>
+                </div>
                 <div className="user-topbar__search">
                   <span className="user-topbar__search-icon">🔍</span>
                   <input
                     className="user-topbar__search-input"
+                    ref={searchInputRef}
                     placeholder="搜索功能 / Ctrl + K"
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        triggerSearch();
+                      }
+                    }}
                   />
                 </div>
 
                 <div className="user-topbar__actions">
+                  {/* 全局设置：语言 / 样式 / 退出 */}
+                  <button
+                    type="button"
+                    className="user-topbar__icon-btn"
+                    aria-label="切换语言"
+                    title={language === "zh-CN" ? "切换到 English" : "Switch to 中文"}
+                    onClick={toggleLanguage}
+                  >
+                    🌐
+                  </button>
+                  <button
+                    type="button"
+                    className="user-topbar__icon-btn"
+                    aria-label="切换主题样式"
+                    title={theme === "dark" ? "切换为浅色主题" : "切换为深色主题"}
+                    onClick={toggleTheme}
+                  >
+                    🌓
+                  </button>
                   <button
                     type="button"
                     className="user-topbar__icon-btn"

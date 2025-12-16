@@ -2,8 +2,16 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import {
+  applyLanguage,
+  applyTheme,
+  getInitialLanguage,
+  getInitialTheme,
+  type AppLanguage,
+  type AppTheme,
+} from "../client-prefs";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -12,6 +20,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<AppTheme>("dark");
+  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [searchValue, setSearchValue] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -45,6 +57,29 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           .catch(() => {});
       }
     }
+  }, []);
+
+  // 初始化主题 / 语言，并处理 Ctrl + K 聚焦搜索框
+  useEffect(() => {
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
+
+    const initialLang = getInitialLanguage();
+    setLanguage(initialLang);
+    applyLanguage(initialLang);
+
+    const keyHandler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", keyHandler);
+    return () => {
+      window.removeEventListener("keydown", keyHandler);
+    };
   }, []);
 
   // 监听来自管理员资料页的头像更新事件，实时同步右上角头像
@@ -118,6 +153,50 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       : adminRole === "admin"
       ? "管理员"
       : null;
+
+  const toggleTheme = () => {
+    const next: AppTheme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    applyTheme(next);
+  };
+
+  const toggleLanguage = () => {
+    const next: AppLanguage = language === "zh-CN" ? "en-US" : "zh-CN";
+    setLanguage(next);
+    applyLanguage(next);
+  };
+
+  const triggerSearch = () => {
+    if (typeof window === "undefined") return;
+    const keyword = searchValue.trim().toLowerCase();
+    if (!keyword) return;
+
+    const routes: { href: string; keywords: string[] }[] = [
+      { href: "/admin", keywords: ["首页", "home", "dashboard"] },
+      {
+        href: "/admin/users",
+        keywords: ["用户", "users", "user"],
+      },
+      {
+        href: "/admin/admins",
+        keywords: ["管理员", "admin", "admins"],
+      },
+      {
+        href: "/admin/profile",
+        keywords: ["信息", "资料", "profile", "account"],
+      },
+    ];
+
+    const matched = routes.find((r) =>
+      r.keywords.some((k) => keyword.includes(k.toLowerCase()))
+    );
+
+    if (matched) {
+      window.location.href = matched.href;
+    } else {
+      window.alert("未找到相关功能，请尝试：用户 / 管理员 / 信息 / 首页");
+    }
+  };
 
   return (
     <div className="admin-layout">
@@ -222,11 +301,23 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             {/* 右侧顶部横向工具栏：搜索 + 快捷操作 + 用户头像 */}
             <div className="admin-layout__logout">
               <div className="admin-topbar">
+                <div className="topbar-brand">
+                  <div className="topbar-brand__mark" />
+                  <span className="topbar-brand__text">Skydimo Admin</span>
+                </div>
                 <div className="admin-topbar__search">
                   <span className="admin-topbar__search-icon">🔍</span>
                   <input
                     className="admin-topbar__search-input"
                     placeholder="搜索功能 / Ctrl + K"
+                    ref={searchInputRef}
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        triggerSearch();
+                      }
+                    }}
                   />
                 </div>
 
@@ -242,6 +333,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     type="button"
                     className="admin-topbar__icon-btn"
                     aria-label="切换语言"
+                    title={language === "zh-CN" ? "切换到 English" : "Switch to 中文"}
+                    onClick={toggleLanguage}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -249,6 +342,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       alt="语言"
                       className="admin-topbar__icon-img"
                     />
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-topbar__icon-btn"
+                    aria-label="切换主题样式"
+                    title={theme === "dark" ? "切换为浅色主题" : "切换为深色主题"}
+                    onClick={toggleTheme}
+                  >
+                    🌓
                   </button>
                   <div className="admin-topbar__avatar-wrapper">
                     <button
