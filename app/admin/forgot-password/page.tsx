@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { AppLanguage } from "../../client-prefs";
-import { getInitialLanguage } from "../../client-prefs";
+import { useEffect, useState } from "react";
+import type { AppLanguage, AppTheme } from "../../client-prefs";
+import {
+  applyLanguage,
+  applyTheme,
+  getInitialLanguage,
+  getInitialTheme,
+} from "../../client-prefs";
 
 type Lang = "zh-CN" | "en";
 
@@ -111,6 +116,7 @@ export default function AdminForgotPasswordPage() {
   const [codeMsg, setCodeMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [theme, setTheme] = useState<AppTheme>("dark");
   const [lang, setLang] = useState<Lang>("zh-CN");
 
   const t = TEXTS[lang];
@@ -118,10 +124,32 @@ export default function AdminForgotPasswordPage() {
   useEffect(() => {
     setCaptcha(generateCaptcha());
 
-    const initial: AppLanguage =
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
+
+    const initialLang: AppLanguage =
       typeof window === "undefined" ? "zh-CN" : getInitialLanguage();
-    setLang(initial === "en-US" ? "en" : "zh-CN");
+    setLang(initialLang === "en-US" ? "en" : "zh-CN");
+    applyLanguage(initialLang);
   }, []);
+
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next: AppTheme = prev === "dark" ? "light" : "dark";
+      applyTheme(next);
+      return next;
+    });
+  };
+
+  const toggleLanguage = () => {
+    setLang((prev) => {
+      const nextLang: Lang = prev === "zh-CN" ? "en" : "zh-CN";
+      const appLang: AppLanguage = nextLang === "en" ? "en-US" : "zh-CN";
+      applyLanguage(appLang);
+      return nextLang;
+    });
+  };
 
   const refreshCaptcha = () => {
     setCaptcha(generateCaptcha());
@@ -205,7 +233,27 @@ export default function AdminForgotPasswordPage() {
   };
 
   return (
-    <div className="auth-page">
+    <div className={`auth-page auth-page--${theme}`}>
+      <div className="auth-toolbar">
+        <div className="auth-toolbar__icon-group">
+          <button
+            type="button"
+            className="auth-toolbar__icon-button"
+            onClick={toggleLanguage}
+            aria-label={lang === "zh-CN" ? "切换到 English" : "Switch to 中文"}
+          >
+            {lang === "zh-CN" ? "中" : "EN"}
+          </button>
+          <button
+            type="button"
+            className="auth-toolbar__icon-button auth-toolbar__icon-button--theme"
+            onClick={toggleTheme}
+            aria-label="切换浅色/深色主题"
+          >
+            {theme === "dark" ? "☀" : "🌙"}
+          </button>
+        </div>
+      </div>
       <div className="auth-card">
         <h1>{t.title}</h1>
 

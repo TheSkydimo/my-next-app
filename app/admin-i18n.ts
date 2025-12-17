@@ -27,6 +27,11 @@ export type AdminMessages = {
     userMenuProfile: string;
     userMenuLogout: string;
   };
+  home: {
+    title: string;
+    welcomeLabel: string;
+    emailLabel: string;
+  };
   profile: {
     title: string;
     avatarNone: string;
@@ -118,6 +123,22 @@ export type AdminMessages = {
     pagerNext: string;
     pagerText: (page: number, totalPages: number, totalUsers: number) => string;
   };
+  admins: {
+    title: string;
+    unauthorizedDesc: string;
+    limitTip: string;
+    emptyText: string;
+    fetchFailed: string;
+    actionFailed: string;
+    deleteConfirm: (username: string) => string;
+    tableIndex: string;
+    tableUsername: string;
+    tableEmail: string;
+    tableCreatedAt: string;
+    tableActions: string;
+    btnUnsetAdmin: string;
+    btnDelete: string;
+  };
 };
 
 const zhCN: AdminMessages = {
@@ -144,6 +165,11 @@ const zhCN: AdminMessages = {
     userMenuNameFallback: "管理员",
     userMenuProfile: "个人中心",
     userMenuLogout: "退出登录",
+  },
+  home: {
+    title: "管理后台",
+    welcomeLabel: "欢迎，",
+    emailLabel: "邮箱：",
   },
   profile: {
     title: "管理员信息",
@@ -241,6 +267,23 @@ const zhCN: AdminMessages = {
     pagerText: (page, totalPages, totalUsers) =>
       `第 ${page} / ${totalPages} 页（共 ${totalUsers} 个用户）`,
   },
+  admins: {
+    title: "管理员管理",
+    unauthorizedDesc: "当前账号不是超级管理员，无权访问该页面。",
+    limitTip: "最多允许 15 个管理员。",
+    emptyText: "当前没有管理员。",
+    fetchFailed: "获取管理员列表失败",
+    actionFailed: "操作失败",
+    deleteConfirm: (username: string) =>
+      `确定要删除管理员「${username}」吗？`,
+    tableIndex: "序号",
+    tableUsername: "用户名",
+    tableEmail: "邮箱",
+    tableCreatedAt: "注册时间",
+    tableActions: "操作",
+    btnUnsetAdmin: "设为普通用户",
+    btnDelete: "删除",
+  },
 };
 
 const enUS: AdminMessages = {
@@ -267,6 +310,11 @@ const enUS: AdminMessages = {
     userMenuNameFallback: "Admin",
     userMenuProfile: "Profile",
     userMenuLogout: "Sign out",
+  },
+  home: {
+    title: "Admin Console",
+    welcomeLabel: "Welcome, ",
+    emailLabel: "Email: ",
   },
   profile: {
     title: "Admin Profile",
@@ -366,6 +414,24 @@ const enUS: AdminMessages = {
     pagerNext: "Next",
     pagerText: (page, totalPages, totalUsers) =>
       `Page ${page} / ${totalPages} (total ${totalUsers} users)`,
+  },
+  admins: {
+    title: "Admins",
+    unauthorizedDesc:
+      "Current account is not a super admin and cannot access this page.",
+    limitTip: "At most 15 admins are allowed.",
+    emptyText: "No admins yet.",
+    fetchFailed: "Failed to load admins",
+    actionFailed: "Operation failed",
+    deleteConfirm: (username: string) =>
+      `Are you sure you want to delete admin "${username}"?`,
+    tableIndex: "#",
+    tableUsername: "Username",
+    tableEmail: "Email",
+    tableCreatedAt: "Created at",
+    tableActions: "Actions",
+    btnUnsetAdmin: "Make regular user",
+    btnDelete: "Delete",
   },
 };
 

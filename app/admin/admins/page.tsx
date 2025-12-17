@@ -1,6 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import type { AppLanguage } from "../../client-prefs";
+import { getInitialLanguage } from "../../client-prefs";
+import { getAdminMessages } from "../../admin-i18n";
 
 type AdminItem = {
   id: number;
@@ -11,11 +15,36 @@ type AdminItem = {
 };
 
 export default function AdminAdminsPage() {
+  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [unauthorized, setUnauthorized] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const initialLang = getInitialLanguage();
+    setLanguage(initialLang);
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ language: AppLanguage }>;
+      if (custom.detail?.language) {
+        setLanguage(custom.detail.language);
+      }
+    };
+
+    window.addEventListener("app-language-changed", handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        "app-language-changed",
+        handler as EventListener
+      );
+    };
+  }, []);
+
+  const messages = getAdminMessages(language);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -46,18 +75,20 @@ export default function AdminAdminsPage() {
       const res = await fetch(`/api/admin/users?${params.toString()}`);
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "获取管理员列表失败");
+        throw new Error(text || messages.admins.fetchFailed);
       }
       const data = (await res.json()) as {
         users: AdminItem[];
       };
       setAdmins(data.users);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "获取管理员列表失败");
+      setError(
+        e instanceof Error ? e.message : messages.admins.fetchFailed
+      );
     } finally {
       setLoading(false);
     }
-  }, [adminEmail]);
+  }, [adminEmail, messages.admins.fetchFailed]);
 
   useEffect(() => {
     if (adminEmail) {
@@ -70,7 +101,7 @@ export default function AdminAdminsPage() {
     setError("");
 
     if (action === "remove") {
-      const ok = window.confirm(`确定要删除管理员「${item.username}」吗？`);
+      const ok = window.confirm(messages.admins.deleteConfirm(item.username));
       if (!ok) return;
     }
 
@@ -87,20 +118,22 @@ export default function AdminAdminsPage() {
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "操作失败");
+        throw new Error(text || messages.admins.actionFailed);
       }
 
       await fetchAdmins();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "操作失败");
+      setError(
+        e instanceof Error ? e.message : messages.admins.actionFailed
+      );
     }
   };
 
   if (unauthorized) {
     return (
       <div style={{ maxWidth: 960, margin: "10px auto" }}>
-        <h1>管理员管理</h1>
-        <p>当前账号不是超级管理员，无权访问该页面。</p>
+        <h1>{messages.admins.title}</h1>
+        <p>{messages.admins.unauthorizedDesc}</p>
       </div>
     );
   }
@@ -108,24 +141,25 @@ export default function AdminAdminsPage() {
   if (!adminEmail) {
     return (
       <div style={{ maxWidth: 960, margin: "10px auto" }}>
-        <h1>管理员管理</h1>
-        <p>未检测到管理员登录，请先登录。</p>
+        <h1>{messages.admins.title}</h1>
+        <p>{messages.common.adminLoginRequired}</p>
+        <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: 960, margin: "10px auto" }}>
-      <h1>管理员管理</h1>
+      <h1>{messages.admins.title}</h1>
       <p style={{ fontSize: 14, color: "#6b7280", marginTop: 4 }}>
-        最多允许 15 个管理员。
+        {messages.admins.limitTip}
       </p>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
       {loading ? (
-        <p>加载中...</p>
+        <p>{messages.common.loading}</p>
       ) : admins.length === 0 ? (
-        <p>当前没有管理员。</p>
+        <p>{messages.admins.emptyText}</p>
       ) : (
         <table
           style={{
@@ -137,11 +171,21 @@ export default function AdminAdminsPage() {
         >
           <thead>
             <tr>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>序号</th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>用户名</th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>邮箱</th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>注册时间</th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>操作</th>
+              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                {messages.admins.tableIndex}
+              </th>
+              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                {messages.admins.tableUsername}
+              </th>
+              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                {messages.admins.tableEmail}
+              </th>
+              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                {messages.admins.tableCreatedAt}
+              </th>
+              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                {messages.admins.tableActions}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -202,7 +246,7 @@ export default function AdminAdminsPage() {
                           padding: "4px 8px",
                         }}
                       >
-                        设为普通用户
+                        {messages.admins.btnUnsetAdmin}
                       </button>
                       <button
                         onClick={() => doAction("remove", a)}
@@ -213,7 +257,7 @@ export default function AdminAdminsPage() {
                           padding: "4px 8px",
                         }}
                       >
-                        删除
+                        {messages.admins.btnDelete}
                       </button>
                     </>
                   )}

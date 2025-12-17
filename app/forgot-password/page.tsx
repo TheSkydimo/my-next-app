@@ -1,8 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { AppLanguage } from "../client-prefs";
-import { getInitialLanguage } from "../client-prefs";
+import type { AppLanguage, AppTheme } from "../client-prefs";
+import {
+  applyTheme,
+  getInitialLanguage,
+  getInitialTheme,
+} from "../client-prefs";
 
 type Lang = "zh-CN" | "en";
 
@@ -30,6 +35,7 @@ const TEXTS: Record<
     successReset: string;
     showPassword: string;
     hidePassword: string;
+    backToLogin: string;
   }
 > = {
   "zh-CN": {
@@ -54,6 +60,7 @@ const TEXTS: Record<
     successReset: "密码重置成功，即将跳转到登录页…",
     showPassword: "显示",
     hidePassword: "隐藏",
+    backToLogin: "返回登录",
   },
   en: {
     title: "Forgot password",
@@ -77,6 +84,7 @@ const TEXTS: Record<
     successReset: "Password reset successfully. Redirecting to login…",
     showPassword: "Show",
     hidePassword: "Hide",
+    backToLogin: "Back to login",
   },
 };
 
@@ -104,6 +112,7 @@ export default function ForgotPasswordPage() {
   const [codeMsg, setCodeMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [theme, setTheme] = useState<AppTheme>("dark");
   const [lang, setLang] = useState<Lang>("zh-CN");
 
   const t = TEXTS[lang];
@@ -111,9 +120,14 @@ export default function ForgotPasswordPage() {
   useEffect(() => {
     setCaptcha(generateCaptcha());
 
-    const initial: AppLanguage =
+    // 与登录 / 注册页保持一致：读取并应用全局主题 + 语言
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
+
+    const initialLang: AppLanguage =
       typeof window === "undefined" ? "zh-CN" : getInitialLanguage();
-    setLang(initial === "en-US" ? "en" : "zh-CN");
+    setLang(initialLang === "en-US" ? "en" : "zh-CN");
   }, []);
 
   const refreshCaptcha = () => {
@@ -198,7 +212,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="auth-page">
+    <div className={`auth-page auth-page--${theme}`}>
       <div className="auth-card">
         <h1>{t.title}</h1>
 
@@ -289,9 +303,13 @@ export default function ForgotPasswordPage() {
             {t.successReset}
           </p>
         )}
+
+        <div className="auth-card__links">
+          <p>
+            <Link href="/login">{t.backToLogin}</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
 }
-
-

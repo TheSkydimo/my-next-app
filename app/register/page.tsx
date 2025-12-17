@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   applyTheme,
@@ -309,6 +310,18 @@ export default function RegisterPage() {
         {ok && (
           <p className="auth-card__success">{t.successRegister}</p>
         )}
+
+        <div className="auth-card__links">
+          <p>
+            {/* 简单的已有账号提示，复用登录页的链接样式 */}
+            <span>
+              {lang === "zh-CN" ? "已有账号？" : "Already have an account?"}
+            </span>{" "}
+            <Link href="/login">
+              {lang === "zh-CN" ? "去登录" : "Go to login"}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
