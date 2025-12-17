@@ -268,12 +268,14 @@ export default function UserLayout({ children }: { children: ReactNode }) {
                   {/* 全局设置：语言 / 样式 / 退出 */}
                   <button
                     type="button"
-                    className="user-topbar__icon-btn"
+                    className="user-topbar__icon-btn user-topbar__icon-btn--translate"
                     aria-label="切换语言"
                     title={language === "zh-CN" ? "切换到 English" : "Switch to 中文"}
                     onClick={toggleLanguage}
                   >
-                    🌐
+                    <span className="user-topbar__lang-label">
+                      {language === "zh-CN" ? "中" : "EN"}
+                    </span>
                   </button>
                   <button
                     type="button"

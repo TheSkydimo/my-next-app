@@ -162,7 +162,7 @@ export default function AdminUsersPage() {
 
   if (!adminEmail) {
     return (
-      <div style={{ maxWidth: 720, margin: "80px auto" }}>
+      <div style={{ maxWidth: 720, margin: "10px auto" }}>
         <h1>普通用户管理</h1>
         <p>未检测到管理员登录，请先登录管理员后台。</p>
         <Link href="/admin/login">去管理员登录</Link>
@@ -171,7 +171,7 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="admin-users" style={{ maxWidth: 960, margin: "0 auto" }}>
+    <div className="admin-users" style={{ maxWidth: 960, margin: "10px auto" }}>
       <div
         className="admin-users__header"
         style={{

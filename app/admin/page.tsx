@@ -30,7 +30,7 @@ export default function AdminHomePage() {
   }
 
   return (
-    <div style={{ maxWidth: 640, position: "relative", paddingTop: 40 }}>
+    <div style={{ maxWidth: 640, margin: "10px auto" }}>
       <h1>管理员后台</h1>
       <p>欢迎，{adminName}</p>
       {adminEmail && (

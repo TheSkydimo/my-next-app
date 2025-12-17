@@ -331,17 +331,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   </button>
                   <button
                     type="button"
-                    className="admin-topbar__icon-btn"
+                    className="admin-topbar__icon-btn admin-topbar__icon-btn--translate"
                     aria-label="切换语言"
                     title={language === "zh-CN" ? "切换到 English" : "Switch to 中文"}
                     onClick={toggleLanguage}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/translate.svg"
-                      alt="语言"
-                      className="admin-topbar__icon-img"
-                    />
+                    <span className="admin-topbar__lang-label">
+                      {language === "zh-CN" ? "中" : "EN"}
+                    </span>
                   </button>
                   <button
                     type="button"

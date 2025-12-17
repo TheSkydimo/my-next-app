@@ -98,7 +98,7 @@ export default function AdminAdminsPage() {
 
   if (unauthorized) {
     return (
-      <div>
+      <div style={{ maxWidth: 960, margin: "10px auto" }}>
         <h1>管理员管理</h1>
         <p>当前账号不是超级管理员，无权访问该页面。</p>
       </div>
@@ -107,7 +107,7 @@ export default function AdminAdminsPage() {
 
   if (!adminEmail) {
     return (
-      <div>
+      <div style={{ maxWidth: 960, margin: "10px auto" }}>
         <h1>管理员管理</h1>
         <p>未检测到管理员登录，请先登录。</p>
       </div>
@@ -115,7 +115,7 @@ export default function AdminAdminsPage() {
   }
 
   return (
-    <div style={{ maxWidth: 960 }}>
+    <div style={{ maxWidth: 960, margin: "10px auto" }}>
       <h1>管理员管理</h1>
       <p style={{ fontSize: 14, color: "#6b7280", marginTop: 4 }}>
         最多允许 15 个管理员。
