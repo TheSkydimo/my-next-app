@@ -50,6 +50,7 @@ export default function UserProfilePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
+  const [editing, setEditing] = useState(false);
 
   const [usernameInput, setUsernameInput] = useState("");
 
@@ -318,8 +319,7 @@ export default function UserProfilePage() {
 
   if (!userEmail) {
     return (
-      <div style={{ maxWidth: 640, margin: "80px auto" }}>
-        <h1>个人信息管理</h1>
+      <div style={{ maxWidth: 640, margin: "10px auto" }}>
         <p>未检测到用户登录，请先登录。</p>
         <Link href="/login">去登录</Link>
       </div>
@@ -327,9 +327,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "80px auto" }}>
-      <h1>个人信息管理</h1>
-
+    <div style={{ maxWidth: 640, margin: "10px auto" }}>
       {loading && <p>加载中...</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
       {okMsg && <p style={{ color: "green" }}>{okMsg}</p>}
@@ -337,7 +335,6 @@ export default function UserProfilePage() {
       {profile && (
         <>
           <section style={{ marginTop: 24 }}>
-            <h2 style={{ fontSize: 16 }}>基础信息</h2>
             <div
               style={{
                 display: "flex",
@@ -379,37 +376,40 @@ export default function UserProfilePage() {
                     <span>无头像</span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError("");
-                    setOkMsg("");
-                    setAvatarUrlInput(profile.avatarUrl ?? "");
-                    setShowAvatarDialog(true);
-                  }}
-                >
-                  {profile.avatarUrl ? "修改头像" : "设置头像"}
-                </button>
+                {editing && (
+                  <button
+                    type="button"
+                    className="user-profile-button user-profile-button--tertiary"
+                    onClick={() => {
+                      setError("");
+                      setOkMsg("");
+                      setAvatarUrlInput(profile.avatarUrl ?? "");
+                      setShowAvatarDialog(true);
+                    }}
+                  >
+                    {profile.avatarUrl ? "更换头像" : "设置头像"}
+                  </button>
+                )}
               </div>
               <label style={{ fontSize: 14 }}>
                 当前邮箱：<strong>{profile.email}</strong>
               </label>
-              <label style={{ fontSize: 14 }}>
+              <label
+                style={{ fontSize: 14, cursor: editing ? "pointer" : "default" }}
+                className={editing ? "user-profile-inline-edit" : undefined}
+                onClick={
+                  editing
+                    ? () => {
+                        setError("");
+                        setOkMsg("");
+                        setUsernameInput(profile.username);
+                        setShowUsernameDialog(true);
+                      }
+                    : undefined
+                }
+              >
                 用户名：<strong>{profile.username}</strong>
               </label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError("");
-                    setOkMsg("");
-                    setUsernameInput(profile.username);
-                    setShowUsernameDialog(true);
-                  }}
-                >
-                  修改用户名
-                </button>
-              </div>
             </div>
           </section>
 
@@ -512,31 +512,32 @@ export default function UserProfilePage() {
             </div>
           )}
 
-          <section style={{ marginTop: 32 }}>
-            <h2 style={{ fontSize: 16 }}>修改密码</h2>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-                marginTop: 8,
-              }}
-            >
-              <p style={{ fontSize: 14 }}>
-                修改登录密码需要输入旧密码进行验证。
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setError("");
-                  setOkMsg("");
-                  setShowPasswordDialog(true);
+          {editing && (
+            <section style={{ marginTop: 32 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  gap: 8,
                 }}
               >
-                修改密码
-              </button>
-            </div>
-          </section>
+                <h2 style={{ fontSize: 16 }}>修改密码</h2>
+                <button
+                  type="button"
+                  className="user-profile-button user-profile-button--tertiary user-profile-inline-link"
+                  onClick={() => {
+                    setError("");
+                    setOkMsg("");
+                    setShowPasswordDialog(true);
+                  }}
+                >
+                  修改
+                </button>
+              </div>
+            </section>
+          )}
 
           {showPasswordDialog && (
             <div className="dialog-overlay">
@@ -587,8 +588,35 @@ export default function UserProfilePage() {
             </div>
           )}
 
-          <section style={{ marginTop: 32 }}>
-            <h2 style={{ fontSize: 16 }}>修改邮箱</h2>
+          {editing && (
+            <section style={{ marginTop: 32 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  gap: 8,
+                }}
+              >
+                <h2 style={{ fontSize: 16 }}>修改邮箱</h2>
+                <button
+                  type="button"
+                  className="user-profile-button user-profile-button--tertiary user-profile-inline-link"
+                  onClick={() => {
+                    setError("");
+                    setOkMsg("");
+                    setShowEmailDialog(true);
+                  }}
+                >
+                  修改
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* 底部统一的“更新信息”主按钮，控制是否进入编辑模式 */}
+          <section style={{ marginTop: 40 }}>
             <div
               style={{
                 display: "flex",
@@ -597,17 +625,12 @@ export default function UserProfilePage() {
                 marginTop: 8,
               }}
             >
-              <p style={{ fontSize: 14 }}>
-                修改登录邮箱前需要先验证新邮箱，并设置新密码。
-              </p>
               <button
-                onClick={() => {
-                  setError("");
-                  setOkMsg("");
-                  setShowEmailDialog(true);
-                }}
+                type="button"
+                className="user-profile-button user-profile-button--primary user-profile-button--compact"
+                onClick={() => setEditing((prev) => !prev)}
               >
-                修改邮箱
+                {editing ? "完成信息修改" : "更新信息"}
               </button>
             </div>
           </section>

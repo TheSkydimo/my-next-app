@@ -396,6 +396,161 @@ button:hover {
 		inset 0 0 0 1px rgba(15, 23, 42, 0.95);
 }
 
+/* 用户资料页：按钮等级（头像 / 用户名 / 密码 / 邮箱） */
+.user-profile-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 9999px;
+	font-size: 13px;
+	font-weight: 500;
+	padding: 9px 18px;
+	border-width: 1px;
+	border-style: solid;
+	background: #1d4ed8;
+	border-color: #1d4ed8;
+	color: #f9fafb;
+	cursor: pointer;
+	transition:
+		background-color 150ms ease-out,
+		border-color 150ms ease-out,
+		color 150ms ease-out,
+		box-shadow 150ms ease-out,
+		transform 120ms ease-out;
+}
+
+/* Primary：主操作（修改登录密码 / 修改登录邮箱），满宽、视觉最强 */
+.user-profile-button--primary {
+	width: 100%;
+	max-width: 420px;
+	padding-block: 11px;
+	background: linear-gradient(135deg, #2563eb, #4f46e5);
+	border-color: rgba(191, 219, 254, 0.95);
+	box-shadow:
+		0 16px 32px rgba(30, 64, 175, 0.95),
+		0 0 0 1px rgba(15, 23, 42, 0.95);
+}
+
+.user-profile-button--primary:hover {
+	transform: translateY(-1px);
+	box-shadow:
+		0 20px 40px rgba(15, 23, 42, 0.95),
+		0 0 0 1px rgba(248, 250, 252, 0.95);
+}
+
+/* 紧凑尺寸：用于底部“更新信息”按钮的小号主按钮 */
+.user-profile-button--compact {
+	width: auto;
+	max-width: none;
+	align-self: flex-start;
+	padding-inline: 18px;
+	padding-block: 4px;
+	font-size: 12px;
+	box-shadow:
+		0 8px 18px rgba(30, 64, 175, 0.8),
+		0 0 0 1px rgba(15, 23, 42, 0.95);
+}
+
+/* Secondary：次级操作（修改用户名），描边、中等尺寸、非满宽 */
+.user-profile-button--secondary {
+	background: transparent;
+	border-color: rgba(148, 163, 184, 0.9);
+	color: #e5e7eb;
+	padding-block: 8px;
+	min-width: 120px;
+	box-shadow: none;
+}
+
+.user-profile-button--secondary:hover {
+	border-color: rgba(191, 219, 254, 0.95);
+	color: #eff6ff;
+	box-shadow:
+		0 10px 22px rgba(15, 23, 42, 0.85),
+		0 0 0 1px rgba(15, 23, 42, 0.95);
+}
+
+/* Tertiary：内联轻量操作（更换头像），小号文字按钮 */
+.user-profile-button--tertiary {
+	background: transparent;
+	border: 0;
+	padding: 0;
+	font-size: 13px;
+	font-weight: 500;
+	color: #bfdbfe;
+	box-shadow: none;
+}
+
+.user-profile-button--tertiary:hover {
+	color: #eff6ff;
+	text-decoration: underline;
+}
+
+/* 用户名行内编辑提示 */
+.user-profile-inline-edit {
+	color: #e5e7eb;
+}
+
+.user-profile-inline-edit strong {
+	border-bottom: 1px dashed rgba(148, 163, 184, 0.75);
+	padding-bottom: 1px;
+}
+
+.user-profile-inline-edit:hover strong {
+	color: #bfdbfe;
+	border-bottom-color: rgba(191, 219, 254, 0.95);
+}
+
+/* 浅色主题下：头像按钮 / 用户名行内编辑 / 修改链接提高清晰度 */
+:root[data-theme="light"] .user-profile-button--tertiary {
+	color: #2563eb;
+}
+
+:root[data-theme="light"] .user-profile-inline-edit {
+	color: #4b5563;
+}
+
+:root[data-theme="light"] .user-profile-inline-edit strong {
+	color: #111827;
+	border-bottom-color: #9ca3af;
+}
+
+:root[data-theme="light"] .user-profile-inline-edit:hover strong {
+	color: #1d4ed8;
+	border-bottom-color: #60a5fa;
+}
+
+:root[data-theme="light"] .user-profile-inline-link {
+	color: #2563eb;
+}
+
+:root[data-theme="light"] .user-profile-inline-link:hover {
+	color: #1d4ed8;
+}
+
+.user-profile-inline-edit__hint {
+	margin-left: 6px;
+	font-size: 12px;
+	color: #9ca3af;
+}
+
+/* 行内“修改”小链接按钮（用于密码 / 邮箱） */
+.user-profile-inline-link {
+	margin-left: 8px;
+	font-size: 13px;
+	color: #bfdbfe;
+}
+
+.user-profile-inline-link:hover {
+	color: #eff6ff;
+}
+
+/* 用户资料页：底部说明文字，增强可读性 */
+.user-profile-helper-text {
+	font-size: 13px;
+	color: #cbd5f5;
+	text-shadow: 0 0 8px rgba(15, 23, 42, 0.8);
+}
+
 .user-page-card__item-title {
 	font-size: 14px;
 	color: #e5e7eb;
@@ -2372,4 +2527,9 @@ button:hover {
 		top: 10px;
 		right: 10px;
 	}
+}
+
+:root[data-theme="light"] .user-profile-helper-text {
+	color: #4b5563;
+	text-shadow: none;
 }
