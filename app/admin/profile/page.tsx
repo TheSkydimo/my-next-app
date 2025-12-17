@@ -76,6 +76,17 @@ export default function AdminProfilePage() {
   const [emailOldPassword, setEmailOldPassword] = useState("");
   const [emailNewPassword, setEmailNewPassword] = useState("");
   const [emailConfirmNewPassword, setEmailConfirmNewPassword] = useState("");
+  const [orders, setOrders] = useState<
+    {
+      id: number;
+      deviceId: string;
+      imageUrl: string;
+      note: string | null;
+      createdAt: string;
+    }[]
+  >([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -143,9 +154,49 @@ export default function AdminProfilePage() {
   };
 
   useEffect(() => {
-    if (adminEmail) {
-      loadProfile(adminEmail);
-    }
+    if (!adminEmail) return;
+
+    loadProfile(adminEmail);
+
+    const loadOrders = async (email: string) => {
+      setOrdersLoading(true);
+      try {
+        const params = new URLSearchParams({
+          adminEmail: email,
+          userEmail: email,
+        });
+        const res = await fetch(`/api/admin/orders?${params.toString()}`);
+        if (!res.ok) {
+          // 管理员订单截图加载失败，不阻塞资料页
+          return;
+        }
+        const data = (await res.json()) as {
+          items: {
+            id: number;
+            userEmail: string;
+            deviceId: string;
+            imageUrl: string;
+            note: string | null;
+            createdAt: string;
+          }[];
+        };
+        setOrders(
+          data.items.map((o) => ({
+            id: o.id,
+            deviceId: o.deviceId,
+            imageUrl: o.imageUrl,
+            note: o.note,
+            createdAt: o.createdAt,
+          }))
+        );
+      } catch {
+        // ignore
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    loadOrders(adminEmail);
   }, [adminEmail]);
 
   const updateUsername = async () => {
@@ -705,6 +756,105 @@ export default function AdminProfilePage() {
             </div>
           </section>
 
+          <section style={{ marginTop: 32 }}>
+            <h2 style={{ fontSize: 16, marginBottom: 8 }}>
+              {language === "zh-CN" ? "我上传的订单截图" : "My order screenshots"}
+            </h2>
+            {ordersLoading ? (
+              <p style={{ fontSize: 14, color: "#6b7280" }}>
+                {messages.common.loading}
+              </p>
+            ) : orders.length === 0 ? (
+              <p style={{ fontSize: 14, color: "#6b7280" }}>
+                {messages.orders.emptyText}
+              </p>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  marginTop: 4,
+                }}
+              >
+                {orders.map((o) => (
+                  <div
+                    key={o.id}
+                    style={{
+                      width: 120,
+                      borderRadius: 8,
+                      border: "1px solid #e5e7eb",
+                      padding: 6,
+                      backgroundColor: "#f9fafb",
+                      fontSize: 11,
+                      color: "#4b5563",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setPreviewUrl(o.imageUrl)}
+                      style={{
+                        padding: 0,
+                        border: "none",
+                        background: "transparent",
+                        cursor: "zoom-in",
+                        display: "block",
+                        width: "100%",
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={o.imageUrl}
+                        alt="order"
+                        style={{
+                          width: "100%",
+                          height: 80,
+                          objectFit: "cover",
+                          borderRadius: 6,
+                          border: "1px solid #e5e7eb",
+                        }}
+                      />
+                    </button>
+                    <div
+                      style={{
+                        marginTop: 4,
+                        color: "#6b7280",
+                      }}
+                    >
+                      {new Date(o.createdAt).toLocaleDateString()}
+                    </div>
+                    {o.deviceId && (
+                      <div
+                        style={{
+                          marginTop: 2,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                        title={o.deviceId}
+                      >
+                        {o.deviceId}
+                      </div>
+                    )}
+                    {o.note && (
+                      <div
+                        style={{
+                          marginTop: 2,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                        title={o.note}
+                      >
+                        {o.note}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
           {showEmailDialog && (
             <div className="dialog-overlay">
               <div className="dialog-card">
@@ -792,6 +942,62 @@ export default function AdminProfilePage() {
             </div>
           )}
         </>
+      )}
+
+      {previewUrl && (
+        <div
+          onClick={() => setPreviewUrl(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              backgroundColor: "#111827",
+              padding: 12,
+              borderRadius: 8,
+              boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewUrl(null)}
+              style={{
+                display: "block",
+                marginLeft: "auto",
+                marginBottom: 8,
+                background: "transparent",
+                border: "none",
+                color: "#e5e7eb",
+                fontSize: 20,
+                cursor: "pointer",
+              }}
+              aria-label="关闭预览"
+            >
+              ×
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt="order-preview"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "80vh",
+                objectFit: "contain",
+                borderRadius: 6,
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

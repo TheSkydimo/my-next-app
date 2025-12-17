@@ -15,6 +15,7 @@ export type AdminMessages = {
     navProfile: string;
     navAdmins: string;
     navUsers: string;
+    navOrders: string;
     roleSuperAdmin: string;
     roleAdmin: string;
     unauthTitle: string;
@@ -139,6 +140,19 @@ export type AdminMessages = {
     btnUnsetAdmin: string;
     btnDelete: string;
   };
+  orders: {
+    title: string;
+    adminLabelPrefix: string;
+    backToHome: string;
+    emptyText: string;
+    fetchFailed: string;
+    tableIndex: string;
+    tableUserEmail: string;
+    tableDeviceId: string;
+    tableImage: string;
+    tableNote: string;
+    tableCreatedAt: string;
+  };
 };
 
 const zhCN: AdminMessages = {
@@ -154,6 +168,7 @@ const zhCN: AdminMessages = {
     navProfile: "信息管理",
     navAdmins: "管理员管理",
     navUsers: "用户管理",
+    navOrders: "订单截图",
     roleSuperAdmin: "超级管理员",
     roleAdmin: "管理员",
     unauthTitle: "管理后台",
@@ -284,6 +299,19 @@ const zhCN: AdminMessages = {
     btnUnsetAdmin: "设为普通用户",
     btnDelete: "删除",
   },
+  orders: {
+    title: "用户订单截图",
+    adminLabelPrefix: "当前管理员：",
+    backToHome: "返回管理员首页",
+    emptyText: "暂无订单截图。",
+    fetchFailed: "获取订单截图失败",
+    tableIndex: "序号",
+    tableUserEmail: "用户邮箱",
+    tableDeviceId: "设备 ID",
+    tableImage: "订单截图",
+    tableNote: "备注",
+    tableCreatedAt: "上传时间",
+  },
 };
 
 const enUS: AdminMessages = {
@@ -299,6 +327,7 @@ const enUS: AdminMessages = {
     navProfile: "Profile",
     navAdmins: "Admins",
     navUsers: "Users",
+    navOrders: "Orders",
     roleSuperAdmin: "Super Admin",
     roleAdmin: "Admin",
     unauthTitle: "Admin Console",
@@ -432,6 +461,19 @@ const enUS: AdminMessages = {
     tableActions: "Actions",
     btnUnsetAdmin: "Make regular user",
     btnDelete: "Delete",
+  },
+  orders: {
+    title: "User Order Screenshots",
+    adminLabelPrefix: "Current admin: ",
+    backToHome: "Back to admin home",
+    emptyText: "No order screenshots yet.",
+    fetchFailed: "Failed to load order screenshots",
+    tableIndex: "#",
+    tableUserEmail: "User email",
+    tableDeviceId: "Device ID",
+    tableImage: "Screenshot",
+    tableNote: "Note",
+    tableCreatedAt: "Created at",
   },
 };
 

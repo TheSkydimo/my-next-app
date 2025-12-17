@@ -214,7 +214,17 @@ export default function AdminAdminsPage() {
                     padding: 8,
                   }}
                 >
-                  {a.email}
+                  <Link
+                    href={`/admin/users/${encodeURIComponent(a.email)}`}
+                    style={{ color: "#2563eb", textDecoration: "underline" }}
+                    title={
+                      language === "zh-CN"
+                        ? "查看该管理员详情与订单截图"
+                        : "View this admin's details and order screenshots"
+                    }
+                  >
+                    {a.email}
+                  </Link>
                 </td>
                 <td
                   style={{
