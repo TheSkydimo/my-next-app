@@ -182,27 +182,8 @@ export default function UserDevicesPage() {
             </p>
           ) : (
             devices.map((d) => (
-              <div
-                key={d.id}
-                style={{
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(148,163,184,0.6)",
-                  backgroundColor: "rgba(15,23,42,0.85)",
-                  boxShadow:
-                    "0 10px 22px rgba(15,23,42,0.85), inset 0 0 0 1px rgba(15,23,42,0.9)",
-                  fontSize: 14,
-                  marginBottom: 8,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                  }}
-                >
+              <div key={d.id} className="user-device-card">
+                <div className="user-device-card__row">
                   <div>
                     <div className="user-page-card__item-title">
                       设备 ID：<strong>{d.deviceId}</strong>
@@ -216,16 +197,7 @@ export default function UserDevicesPage() {
                   </div>
                   <button
                     type="button"
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 9999,
-                      border: "1px solid rgba(248,113,113,0.8)",
-                      background:
-                        "radial-gradient(circle at 0 0, rgba(248,113,113,0.18), rgba(30,64,175,0.96))",
-                      color: "#fecaca",
-                      fontSize: 12,
-                      whiteSpace: "nowrap",
-                    }}
+                    className="user-device-card__remove"
                     onClick={async () => {
                       if (!userEmail) return;
                       const ok = window.confirm(
