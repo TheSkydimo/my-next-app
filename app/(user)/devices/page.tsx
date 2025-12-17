@@ -362,8 +362,65 @@ export default function UserDevicesPage() {
   const [globalOrderNote, setGlobalOrderNote] = useState("");
   const [orders, setOrders] = useState<Record<string, OrderSnapshot[]>>({});
   // 折叠菜单：订单信息 / 质保信息
+  // 默认只展开第一个子菜单（订单信息），质保信息默认折叠
   const [isOrderSectionOpen, setIsOrderSectionOpen] = useState(true);
-  const [isWarrantySectionOpen, setIsWarrantySectionOpen] = useState(true);
+  const [isWarrantySectionOpen, setIsWarrantySectionOpen] = useState(false);
+
+  // 根据地址栏 hash（#order-section / #warranty-section）控制右侧折叠菜单的展开状态，
+  // 保证从其它页面跳转到设备信息页时自动展示正确的区域。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncFromHash = () => {
+      const hash = window.location.hash;
+      if (hash === "#warranty-section") {
+        setIsOrderSectionOpen(false);
+        setIsWarrantySectionOpen(true);
+      } else {
+        // 默认：展示订单信息区块
+        setIsOrderSectionOpen(true);
+        setIsWarrantySectionOpen(false);
+      }
+    };
+
+    syncFromHash();
+
+    window.addEventListener("hashchange", syncFromHash);
+    return () => {
+      window.removeEventListener("hashchange", syncFromHash);
+    };
+  }, []);
+
+  // 监听来自左侧菜单的“切换子菜单”事件，实时展开/收起对应区域
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ section: "order" | "warranty" }>;
+      const section = custom.detail?.section;
+      if (section === "order") {
+        setIsOrderSectionOpen(true);
+        setIsWarrantySectionOpen(false);
+        if (window.location.hash !== "#order-section") {
+          window.location.hash = "#order-section";
+        }
+      } else if (section === "warranty") {
+        setIsOrderSectionOpen(false);
+        setIsWarrantySectionOpen(true);
+        if (window.location.hash !== "#warranty-section") {
+          window.location.hash = "#warranty-section";
+        }
+      }
+    };
+
+    window.addEventListener("user-devices-section-changed", handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        "user-devices-section-changed",
+        handler as EventListener
+      );
+    };
+  }, []);
 
   // 根据某个设备的付款时间计算质保到期时间：付款日期 + 1.5 年。
   // 如果该设备还没有订单或付款时间不可用，则回退到设备自身的 warrantyExpiresAt 字段。
@@ -630,52 +687,12 @@ export default function UserDevicesPage() {
         </p>
       )}
 
-      {/* 订单信息（折叠菜单）：上传订单截图 + 未绑定设备的订单截图列表 */}
+      {/* 订单信息：上传订单截图 + 未绑定设备的订单截图列表（标题由左侧菜单承担，这里不再单独展示） */}
       <section
         id="order-section"
         className="user-page-section"
         style={{ marginTop: 24 }}
       >
-        <div
-          className="user-page-section__header"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            cursor: "pointer",
-          }}
-          onClick={() => setIsOrderSectionOpen((v) => !v)}
-        >
-          <h2 className="user-page-section__title">
-            {language === "zh-CN" ? "订单信息" : "Order information"}
-          </h2>
-          <button
-            type="button"
-            aria-label={
-              language === "zh-CN"
-                ? isOrderSectionOpen
-                  ? "收起订单信息"
-                  : "展开订单信息"
-                : isOrderSectionOpen
-                  ? "Collapse order section"
-                  : "Expand order section"
-            }
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsOrderSectionOpen((v) => !v);
-            }}
-            style={{
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: 18,
-              lineHeight: 1,
-            }}
-          >
-            {isOrderSectionOpen ? "▾" : "▸"}
-          </button>
-        </div>
-
         {isOrderSectionOpen && (
           <>
             {/* 未绑定设备的订单截图上传入口 */}
@@ -854,52 +871,12 @@ export default function UserDevicesPage() {
         )}
       </section>
 
-      {/* 质保信息（折叠菜单）：我的订单列表（含质保期限） */}
+      {/* 质保信息：我的订单列表（含质保期限），标题由左侧菜单承担，这里不再单独展示 */}
       <section
         id="warranty-section"
         className="user-page-section"
         style={{ marginTop: 28 }}
       >
-        <div
-          className="user-page-section__header"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            cursor: "pointer",
-          }}
-          onClick={() => setIsWarrantySectionOpen((v) => !v)}
-        >
-          <h2 className="user-page-section__title">
-            {language === "zh-CN" ? "质保信息" : "Warranty information"}
-          </h2>
-          <button
-            type="button"
-            aria-label={
-              language === "zh-CN"
-                ? isWarrantySectionOpen
-                  ? "收起质保信息"
-                  : "展开质保信息"
-                : isWarrantySectionOpen
-                  ? "Collapse warranty section"
-                  : "Expand warranty section"
-            }
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsWarrantySectionOpen((v) => !v);
-            }}
-            style={{
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: 18,
-              lineHeight: 1,
-            }}
-          >
-            {isWarrantySectionOpen ? "▾" : "▸"}
-          </button>
-        </div>
-
         {isWarrantySectionOpen && (
           <>
             <p className="user-page-section__subtext">

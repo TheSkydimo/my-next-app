@@ -23,6 +23,9 @@ export default function UserLayout({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [searchValue, setSearchValue] = useState("");
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
+  const [deviceSubTab, setDeviceSubTab] = useState<"order" | "warranty" | null>(
+    null
+  );
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const messages = getUserMessages(language);
 
@@ -116,11 +119,32 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // 当当前路由在设备信息页时，默认展开“设备信息管理”的子菜单
+  // 设备信息子菜单：根据当前地址栏 hash 同步“订单信息 / 质保信息”选中态，并在设备页默认展开子菜单
   useEffect(() => {
-    if (pathname === "/devices") {
+    if (typeof window === "undefined") return;
+
+    const syncFromLocation = () => {
+      if (pathname !== "/devices") {
+        setDeviceSubTab(null);
+        return;
+      }
+
+      const hash = window.location.hash;
+      if (hash === "#warranty-section") {
+        setDeviceSubTab("warranty");
+      } else {
+        // 默认选中第一个子菜单：订单信息
+        setDeviceSubTab("order");
+      }
       setIsDeviceMenuOpen(true);
-    }
+    };
+
+    syncFromLocation();
+
+    window.addEventListener("hashchange", syncFromLocation);
+    return () => {
+      window.removeEventListener("hashchange", syncFromLocation);
+    };
   }, [pathname]);
 
   const logout = () => {
@@ -251,8 +275,16 @@ export default function UserLayout({ children }: { children: ReactNode }) {
                   // 切换折叠状态，并在需要时跳转到设备信息页
                   const next = !isDeviceMenuOpen;
                   setIsDeviceMenuOpen(next);
-                  if (next && pathname !== "/devices") {
-                    window.location.href = "/devices";
+                  if (next) {
+                    setDeviceSubTab("order");
+                    if (pathname !== "/devices") {
+                      // 直接跳转到第一个子菜单（订单信息）
+                      window.location.href = "/devices#order-section";
+                    } else if (typeof window !== "undefined") {
+                      // 已经在设备页时，滚动到第一个子菜单区域
+                      const el = document.getElementById("order-section");
+                      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
                   }
                 }}
               >
@@ -265,13 +297,43 @@ export default function UserLayout({ children }: { children: ReactNode }) {
                 <div className="user-layout__nav-sub">
                   <Link
                     href="/devices#order-section"
-                    className="user-layout__nav-sub-link"
+                    className={`user-layout__nav-sub-link ${
+                      deviceSubTab === "order"
+                        ? "user-layout__nav-sub-link--active"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      setDeviceSubTab("order");
+                      if (typeof window !== "undefined") {
+                        // 通知设备信息页切换到“订单信息”区域
+                        window.dispatchEvent(
+                          new CustomEvent("user-devices-section-changed", {
+                            detail: { section: "order" },
+                          })
+                        );
+                      }
+                    }}
                   >
                     {language === "zh-CN" ? "订单信息" : "Order info"}
                   </Link>
                   <Link
                     href="/devices#warranty-section"
-                    className="user-layout__nav-sub-link"
+                    className={`user-layout__nav-sub-link ${
+                      deviceSubTab === "warranty"
+                        ? "user-layout__nav-sub-link--active"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      setDeviceSubTab("warranty");
+                      if (typeof window !== "undefined") {
+                        // 通知设备信息页切换到“质保信息”区域
+                        window.dispatchEvent(
+                          new CustomEvent("user-devices-section-changed", {
+                            detail: { section: "warranty" },
+                          })
+                        );
+                      }
+                    }}
                   >
                     {language === "zh-CN" ? "质保信息" : "Warranty info"}
                   </Link>
