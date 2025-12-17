@@ -27,8 +27,7 @@ export async function GET(request: Request) {
         user_id INTEGER NOT NULL,
         device_id TEXT NOT NULL,
         warranty_expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`
     )
     .run();
@@ -146,8 +145,7 @@ export async function POST(request: Request) {
         user_id INTEGER NOT NULL,
         device_id TEXT NOT NULL,
         warranty_expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`
     )
     .run();
@@ -245,8 +243,7 @@ export async function DELETE(request: Request) {
         user_id INTEGER NOT NULL,
         device_id TEXT NOT NULL,
         warranty_expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`
     )
     .run();

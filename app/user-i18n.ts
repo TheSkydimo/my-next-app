@@ -47,6 +47,7 @@ export type UserMessages = {
     deleteSuccess: string;
     pagerText: (total: number, page: number, maxPage: number) => string;
     fetchFailed: string;
+    orderNotePlaceholder: string;
   };
   profile: {
     title: string;
@@ -157,6 +158,7 @@ const zhCN: UserMessages = {
     pagerText: (total, page, maxPage) =>
       `共 ${total} 台设备，当前第 ${page} / ${maxPage} 页`,
     fetchFailed: "获取设备信息失败",
+    orderNotePlaceholder: "可选备注，例如订单号、平台（淘宝/京东等）",
   },
   profile: {
     title: "个人信息",
@@ -271,6 +273,7 @@ const enUS: UserMessages = {
     pagerText: (total, page, maxPage) =>
       `Total ${total} devices, page ${page} of ${maxPage}`,
     fetchFailed: "Failed to load devices",
+    orderNotePlaceholder: "Optional note, e.g. order number or platform",
   },
   profile: {
     title: "Profile",

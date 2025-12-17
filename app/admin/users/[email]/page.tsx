@@ -22,6 +22,9 @@ type AdminOrderItem = {
   imageUrl: string;
   note: string | null;
   createdAt: string;
+  orderNo?: string | null;
+  orderCreatedTime?: string | null;
+  orderPaidTime?: string | null;
 };
 
 export default function AdminUserDetailPage({
@@ -324,9 +327,31 @@ export default function AdminUserDetailPage({
                       padding: 8,
                       fontSize: 12,
                       color: "#6b7280",
+                      lineHeight: 1.5,
                     }}
                   >
-                    {new Date(o.createdAt).toLocaleString()}
+                    <div>{new Date(o.createdAt).toLocaleString()}</div>
+                    {o.orderCreatedTime && (
+                      <div>
+                        {language === "zh-CN"
+                          ? `创建时间：${o.orderCreatedTime}`
+                          : `Created: ${o.orderCreatedTime}`}
+                      </div>
+                    )}
+                    {o.orderPaidTime && (
+                      <div>
+                        {language === "zh-CN"
+                          ? `付款时间：${o.orderPaidTime}`
+                          : `Paid: ${o.orderPaidTime}`}
+                      </div>
+                    )}
+                    {o.orderNo && (
+                      <div>
+                        {language === "zh-CN"
+                          ? `订单号：${o.orderNo}`
+                          : `Order No: ${o.orderNo}`}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

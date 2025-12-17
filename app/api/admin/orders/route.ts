@@ -7,6 +7,9 @@ type OrderRowWithUser = {
   image_url: string;
   note: string | null;
   created_at: string;
+  order_no?: string | null;
+  order_created_time?: string | null;
+  order_paid_time?: string | null;
 };
 
 async function assertAdmin(db: D1Database, adminEmail: string | null) {
@@ -36,6 +39,9 @@ async function ensureOrderTable(db: D1Database) {
         image_url TEXT NOT NULL,
         note TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        order_no TEXT,
+        order_created_time TEXT,
+        order_paid_time TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id)
       )`
     )
@@ -46,6 +52,21 @@ async function ensureOrderTable(db: D1Database) {
       "CREATE INDEX IF NOT EXISTS idx_user_orders_user ON user_orders (user_id)"
     )
     .run();
+
+  // 与用户端保持一致，尝试为旧表补齐字段（如果已经存在则忽略错误）
+  try {
+    await db.prepare("ALTER TABLE user_orders ADD COLUMN order_no TEXT").run();
+  } catch {}
+  try {
+    await db
+      .prepare("ALTER TABLE user_orders ADD COLUMN order_created_time TEXT")
+      .run();
+  } catch {}
+  try {
+    await db
+      .prepare("ALTER TABLE user_orders ADD COLUMN order_paid_time TEXT")
+      .run();
+  } catch {}
 }
 
 // 管理端查看所有用户的订单截图（可按邮箱 / 设备 ID 过滤，最多返回最近 200 条）
@@ -85,7 +106,10 @@ export async function GET(request: Request) {
       o.device_id,
       o.image_url,
       o.note,
-      o.created_at
+      o.created_at,
+      o.order_no,
+      o.order_created_time,
+      o.order_paid_time
     FROM user_orders o
     JOIN users u ON o.user_id = u.id
     ${whereSql}
@@ -102,6 +126,9 @@ export async function GET(request: Request) {
       imageUrl: row.image_url,
       note: row.note,
       createdAt: row.created_at,
+      orderNo: row.order_no ?? null,
+      orderCreatedTime: row.order_created_time ?? null,
+      orderPaidTime: row.order_paid_time ?? null,
     })) ?? [];
 
   return Response.json({ items });
