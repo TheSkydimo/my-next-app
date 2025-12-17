@@ -44,34 +44,36 @@ export default function Home() {
 
   const messages = getUserMessages(language);
 
+  // 与管理端保持一致：已登录用户的欢迎信息采用简单文本布局，不再使用块状卡片
+  if (displayName) {
+    return (
+      <div style={{ maxWidth: 640, margin: "10px auto" }}>
+        <h1>{messages.home.welcomeTitle(displayName)}</h1>
+        {userEmail && (
+          <p style={{ fontSize: 14, color: "#6b7280" }}>
+            {messages.home.currentEmailPrefix}
+            {userEmail}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // 未登录用户仍然保留原来的炫酷卡片样式
   return (
     <div className="home-page">
-      {displayName ? (
-        <div className="home-card home-card--welcome">
-          <h1>{messages.home.welcomeTitle(displayName)}</h1>
-          {userEmail && (
-            <p className="home-card__subtext">
-              {messages.home.currentEmailPrefix}
-              {userEmail}
-            </p>
-          )}
+      <div className="home-card home-card--guest">
+        <h1>{messages.home.guestTitle}</h1>
+        <p className="home-card__subtext">{messages.home.guestSubtitle}</p>
+        <div className="home-card__actions">
+          <Link href="/login" className="home-card__primary-link">
+            {messages.home.loginButton}
+          </Link>
+          <Link href="/register" className="home-card__secondary-link">
+            {messages.home.registerButton}
+          </Link>
         </div>
-      ) : (
-        <div className="home-card home-card--guest">
-          <h1>{messages.home.guestTitle}</h1>
-          <p className="home-card__subtext">
-            {messages.home.guestSubtitle}
-          </p>
-          <div className="home-card__actions">
-            <Link href="/login" className="home-card__primary-link">
-              {messages.home.loginButton}
-            </Link>
-            <Link href="/register" className="home-card__secondary-link">
-              {messages.home.registerButton}
-            </Link>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

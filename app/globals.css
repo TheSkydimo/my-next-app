@@ -780,7 +780,8 @@ button:hover {
 	width: 24px;
 	height: 24px;
 	border-radius: 9999px;
-	background: radial-gradient(circle at 30% 0%, #38bdf8, #4f46e5);
+	background:
+		url("/logo.png") center center / cover no-repeat;
 	box-shadow:
 		0 0 0 1px rgba(15, 23, 42, 0.95),
 		0 8px 18px rgba(15, 23, 42, 0.9);
@@ -1700,8 +1701,9 @@ button:hover {
 
 .auth-card__error {
 	margin-top: 12px;
-	color: #fecaca;
+	color: #f97373;
 	font-size: 13px;
+	font-weight: 600;
 }
 
 .auth-card__success {
