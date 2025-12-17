@@ -7,10 +7,13 @@ type OrderRow = {
   image_url: string;
   note: string | null;
   created_at: string;
-  // 下面三个字段为可选扩展字段，用于保存从截图中解析出的订单信息
+  // 下面字段为可选扩展字段，用于保存从截图中解析出的订单信息
   order_no?: string | null;
   order_created_time?: string | null;
   order_paid_time?: string | null;
+  platform?: string | null;
+  shop_name?: string | null;
+  device_count?: number | null;
 };
 
 // 当上传订单截图时，如果前端未提供设备 ID，则使用该占位值入库。
@@ -26,6 +29,8 @@ type UserOrderApiMessages = {
   missingOrderId: string;
   userNotFound: string;
   deleteNotFoundOrNotOwned: string;
+  recognizeFailed: string;
+  duplicateOrderNo: string;
 };
 
 function detectApiLanguage(request: Request): ApiLanguage {
@@ -53,6 +58,10 @@ function getUserOrderApiMessages(lang: ApiLanguage): UserOrderApiMessages {
       userNotFound: "User not found",
       deleteNotFoundOrNotOwned:
         "Order does not exist or does not belong to the current user",
+      recognizeFailed:
+        "Failed to recognize order information from the screenshot. Please upload a clearer order or invoice image.",
+      duplicateOrderNo:
+        "This order number has already been uploaded. Please do not submit duplicate orders.",
     };
   }
 
@@ -63,6 +72,9 @@ function getUserOrderApiMessages(lang: ApiLanguage): UserOrderApiMessages {
     missingOrderId: "缺少订单 ID",
     userNotFound: "用户不存在",
     deleteNotFoundOrNotOwned: "订单不存在或不属于当前用户",
+    recognizeFailed:
+      "未能从图片中识别出订单信息，请上传更清晰的订单或发票截图。",
+    duplicateOrderNo: "该订单号已经上传过，请不要重复提交。",
   };
 }
 
@@ -79,7 +91,10 @@ async function ensureOrderTable(db: D1Database) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         order_no TEXT,
         order_created_time TEXT,
-        order_paid_time TEXT
+        order_paid_time TEXT,
+        platform TEXT,
+        shop_name TEXT,
+        device_count INTEGER
       )`
     )
     .run();
@@ -102,12 +117,30 @@ async function ensureOrderTable(db: D1Database) {
       .prepare("ALTER TABLE user_orders ADD COLUMN order_paid_time TEXT")
       .run();
   } catch {}
+  try {
+    await db
+      .prepare("ALTER TABLE user_orders ADD COLUMN platform TEXT")
+      .run();
+  } catch {}
+  try {
+    await db
+      .prepare("ALTER TABLE user_orders ADD COLUMN shop_name TEXT")
+      .run();
+  } catch {}
+  try {
+    await db
+      .prepare("ALTER TABLE user_orders ADD COLUMN device_count INTEGER")
+      .run();
+  } catch {}
 }
 
 type ParsedOrderInfo = {
   orderNo: string | null;
   orderCreatedTime: string | null;
   orderPaidTime: string | null;
+  platform: string | null;
+  shopName: string | null;
+  deviceCount: number | null;
 };
 
 /**
@@ -128,57 +161,175 @@ function parseOrderInfoFromText(text: string): ParsedOrderInfo {
     orderNo: orderNoMatch?.[1] ?? null,
     orderCreatedTime: createdMatch?.[1] ?? null,
     orderPaidTime: paidMatch?.[1] ?? null,
+    platform: null,
+    shopName: null,
+    deviceCount: null,
   };
 }
 
 /**
- * 使用第三方 OCR 服务从图片中提取文本，再解析订单信息。
+ * 兼容从大模型返回的字符串中解析 JSON。
+ * - 处理 ```json ... ``` 代码块包裹
+ * - 抓取首个 `{ ... }` 结构
+ * - 解析失败时返回 null，而不是抛异常
+ */
+function parseJsonFromAi(content: string): any | null {
+  try {
+    let text = content.trim();
+
+    if (text.startsWith("```")) {
+      text = text.replace(/^```[a-zA-Z]*\n?/, "");
+      text = text.replace(/\n?```$/, "").trim();
+    }
+
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      text = match[0];
+    }
+
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 使用 MoleAPI + GPT 模型直接从截图中抽取订单结构化信息。
  *
- * 当前实现使用 OCR.space API，需在 Cloudflare 环境中配置：
- *   OCR_SPACE_API_KEY=<你的 api key>
+ * 需要在 Cloudflare 环境中配置（示例）:
+ *   MOLE_API_KEY="sk-xxxx"
+ *   MOLE_API_BASE_URL="https://api.moleapi.com/v1"   (可选，默认此值)
+ *   MOLE_AI_MODEL="gpt-4o"                           (可选，默认此值)
  *
- * 如果未配置，将直接返回 null，不影响主流程。
+ * 未配置 MOLE_API_KEY 时，将返回 null，不影响主流程。
  */
 async function extractOrderInfoFromImage(
   file: File,
   env: Record<string, unknown>
 ): Promise<ParsedOrderInfo | null> {
-  const apiKey = env.OCR_SPACE_API_KEY as string | undefined;
+  const apiKey = env.MOLE_API_KEY as string | undefined;
   if (!apiKey) {
-    // 未配置 OCR key，跳过自动识别
     return null;
   }
 
-  const formData = new FormData();
-  formData.append("apikey", apiKey);
-  // 中文截图为主
-  formData.append("language", "chs");
-  formData.append("isOverlayRequired", "false");
-  formData.append("scale", "true");
-  formData.append("OCREngine", "2");
-  formData.append("file", file);
+  const apiBaseUrl =
+    (env.MOLE_API_BASE_URL as string | undefined) ??
+    "https://api.moleapi.com/v1";
+  const model =
+    (env.MOLE_AI_MODEL as string | undefined) ?? "gpt-4o";
 
   try {
-    const res = await fetch("https://api.ocr.space/parse/image", {
+    // 将文件转为 base64 data URL 传给多模态模型
+    const buffer = await file.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    const mimeType = file.type || "image/jpeg";
+    const imageDataUrl = `data:${mimeType};base64,${base64}`;
+
+    const payload = {
+      model,
+      messages: [
+        {
+          role: "system",
+          content:
+            "你是一个专业的电商订单识别助手，只负责从图片中提取结构化字段并输出 JSON。",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text:
+                "请从这张电商订单截图中提取以下字段，并严格以 JSON 返回：\n" +
+                "{\n" +
+                '  "platform": string | null,        // 平台名字（淘宝、京东、拼多多、抖音等）\n' +
+                '  "shop_name": string | null,       // 店铺名字\n' +
+                '  "order_id": string | null,        // 订单号/订单编号\n' +
+                '  "order_created_at": string | null,// 订单创建时间，格式 YYYY-MM-DD HH:MM:SS\n' +
+                '  "paid_at": string | null,         // 付款时间，格式 YYYY-MM-DD HH:MM:SS\n' +
+                '  "device_count": number | null     // 此订单中购买的设备/商品数量\n' +
+                "}\n" +
+                "如果图片中缺少某个字段，就把该字段设为 null。仅返回 JSON，不要包含任何额外说明文字。",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageDataUrl,
+              },
+            },
+          ],
+        },
+      ],
+      temperature: 0,
+      max_tokens: 300,
+    };
+
+    const res = await fetch(`${apiBaseUrl}/chat/completions`, {
       method: "POST",
-      body: formData,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
       return null;
     }
 
-    const data = (await res.json()) as {
-      ParsedResults?: { ParsedText?: string }[];
-      IsErroredOnProcessing?: boolean;
-    };
+    const data = (await res.json()) as any;
+    const rawContent: unknown = data?.choices?.[0]?.message?.content;
 
-    if (data.IsErroredOnProcessing || !data.ParsedResults?.[0]?.ParsedText) {
+    // MoleAPI 可能返回字符串，也可能返回 content 片段数组，做两种情况的兼容
+    let contentText: string | null = null;
+    if (typeof rawContent === "string") {
+      contentText = rawContent;
+    } else if (Array.isArray(rawContent)) {
+      const parts = rawContent
+        .filter((p) => p && typeof p === "object" && "type" in p)
+        .map((p: any) => (p.type === "text" ? String(p.text ?? "") : ""))
+        .join("\n")
+        .trim();
+      contentText = parts || null;
+    }
+
+    if (!contentText) {
       return null;
     }
 
-    const text = data.ParsedResults[0].ParsedText;
-    return parseOrderInfoFromText(text);
+    const parsed = parseJsonFromAi(contentText) as {
+      platform?: string | null;
+      shop_name?: string | null;
+      order_id?: string | null;
+      order_created_at?: string | null;
+      paid_at?: string | null;
+      device_count?: number | string | null;
+    };
+
+    if (!parsed) {
+      return null;
+    }
+
+    const toPositiveIntOrNull = (value: unknown): number | null => {
+      if (typeof value === "number") {
+        return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+      }
+      if (typeof value === "string") {
+        const n = parseInt(value, 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      }
+      return null;
+    };
+
+    const result: ParsedOrderInfo = {
+      orderNo: parsed.order_id ?? null,
+      orderCreatedTime: parsed.order_created_at ?? null,
+      orderPaidTime: parsed.paid_at ?? null,
+      platform: parsed.platform ?? null,
+      shopName: parsed.shop_name ?? null,
+      deviceCount: toPositiveIntOrNull(parsed.device_count),
+    };
+
+    return result;
   } catch {
     // 网络或解析异常时，静默失败，不阻断主流程
     return null;
@@ -221,7 +372,7 @@ export async function GET(request: Request) {
     bindValues.push(deviceId);
   }
 
-  const sql = `SELECT id, user_id, device_id, image_url, note, created_at
+  const sql = `SELECT id, user_id, device_id, image_url, note, created_at, order_no, order_created_time, order_paid_time, platform, shop_name, device_count
     FROM user_orders
     WHERE ${whereParts.join(" AND ")}
     ORDER BY created_at DESC`;
@@ -238,6 +389,9 @@ export async function GET(request: Request) {
       orderNo: row.order_no ?? null,
       orderCreatedTime: row.order_created_time ?? null,
       orderPaidTime: row.order_paid_time ?? null,
+      platform: row.platform ?? null,
+      shopName: row.shop_name ?? null,
+      deviceCount: typeof row.device_count === "number" ? row.device_count : null,
     })) ?? [];
 
   return Response.json({ items });
@@ -290,8 +444,27 @@ export async function POST(request: Request) {
     (await extractOrderInfoFromImage(
       file,
       env as unknown as Record<string, unknown>
-    )) ??
-    null;
+    )) ?? null;
+
+  // 当识别流程本身失败（例如未配置 key / 网络错误 / 返回内容不是合法 JSON）时，直接提示用户
+  // 如果识别成功但字段为 null（例如截图缺少部分信息），仍然允许入库，只是这些字段为空。
+  if (parsed === null) {
+    return new Response(t.recognizeFailed, { status: 400 });
+  }
+
+  // 如果识别出了订单号，则不允许同一用户、同一订单号重复上传
+  if (parsed.orderNo) {
+    const dup = await db
+      .prepare(
+        "SELECT id FROM user_orders WHERE user_id = ? AND order_no = ? LIMIT 1"
+      )
+      .bind(user.id, parsed.orderNo)
+      .all<{ id: number }>();
+
+    if (dup.results && dup.results[0]) {
+      return new Response(t.duplicateOrderNo, { status: 400 });
+    }
+  }
 
   // 这里为简单起见，将截图存为 Data URL 文本（适合小图、低频）
   const buffer = await file.arrayBuffer();
@@ -301,7 +474,7 @@ export async function POST(request: Request) {
 
   const insert = await db
     .prepare(
-      "INSERT INTO user_orders (user_id, device_id, image_url, note, order_no, order_created_time, order_paid_time) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO user_orders (user_id, device_id, image_url, note, order_no, order_created_time, order_paid_time, platform, shop_name, device_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(
       user.id,
@@ -310,7 +483,10 @@ export async function POST(request: Request) {
       typeof note === "string" ? note : null,
       parsed?.orderNo ?? null,
       parsed?.orderCreatedTime ?? null,
-      parsed?.orderPaidTime ?? null
+      parsed?.orderPaidTime ?? null,
+      parsed?.platform ?? null,
+      parsed?.shopName ?? null,
+      parsed?.deviceCount ?? null
     )
     .run();
 
@@ -324,6 +500,9 @@ export async function POST(request: Request) {
     orderNo: parsed?.orderNo ?? null,
     orderCreatedTime: parsed?.orderCreatedTime ?? null,
     orderPaidTime: parsed?.orderPaidTime ?? null,
+    platform: parsed?.platform ?? null,
+    shopName: parsed?.shopName ?? null,
+    deviceCount: parsed?.deviceCount ?? null,
     // 前端展示用时间，真实入库时间仍由数据库默认值生成
     createdAt: new Date().toISOString(),
   });

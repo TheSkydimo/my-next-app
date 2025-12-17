@@ -22,6 +22,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [searchValue, setSearchValue] = useState("");
+  const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const messages = getUserMessages(language);
 
@@ -114,6 +115,13 @@ export default function UserLayout({ children }: { children: ReactNode }) {
       );
     };
   }, []);
+
+  // 当当前路由在设备信息页时，默认展开“设备信息管理”的子菜单
+  useEffect(() => {
+    if (pathname === "/devices") {
+      setIsDeviceMenuOpen(true);
+    }
+  }, [pathname]);
 
   const logout = () => {
     if (typeof window !== "undefined") {
@@ -233,14 +241,43 @@ export default function UserLayout({ children }: { children: ReactNode }) {
             >
               {messages.layout.navProfile}
             </Link>
-            <Link
-              href="/devices"
-              className={`user-layout__nav-link ${
-                isActive("/devices") ? "user-layout__nav-link--active" : ""
-              }`}
-            >
-              {messages.layout.navDevices}
-            </Link>
+            <div className="user-layout__nav-group">
+              <button
+                type="button"
+                className={`user-layout__nav-link user-layout__nav-link--button ${
+                  isActive("/devices") ? "user-layout__nav-link--active" : ""
+                }`}
+                onClick={() => {
+                  // 切换折叠状态，并在需要时跳转到设备信息页
+                  const next = !isDeviceMenuOpen;
+                  setIsDeviceMenuOpen(next);
+                  if (next && pathname !== "/devices") {
+                    window.location.href = "/devices";
+                  }
+                }}
+              >
+                <span>{messages.layout.navDevices}</span>
+                <span className="user-layout__nav-group-arrow">
+                  {isDeviceMenuOpen ? "▾" : "▸"}
+                </span>
+              </button>
+              {isDeviceMenuOpen && (
+                <div className="user-layout__nav-sub">
+                  <Link
+                    href="/devices#order-section"
+                    className="user-layout__nav-sub-link"
+                  >
+                    {language === "zh-CN" ? "订单信息" : "Order info"}
+                  </Link>
+                  <Link
+                    href="/devices#warranty-section"
+                    className="user-layout__nav-sub-link"
+                  >
+                    {language === "zh-CN" ? "质保信息" : "Warranty info"}
+                  </Link>
+                </div>
+              )}
+            </div>
           </nav>
         </aside>
 

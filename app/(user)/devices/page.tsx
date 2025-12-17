@@ -22,6 +22,9 @@ type OrderSnapshot = {
   orderNo?: string | null;
   orderCreatedTime?: string | null;
   orderPaidTime?: string | null;
+  platform?: string | null;
+  shopName?: string | null;
+  deviceCount?: number | null;
 };
 
 // 与后端 `app/api/user/orders/route.ts` 中的 DEFAULT_DEVICE_ID 保持一致
@@ -42,7 +45,7 @@ function OrderThumbnailList({
     <div
       style={{
         marginTop: 8,
-        borderTop: "1px dashed #e5e7eb",
+        borderTop: "1px dashed #d1d5db",
         paddingTop: 8,
       }}
     >
@@ -57,112 +60,284 @@ function OrderThumbnailList({
           ? "已上传的订单截图："
           : "Uploaded order screenshots:"}
       </div>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 8,
-        }}
-      >
-        {items.map((o) => (
+      <div style={{ marginTop: 4, overflowX: "auto" }}>
+        <div
+          style={{
+            minWidth: 820,
+            border: "1px solid #d1d5db",
+            borderRadius: 8,
+          }}
+        >
+          {/* 表头行 */}
           <div
-            key={o.id}
             style={{
-              border: "1px solid #e5e7eb",
-              borderRadius: 8,
-              padding: 6,
-              width: 120,
-              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              padding: "6px 8px",
+              borderBottom: "1px solid #d1d5db",
+              fontSize: 11,
+              background: "#f3f4f6",
+              color: "#374151",
+              fontWeight: 600,
             }}
           >
-            {onDelete && (
-              <button
-                type="button"
-                onClick={() => onDelete(o)}
-                style={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  border: "none",
-                  background: "rgba(0,0,0,0.5)",
-                  color: "#fff",
-                  borderRadius: 9999,
-                  padding: "0 6px",
-                  fontSize: 10,
-                  cursor: "pointer",
-                }}
-              >
-                ×
-              </button>
-            )}
-            <div
-              style={{
-                width: "100%",
-                height: 80,
-                overflow: "hidden",
-                borderRadius: 4,
-                marginBottom: 4,
-              }}
-            >
-              <a href={o.imageUrl} target="_blank" rel="noreferrer">
-                <img
-                  src={o.imageUrl}
-                  alt="order"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              </a>
+          <div
+            style={{
+              width: 80,
+              flexShrink: 0,
+              borderRight: "1px solid #d1d5db",
+              textAlign: "center",
+            }}
+          >
+              {language === "zh-CN" ? "截图" : "Screenshot"}
             </div>
             <div
               style={{
-                fontSize: 10,
-                color: "#6b7280",
-                marginBottom: 2,
-                lineHeight: 1.4,
+                flex: 1,
+                minWidth: 100,
+                borderRight: "1px solid #d1d5db",
+                textAlign: "center",
               }}
             >
-              <div>{new Date(o.createdAt).toLocaleDateString()}</div>
-              {o.orderCreatedTime && (
-                <div>
-                  {language === "zh-CN"
-                    ? `创建时间：${o.orderCreatedTime}`
-                    : `Created: ${o.orderCreatedTime}`}
-                </div>
-              )}
-              {o.orderPaidTime && (
-                <div>
-                  {language === "zh-CN"
-                    ? `付款时间：${o.orderPaidTime}`
-                    : `Paid: ${o.orderPaidTime}`}
-                </div>
-              )}
-              {o.orderNo && (
-                <div>
-                  {language === "zh-CN"
-                    ? `订单号：${o.orderNo}`
-                    : `Order No: ${o.orderNo}`}
-                </div>
-              )}
+              {language === "zh-CN" ? "店铺" : "Shop"}
             </div>
-            {o.note && (
+            <div
+              style={{
+                flex: 1.2,
+                minWidth: 120,
+                borderRight: "1px solid #d1d5db",
+                textAlign: "center",
+              }}
+            >
+              {language === "zh-CN" ? "订单号" : "Order No"}
+            </div>
+            <div
+              style={{
+                flex: 1.1,
+                minWidth: 130,
+                borderRight: "1px solid #d1d5db",
+                textAlign: "center",
+              }}
+            >
+              {language === "zh-CN" ? "创建时间" : "Created At"}
+            </div>
+            <div
+              style={{
+                flex: 1.1,
+                minWidth: 130,
+                borderRight: "1px solid #d1d5db",
+                textAlign: "center",
+              }}
+            >
+              {language === "zh-CN" ? "付款时间" : "Paid At"}
+            </div>
+            <div
+              style={{
+                width: 60,
+                flexShrink: 0,
+                borderRight: "1px solid #d1d5db",
+                textAlign: "center",
+              }}
+            >
+              {language === "zh-CN" ? "数量" : "Qty"}
+            </div>
+            <div
+              style={{
+                flex: 1.2,
+                minWidth: 120,
+                borderRight: "1px solid #d1d5db",
+                textAlign: "center",
+              }}
+            >
+              {language === "zh-CN" ? "备注" : "Note"}
+            </div>
+            <div
+              style={{
+                width: 70,
+                flexShrink: 0,
+                textAlign: "center",
+                borderLeft: "1px solid #d1d5db",
+              }}
+            >
+              {language === "zh-CN" ? "操作" : "Actions"}
+            </div>
+          </div>
+
+          {/* 数据行 */}
+          {items.map((o, idx) => (
+            <div
+              key={o.id}
+              style={{
+                display: "flex",
+                alignItems: "stretch",
+                padding: "6px 8px",
+                borderTop: "1px solid #f3f4f6",
+                fontSize: 11,
+                color: "#4b5563",
+                backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9fafb",
+              }}
+            >
+              {/* 截图 */}
               <div
                 style={{
-                  fontSize: 10,
-                  color: "#4b5563",
+                  width: 80,
+                  height: 56,
+                  overflow: "hidden",
+                  borderRadius: 4,
+                  flexShrink: 0,
+                  borderRight: "1px solid #d1d5db",
+                }}
+              >
+                <a href={o.imageUrl} target="_blank" rel="noreferrer">
+                  <img
+                    src={o.imageUrl}
+                    alt="order"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                </a>
+              </div>
+
+              {/* 店铺 */}
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 100,
+                  display: "flex",
+                  alignItems: "center",
+                  borderRight: "1px solid #d1d5db",
+                  justifyContent: "center",
+                  textAlign: "center",
+                }}
+              >
+                {o.shopName ?? "-"}
+              </div>
+
+              {/* 订单号 */}
+              <div
+                style={{
+                  flex: 1.2,
+                  minWidth: 120,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
+                  display: "flex",
+                  alignItems: "center",
+                  borderRight: "1px solid #d1d5db",
+                  justifyContent: "center",
+                  textAlign: "center",
                 }}
-                title={o.note}
+                title={o.orderNo ?? undefined}
               >
-                {o.note}
+                {o.orderNo ?? "-"}
               </div>
-            )}
-          </div>
-        ))}
+
+              {/* 创建时间 */}
+              <div
+                style={{
+                  flex: 1.1,
+                  minWidth: 130,
+                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  borderRight: "1px solid #d1d5db",
+                  justifyContent: "center",
+                  textAlign: "center",
+                }}
+              >
+                {o.orderCreatedTime ??
+                  new Date(o.createdAt).toLocaleString()}
+              </div>
+
+              {/* 付款时间 */}
+              <div
+                style={{
+                  flex: 1.1,
+                  minWidth: 130,
+                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  borderRight: "1px solid #d1d5db",
+                  justifyContent: "center",
+                  textAlign: "center",
+                }}
+              >
+                {o.orderPaidTime ?? "-"}
+              </div>
+
+              {/* 数量 */}
+              <div
+                style={{
+                  width: 60,
+                  flexShrink: 0,
+                  textAlign: "center",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRight: "1px solid #d1d5db",
+                }}
+              >
+                {o.deviceCount != null ? String(o.deviceCount) : "-"}
+              </div>
+
+              {/* 备注 */}
+              <div
+                style={{
+                  flex: 1.2,
+                  minWidth: 120,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  color: "#6b7280",
+                  borderRight: "1px solid #d1d5db",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                }}
+                title={o.note ?? undefined}
+              >
+                {o.note ?? "-"}
+              </div>
+
+              {/* 操作 */}
+              <div
+                style={{
+                  width: 70,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderLeft: "1px solid #d1d5db",
+                }}
+              >
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(o)}
+                    style={{
+                      borderRadius: 9999,
+                      padding: "2px 10px",
+                      fontSize: 10,
+                      cursor: "pointer",
+                      border: "1px solid #d1d5db",
+                      background:
+                        "linear-gradient(90deg, rgba(239,68,68,0.9), rgba(248,113,113,0.9))",
+                      color: "#fff",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {language === "zh-CN" ? "移除" : "Remove"}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -175,7 +350,6 @@ export default function UserDevicesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
-  const [newDeviceId, setNewDeviceId] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const pageSize = 5;
@@ -187,6 +361,71 @@ export default function UserDevicesPage() {
   const [globalOrderFile, setGlobalOrderFile] = useState<File | null>(null);
   const [globalOrderNote, setGlobalOrderNote] = useState("");
   const [orders, setOrders] = useState<Record<string, OrderSnapshot[]>>({});
+  // 折叠菜单：订单信息 / 质保信息
+  const [isOrderSectionOpen, setIsOrderSectionOpen] = useState(true);
+  const [isWarrantySectionOpen, setIsWarrantySectionOpen] = useState(true);
+
+  // 根据某个设备的付款时间计算质保到期时间：付款日期 + 1.5 年。
+  // 如果该设备还没有订单或付款时间不可用，则回退到设备自身的 warrantyExpiresAt 字段。
+  const getWarrantyExpiresAt = (device: Device): Date => {
+    const deviceOrders = orders[device.deviceId] ?? [];
+    const paidDates: Date[] = [];
+
+    for (const o of deviceOrders) {
+      if (!o.orderPaidTime) continue;
+      const raw = o.orderPaidTime.trim();
+      if (!raw) continue;
+
+      // 兼容 "YYYY-MM-DD HH:mm:ss" 格式，转为可被 Date 正确解析的字符串
+      const normalized =
+        raw.includes("T") || raw.endsWith("Z") ? raw : raw.replace(" ", "T");
+      const d = new Date(normalized);
+      if (!Number.isNaN(d.getTime())) {
+        paidDates.push(d);
+      }
+    }
+
+    if (paidDates.length > 0) {
+      // 使用最早的付款时间作为质保起始
+      let earliest = paidDates[0];
+      for (const d of paidDates) {
+        if (d.getTime() < earliest.getTime()) {
+          earliest = d;
+        }
+      }
+      const warranty = new Date(earliest);
+      // 加 18 个月，相当于 1.5 年
+      warranty.setMonth(warranty.getMonth() + 18);
+      return warranty;
+    }
+
+    return new Date(device.warrantyExpiresAt);
+  };
+
+  // 根据订单本身的时间信息计算质保到期时间：优先使用付款时间，其次创建时间，最后回退到截图创建时间。
+  const getWarrantyFromOrder = (o: OrderSnapshot): Date => {
+    const raw =
+      o.orderPaidTime?.trim() ||
+      o.orderCreatedTime?.trim() ||
+      o.createdAt?.trim();
+
+    if (raw) {
+      const normalized =
+        raw.includes("T") || raw.endsWith("Z") ? raw : raw.replace(" ", "T");
+      const base = new Date(normalized);
+      if (!Number.isNaN(base.getTime())) {
+        const warranty = new Date(base);
+        // 加 18 个月，相当于 1.5 年
+        warranty.setMonth(warranty.getMonth() + 18);
+        return warranty;
+      }
+    }
+
+    // 兜底：当前时间起算 18 个月
+    const now = new Date();
+    now.setMonth(now.getMonth() + 18);
+    return now;
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -391,435 +630,416 @@ export default function UserDevicesPage() {
         </p>
       )}
 
-      <section className="user-page-section">
-        <div className="user-page-section__header">
+      {/* 订单信息（折叠菜单）：上传订单截图 + 未绑定设备的订单截图列表 */}
+      <section
+        id="order-section"
+        className="user-page-section"
+        style={{ marginTop: 24 }}
+      >
+        <div
+          className="user-page-section__header"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            cursor: "pointer",
+          }}
+          onClick={() => setIsOrderSectionOpen((v) => !v)}
+        >
           <h2 className="user-page-section__title">
-            {messages.devices.addSectionTitle}
+            {language === "zh-CN" ? "订单信息" : "Order information"}
           </h2>
-          <p className="user-page-section__subtext">
-            {messages.devices.addSectionDesc}
-          </p>
-        </div>
-        <div className="user-page-card">
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              placeholder={messages.devices.inputPlaceholder}
-              value={newDeviceId}
-              onChange={(e) => setNewDeviceId(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <button
-              type="button"
-              onClick={async () => {
-                if (!userEmail) return;
-                const trimmed = newDeviceId.trim();
-                if (!trimmed) {
-                  setError(messages.devices.addEmptyError);
-                  setOkMsg("");
-                  return;
-                }
-
-                setError("");
-                setOkMsg("");
-
-                try {
-                  const res = await fetch("/api/user/devices", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      email: userEmail,
-                      deviceId: trimmed,
-                    }),
-                  });
-                  if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(text || messages.devices.addFailed);
-                  }
-                  const created = (await res.json()) as Device;
-                  // 如果当前在第 1 页，则直接把新设备插入到列表顶部，立即展示
-                  setDevices((prev) => {
-                    if (page !== 1) return prev;
-                    const next = [created, ...prev];
-                    return next.slice(0, pageSize);
-                  });
-                  setOkMsg(messages.devices.addSuccess);
-                  setNewDeviceId("");
-                  setTotal((prev) => prev + 1);
-                  setPage(1);
-                } catch (e) {
-                  setError(
-                    e instanceof Error
-                      ? e.message
-                      : messages.devices.addFailed
-                  );
-                }
-              }}
-            >
-              {messages.devices.addButton}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* 未绑定设备的订单截图上传入口 */}
-      <section className="user-page-section" style={{ marginTop: 24 }}>
-        <div className="user-page-section__header">
-          <h2 className="user-page-section__title">
-            {language === "zh-CN"
-              ? "上传订单截图（暂不绑定设备）"
-              : "Upload order screenshot (no device yet)"}
-          </h2>
-          <p className="user-page-section__subtext">
-            {language === "zh-CN"
-              ? "如果你还没有设备 ID，也可以先上传订单或发票截图，管理员审核后再帮你绑定设备。"
-              : "You can upload your order/invoice screenshot even without a device ID; admins can bind it later."}
-          </p>
-        </div>
-        <div className="user-page-card">
-          <div
+          <button
+            type="button"
+            aria-label={
+              language === "zh-CN"
+                ? isOrderSectionOpen
+                  ? "收起订单信息"
+                  : "展开订单信息"
+                : isOrderSectionOpen
+                  ? "Collapse order section"
+                  : "Expand order section"
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOrderSectionOpen((v) => !v);
+            }}
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: 18,
+              lineHeight: 1,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              <input
-                id="global-order-file"
-                type="file"
-                accept="image/*"
-                style={{
-                  position: "absolute",
-                  width: 1,
-                  height: 1,
-                  padding: 0,
-                  margin: -1,
-                  overflow: "hidden",
-                  clip: "rect(0, 0, 0, 0)",
-                  whiteSpace: "nowrap",
-                  border: 0,
-                }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setGlobalOrderFile(file);
-                }}
-              />
-              <label
-                htmlFor="global-order-file"
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 9999,
-                  background:
-                    "linear-gradient(90deg, rgba(59,130,246,0.9), rgba(37,99,235,0.9))",
-                  color: "#fff",
-                  fontSize: 13,
-                  cursor: "pointer",
-                  border: "none",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {language === "zh-CN"
-                  ? "选择截图文件"
-                  : "Choose screenshot file"}
-              </label>
-              <span
-                style={{
-                  fontSize: 12,
-                  color: "#9ca3af",
-                }}
-              >
-                {globalOrderFile
-                  ? globalOrderFile.name
-                  : language === "zh-CN"
-                    ? "未选择文件"
-                    : "No file selected"}
-              </span>
-            </div>
-            <textarea
-              placeholder={messages.devices.orderNotePlaceholder}
-              value={globalOrderNote}
-              onChange={(e) => setGlobalOrderNote(e.target.value)}
-              style={{ minHeight: 60, resize: "vertical" }}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!userEmail) return;
-                  if (!globalOrderFile) {
-                    setError(
-                      language === "zh-CN"
-                        ? "请选择要上传的截图文件"
-                        : "Please choose a file to upload"
-                    );
-                    setOkMsg("");
-                    return;
-                  }
-                  setLoading(true);
-                  setError("");
-                  setOkMsg("");
-                  try {
-                    const formData = new FormData();
-                    formData.append("email", userEmail);
-                    formData.append("file", globalOrderFile);
-                    if (globalOrderNote.trim()) {
-                      formData.append("note", globalOrderNote.trim());
-                    }
-                    const res = await fetch("/api/user/orders", {
-                      method: "POST",
-                      body: formData,
-                    });
-                    if (!res.ok) {
-                      const text = await res.text();
-                      throw new Error(
-                        text ||
-                          (language === "zh-CN"
-                            ? "上传订单截图失败"
-                            : "Failed to upload order screenshot")
-                      );
-                    }
-                    const data = (await res.json()) as OrderSnapshot;
-                    setOrders((prev) => {
-                      const key = data.deviceId || NO_DEVICE_ID;
-                      const list = prev[key] ?? [];
-                      return {
-                        ...prev,
-                        [key]: [data, ...list],
-                      };
-                    });
-                    setOkMsg(
-                      language === "zh-CN"
-                        ? "订单截图上传成功"
-                        : "Order screenshot uploaded"
-                    );
-                    setGlobalOrderFile(null);
-                    setGlobalOrderNote("");
-                  } catch (e) {
-                    setError(
-                      e instanceof Error
-                        ? e.message
-                        : language === "zh-CN"
-                          ? "上传订单截图失败"
-                          : "Failed to upload order screenshot"
-                    );
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-              >
-                {language === "zh-CN" ? "提交" : "Submit"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setGlobalOrderFile(null);
-                  setGlobalOrderNote("");
-                }}
-                style={{ opacity: 0.8 }}
-              >
-                {language === "zh-CN" ? "清空" : "Reset"}
-              </button>
-            </div>
-          </div>
+            {isOrderSectionOpen ? "▾" : "▸"}
+          </button>
         </div>
-      </section>
 
-      {orders[NO_DEVICE_ID] && orders[NO_DEVICE_ID].length > 0 && (
-        <section className="user-page-section" style={{ marginTop: 16 }}>
-          <div className="user-page-section__header">
-            <h2 className="user-page-section__title">
-              {language === "zh-CN"
-                ? "未绑定设备的订单截图"
-                : "Order screenshots without device"}
-            </h2>
-            <p className="user-page-section__subtext">
-              {language === "zh-CN"
-                ? "这些截图当前尚未绑定到具体设备，管理员审核后会帮你完成关联。"
-                : "These screenshots are not yet bound to a device; admins will review and bind them later."}
-            </p>
-          </div>
-          <div className="user-page-card">
-            <OrderThumbnailList
-              items={orders[NO_DEVICE_ID]}
-              language={language}
-              onDelete={handleDeleteOrder}
-            />
-          </div>
-        </section>
-      )}
-
-      <section className="user-page-section" style={{ marginTop: 28 }}>
-        <div className="user-page-section__header">
-          <h2 className="user-page-section__title">
-            {messages.devices.listTitle}
-          </h2>
-          <p className="user-page-section__subtext">
-            {messages.devices.listSubtitle}
-          </p>
-        </div>
-        <div className="user-page-card">
-          {devices.length === 0 ? (
-            <p className="user-page-card__item-meta">
-              {messages.devices.emptyText}
-            </p>
-          ) : (
-            devices.map((d) => (
-              <div key={d.id} className="user-device-card">
-                <div className="user-device-card__row">
-                  <div>
-                    <div className="user-page-card__item-title">
-                      {messages.devices.inputPlaceholder}：
-                      <strong>{d.deviceId}</strong>
-                    </div>
-                    <div className="user-page-card__item-meta">
-                      {messages.devices.warrantyLabel}
-                      <strong>
-                        {new Date(d.warrantyExpiresAt).toLocaleString()}
-                      </strong>
-                    </div>
-                    <div
-                      className="user-page-card__item-meta"
-                      style={{ marginTop: 6 }}
-                    >
-                      <button
-                        type="button"
-                        style={{ fontSize: 12, padding: "2px 8px" }}
-                        onClick={() => {
-                          setUploadingOrderForDevice(d.deviceId);
-                          setOrderFile(null);
-                          setOrderNote("");
-                          setError("");
-                          setOkMsg("");
-                        }}
-                      >
-                        {language === "zh-CN"
-                          ? "上传订单截图"
-                          : "Upload Order Screenshot"}
-                      </button>
-                    </div>
-                    {orders[d.deviceId] && orders[d.deviceId].length > 0 && (
-                      <OrderThumbnailList
-                        items={orders[d.deviceId]}
-                        language={language}
-                        onDelete={handleDeleteOrder}
-                      />
-                    )}
-                  </div>
+        {isOrderSectionOpen && (
+          <>
+            {/* 未绑定设备的订单截图上传入口 */}
+            <div className="user-page-card">
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <input
+                    id="global-order-file"
+                    type="file"
+                    accept="image/*"
+                    style={{
+                      position: "absolute",
+                      width: 1,
+                      height: 1,
+                      padding: 0,
+                      margin: -1,
+                      overflow: "hidden",
+                      clip: "rect(0, 0, 0, 0)",
+                      whiteSpace: "nowrap",
+                      border: 0,
+                    }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setGlobalOrderFile(file);
+                    }}
+                  />
+                  <label
+                    htmlFor="global-order-file"
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 9999,
+                      background:
+                        "linear-gradient(90deg, rgba(59,130,246,0.9), rgba(37,99,235,0.9))",
+                      color: "#fff",
+                      fontSize: 13,
+                      cursor: "pointer",
+                      border: "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {language === "zh-CN"
+                      ? "选择截图文件"
+                      : "Choose screenshot file"}
+                  </label>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#9ca3af",
+                    }}
+                  >
+                    {globalOrderFile
+                      ? globalOrderFile.name
+                      : language === "zh-CN"
+                        ? "未选择文件"
+                        : "No file selected"}
+                  </span>
+                </div>
+                <textarea
+                  placeholder={messages.devices.orderNotePlaceholder}
+                  value={globalOrderNote}
+                  onChange={(e) => setGlobalOrderNote(e.target.value)}
+                  style={{ minHeight: 60, resize: "vertical" }}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                   <button
                     type="button"
-                    className="user-device-card__remove"
                     onClick={async () => {
                       if (!userEmail) return;
-                      const ok = window.confirm(
-                        messages.devices.deleteConfirm(d.deviceId)
-                      );
-                      if (!ok) return;
-
+                      if (!globalOrderFile) {
+                        setError(
+                          language === "zh-CN"
+                            ? "请选择要上传的截图文件"
+                            : "Please choose a file to upload"
+                        );
+                        setOkMsg("");
+                        return;
+                      }
+                      setLoading(true);
                       setError("");
                       setOkMsg("");
-
                       try {
-                        const res = await fetch("/api/user/devices", {
-                          method: "DELETE",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            email: userEmail,
-                            id: d.id,
-                          }),
+                        const formData = new FormData();
+                        formData.append("email", userEmail);
+                        formData.append("file", globalOrderFile);
+                        if (globalOrderNote.trim()) {
+                          formData.append("note", globalOrderNote.trim());
+                        }
+                        const res = await fetch("/api/user/orders", {
+                          method: "POST",
+                          body: formData,
                         });
                         if (!res.ok) {
                           const text = await res.text();
-                          throw new Error(text || messages.devices.deleteFailed);
+                          throw new Error(
+                            text ||
+                              (language === "zh-CN"
+                                ? "上传订单截图失败"
+                                : "Failed to upload order screenshot")
+                          );
                         }
-                        setDevices((prev) => {
-                          const next = prev.filter((item) => item.id !== d.id);
-                          if (next.length === 0 && page > 1) {
-                            setPage((p) => Math.max(1, p - 1));
-                          }
-                          return next;
+                        const data = (await res.json()) as OrderSnapshot;
+                        setOrders((prev) => {
+                          const key = data.deviceId || NO_DEVICE_ID;
+                          const list = prev[key] ?? [];
+                          return {
+                            ...prev,
+                            [key]: [data, ...list],
+                          };
                         });
-                        setTotal((prev) => Math.max(0, prev - 1));
-                        setOkMsg(messages.devices.deleteSuccess);
+                        setOkMsg(
+                          language === "zh-CN"
+                            ? "订单截图上传成功"
+                            : "Order screenshot uploaded"
+                        );
+                        setGlobalOrderFile(null);
+                        setGlobalOrderNote("");
                       } catch (e) {
                         setError(
                           e instanceof Error
                             ? e.message
-                            : messages.devices.deleteFailed
+                            : language === "zh-CN"
+                              ? "上传订单截图失败"
+                              : "Failed to upload order screenshot"
                         );
+                      } finally {
+                        setLoading(false);
                       }
                     }}
                   >
-                    {messages.devices.deleteButton}
+                    {language === "zh-CN" ? "提交" : "Submit"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGlobalOrderFile(null);
+                      setGlobalOrderNote("");
+                    }}
+                    style={{ opacity: 0.8 }}
+                  >
+                    {language === "zh-CN" ? "清空" : "Reset"}
                   </button>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            </div>
 
+            {orders[NO_DEVICE_ID] && orders[NO_DEVICE_ID].length > 0 && (
+              <div
+                className="user-page-section"
+                style={{ marginTop: 16, padding: 0 }}
+              >
+                <div className="user-page-card">
+                  <OrderThumbnailList
+                    items={orders[NO_DEVICE_ID]}
+                    language={language}
+                    onDelete={handleDeleteOrder}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* 质保信息（折叠菜单）：我的订单列表（含质保期限） */}
+      <section
+        id="warranty-section"
+        className="user-page-section"
+        style={{ marginTop: 28 }}
+      >
         <div
+          className="user-page-section__header"
           style={{
-            marginTop: 12,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            fontSize: 12,
-            color: "#9ca3af",
+            cursor: "pointer",
           }}
+          onClick={() => setIsWarrantySectionOpen((v) => !v)}
         >
-          <span>
-            {messages.devices.pagerText(
-              total,
-              Math.min(page, maxPage),
-              maxPage
-            )}
-          </span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              disabled={!hasPrev}
-              onClick={() => hasPrev && setPage((p) => Math.max(1, p - 1))}
-              style={{
-                padding: "4px 10px",
-                borderRadius: 9999,
-                fontSize: 12,
-                opacity: hasPrev ? 1 : 0.5,
-              }}
-            >
-              {language === "zh-CN" ? "上一页" : "Prev"}
-            </button>
-            <button
-              type="button"
-              disabled={!hasNext}
-              onClick={() =>
-                hasNext && setPage((p) => Math.min(maxPage, p + 1))
-              }
-              style={{
-                padding: "4px 10px",
-                borderRadius: 9999,
-                fontSize: 12,
-                opacity: hasNext ? 1 : 0.5,
-              }}
-            >
-              {language === "zh-CN" ? "下一页" : "Next"}
-            </button>
-          </div>
+          <h2 className="user-page-section__title">
+            {language === "zh-CN" ? "质保信息" : "Warranty information"}
+          </h2>
+          <button
+            type="button"
+            aria-label={
+              language === "zh-CN"
+                ? isWarrantySectionOpen
+                  ? "收起质保信息"
+                  : "展开质保信息"
+                : isWarrantySectionOpen
+                  ? "Collapse warranty section"
+                  : "Expand warranty section"
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsWarrantySectionOpen((v) => !v);
+            }}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: 18,
+              lineHeight: 1,
+            }}
+          >
+            {isWarrantySectionOpen ? "▾" : "▸"}
+          </button>
         </div>
+
+        {isWarrantySectionOpen && (
+          <>
+            <p className="user-page-section__subtext">
+              {messages.devices.listSubtitle}
+            </p>
+            <div className="user-page-card">
+          {(() => {
+            // 根据截图信息汇总订单列表（按订单号去重）
+            const map = new Map<string, OrderSnapshot>();
+            Object.values(orders).forEach((list) => {
+              list.forEach((o) => {
+                const key = (o.orderNo || String(o.id)).trim();
+                if (!map.has(key)) {
+                  map.set(key, o);
+                }
+              });
+            });
+            const orderList = Array.from(map.values());
+
+            if (orderList.length === 0 && devices.length === 0) {
+              return (
+                <p className="user-page-card__item-meta">
+                  {messages.devices.emptyText}
+                </p>
+              );
+            }
+
+            // 如果没有截图订单，但有手工登记的订单（旧数据），继续展示原来的设备列表作为兜底。
+            if (orderList.length === 0) {
+              return devices.map((d) => (
+                <div key={d.id} className="user-device-card">
+                  <div className="user-device-card__row">
+                    <div>
+                      <div className="user-page-card__item-title">
+                        {messages.devices.idLabel}
+                        <strong>{d.deviceId}</strong>
+                      </div>
+                      <div className="user-page-card__item-meta">
+                        {messages.devices.warrantyLabel}
+                        <strong>
+                          {getWarrantyExpiresAt(d).toLocaleString()}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ));
+            }
+
+            // 默认：根据截图信息生成“我的订单列表”
+            // 增加一个从 1 开始的序号，便于用户直观查看第几条订单
+            return orderList.map((o, index) => (
+              <div key={o.id} className="user-device-card">
+                <div className="user-device-card__row">
+                  <div>
+                    <div className="user-page-card__item-meta">
+                      {language === "zh-CN" ? "序号：" : "No. "}
+                      <strong>{index + 1}</strong>
+                    </div>
+                    <div className="user-page-card__item-title">
+                      {messages.devices.idLabel}
+                      <strong>{o.orderNo ?? String(o.id)}</strong>
+                    </div>
+                    <div className="user-page-card__item-meta">
+                      {messages.devices.warrantyLabel}
+                      <strong>
+                        {getWarrantyFromOrder(o).toLocaleString()}
+                      </strong>
+                    </div>
+                    {o.shopName && (
+                      <div className="user-page-card__item-meta">
+                        {language === "zh-CN" ? "店铺：" : "Shop: "}
+                        <strong>{o.shopName}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ));
+          })()}
+            </div>
+
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                fontSize: 12,
+                color: "#9ca3af",
+              }}
+            >
+              <span>
+                {messages.devices.pagerText(
+                  total,
+                  Math.min(page, maxPage),
+                  maxPage
+                )}
+              </span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  disabled={!hasPrev}
+                  onClick={() =>
+                    hasPrev && setPage((p) => Math.max(1, p - 1))
+                  }
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 9999,
+                    fontSize: 12,
+                    opacity: hasPrev ? 1 : 0.5,
+                  }}
+                >
+                  {language === "zh-CN" ? "上一页" : "Prev"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasNext}
+                  onClick={() =>
+                    hasNext && setPage((p) => Math.min(maxPage, p + 1))
+                  }
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 9999,
+                    fontSize: 12,
+                    opacity: hasNext ? 1 : 0.5,
+                  }}
+                >
+                  {language === "zh-CN" ? "下一页" : "Next"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </section>
 
       {uploadingOrderForDevice && (
         <section
           className="user-page-section"
-          style={{ marginTop: 28, borderTop: "1px solid #e5e7eb", paddingTop: 16 }}
+style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
         >
           <div className="user-page-section__header">
             <h2 className="user-page-section__title">

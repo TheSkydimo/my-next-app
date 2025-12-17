@@ -32,6 +32,8 @@ export type UserMessages = {
     subtitle: string;
     addSectionTitle: string;
     addSectionDesc: string;
+    // 标识字段标签（例如：订单号 / 设备 ID）
+    idLabel: string;
     inputPlaceholder: string;
     addButton: string;
     addEmptyError: string;
@@ -137,18 +139,19 @@ const zhCN: UserMessages = {
   },
   devices: {
     title: "设备信息管理",
-    subtitle: "管理并查看与你账号绑定的设备信息。",
-    addSectionTitle: "添加设备",
+    subtitle: "管理并查看与你账号绑定的订单信息。",
+    addSectionTitle: "添加订单",
     addSectionDesc:
-      "输入设备 ID 并点击“添加设备”，系统会自动为你记录并计算质保到期时间。",
-    inputPlaceholder: "请输入设备 ID",
-    addButton: "添加设备",
-    addEmptyError: "请输入设备 ID",
-    addFailed: "添加设备失败",
-    addSuccess: "设备已添加",
-    listTitle: "我的设备列表",
-    listSubtitle: "查看当前账号下已登记的全部设备及对应的质保到期时间。",
-    emptyText: "当前没有已登记的设备。",
+      "输入订单 ID 并点击“添加订单”，系统会自动为你记录并计算质保到期时间。",
+    idLabel: "订单号：",
+    inputPlaceholder: "请输入订单 ID",
+    addButton: "添加订单",
+    addEmptyError: "请输入订单 ID",
+    addFailed: "添加订单失败",
+    addSuccess: "订单已添加",
+    listTitle: "我的订单列表",
+    listSubtitle: "查看当前账号下已登记的全部订单及对应的质保到期时间。",
+    emptyText: "当前没有已登记的订单。",
     warrantyLabel: "质保到期时间：",
     deleteButton: "删除设备",
     deleteConfirm: (deviceId: string) =>
@@ -251,29 +254,30 @@ const enUS: UserMessages = {
   },
   devices: {
     title: "Device Management",
-    subtitle: "Manage and view devices that are bound to your account.",
-    addSectionTitle: "Add Device",
+    subtitle: "Manage and view orders (treated as devices) that are bound to your account.",
+    addSectionTitle: "Add Order",
     addSectionDesc:
-      "Enter the device ID and click “Add Device”. The system will record it and calculate the warranty expiration time.",
-    inputPlaceholder: "Enter device ID",
-    addButton: "Add Device",
-    addEmptyError: "Please enter a device ID",
-    addFailed: "Failed to add device",
-    addSuccess: "Device added",
-    listTitle: "My Devices",
+      "Enter the order ID and click “Add Order”. The system will record it and calculate the warranty expiration time.",
+    idLabel: "Order ID: ",
+    inputPlaceholder: "Enter order ID",
+    addButton: "Add Order",
+    addEmptyError: "Please enter an order ID",
+    addFailed: "Failed to add order",
+    addSuccess: "Order added",
+    listTitle: "My Orders",
     listSubtitle:
-      "View all registered devices under the current account and their warranty expiration times.",
-    emptyText: "No registered devices.",
+      "View all registered orders under the current account and their warranty expiration times.",
+    emptyText: "No registered orders.",
     warrantyLabel: "Warranty expires at: ",
-    deleteButton: "Remove Device",
+    deleteButton: "Remove Order",
     deleteConfirm: (deviceId: string) =>
-      `Remove device ${deviceId}? This action cannot be undone.`,
-    deleteFailed: "Failed to delete device",
-    deleteSuccess: "Device removed",
+      `Remove order ${deviceId}? This action cannot be undone.`,
+    deleteFailed: "Failed to delete order",
+    deleteSuccess: "Order removed",
     pagerText: (total, page, maxPage) =>
-      `Total ${total} devices, page ${page} of ${maxPage}`,
-    fetchFailed: "Failed to load devices",
-    orderNotePlaceholder: "Optional note, e.g. order number or platform",
+      `Total ${total} orders, page ${page} of ${maxPage}`,
+    fetchFailed: "Failed to load orders",
+    orderNotePlaceholder: "Optional note, e.g. platform or custom remark",
   },
   profile: {
     title: "Profile",

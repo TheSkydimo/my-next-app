@@ -11,3 +11,16 @@ SMTP_USER = "noreply@skydimo.com"
 SMTP_PASS = "fbn2WqHG1CnhGfyK"
 SMTP_ENCRYPTION = "ssl"
 SMTP_FROM = "noreply@skydimo.com"
+
+[vars]
+APP_NAME = "订阅管理"
+SMTP_HOST = "smtp.qiye.aliyun.com"
+SMTP_PORT = "465"
+SMTP_USER = "noreply@skydimo.com"
+SMTP_PASS = "fbn2WqHG1CnhGfyK"
+SMTP_ENCRYPTION = "ssl"
+SMTP_FROM = "noreply@skydimo.com"
+
+MOLE_API_KEY = "sk-oldQ12WzF3qesYtgppUOS77dZFrpLr2wY3NslooRJxZDVZmi"
+MOLE_API_BASE_URL = "https://api.moleapi.com/v1"
+MOLE_AI_MODEL = "gpt-4o"
