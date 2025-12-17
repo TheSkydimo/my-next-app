@@ -569,18 +569,38 @@ button:hover {
 	background: radial-gradient(circle at top, #e5e7eb, #e5e7eb 38%, #dbeafe 70%, #e0f2fe 90%);
 }
 
-.auth-page--align-left .auth-page__split-shell {
-	margin-inline-start: 0;
-	margin-inline-end: auto;
-}
-
-.auth-page--align-center .auth-page__split-shell {
+/* 布局位置：背景块始终居中，不随左右切换移动，只改变内部表单与静态内容的相对位置 */
+.auth-page__split-shell {
 	margin-inline: auto;
 }
 
-.auth-page--align-right .auth-page__split-shell {
-	margin-inline-start: auto;
-	margin-inline-end: 0;
+/* 内部区块位置：
+ * - 居左：登录表单在左，静态视觉区在右
+ * - 居右：静态视觉区在左，登录表单在右
+ * - 居中：隐藏静态视觉区，只保留登录表单内容
+ */
+.auth-page--align-left .auth-page__visual {
+	order: 2;
+}
+
+.auth-page--align-left .auth-page__panel {
+	order: 1;
+}
+
+.auth-page--align-right .auth-page__visual {
+	order: 1;
+}
+
+.auth-page--align-right .auth-page__panel {
+	order: 2;
+}
+
+.auth-page--align-center .auth-page__visual {
+	display: none;
+}
+
+.auth-page--align-center .auth-page__panel {
+	flex: 1 1 100%;
 }
 
 .auth-page__split-shell {
