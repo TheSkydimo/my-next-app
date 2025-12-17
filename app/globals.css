@@ -392,7 +392,8 @@ button:hover {
 .user-layout__main {
 	flex: 1;
 	margin-left: 18px;
-	padding: calc(var(--shell-header-height) + 18px) 20px 24px;
+	/* 顶栏贴顶：不再为 shell-header 预留大间距，改为紧凑内边距 */
+	padding: 12px 20px 24px;
 	box-sizing: border-box;
 	/* 仅在主内容区域内部滚动 */
 	overflow: auto;
@@ -657,11 +658,10 @@ button:hover {
 }
 
 .user-layout__logout {
-	/* 顶部全局工具栏：在右侧内容区域内吸顶，不遮挡左侧头像 */
 	position: sticky;
-	top: 14px;
+	top: 0;
 	z-index: 10;
-	padding: 14px 24px 10px;
+	padding: 8px 24px 10px;
 	display: flex;
 	justify-content: center;
 	/* 不再额外覆盖一层深色带，直接透出整体背景，让顶栏和工作区保持完全一体化 */

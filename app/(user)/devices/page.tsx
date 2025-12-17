@@ -83,7 +83,7 @@ export default function UserDevicesPage() {
 
   if (!userEmail) {
     return (
-      <div style={{ maxWidth: 640, margin: "80px auto" }}>
+      <div style={{ maxWidth: 640, margin: "10px auto" }}>
         <h1>设备信息管理</h1>
         <p>未检测到用户登录，请先登录。</p>
         <Link href="/login">去登录</Link>
@@ -92,7 +92,7 @@ export default function UserDevicesPage() {
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "80px auto" }}>
+    <div style={{ maxWidth: 640, margin: "10px auto" }}>
       <h1>设备信息管理</h1>
       <p style={{ marginTop: 8, fontSize: 14, color: "#9ca3af" }}>
         管理并查看与你账号绑定的设备信息。
