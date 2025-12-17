@@ -48,6 +48,13 @@ export function applyLanguage(lang: AppLanguage) {
   }
   if (typeof window !== "undefined") {
     window.localStorage.setItem(LANG_KEY, lang);
+
+    // 向全局广播语言变更事件，便于页面/组件订阅并实时更新文案
+    window.dispatchEvent(
+      new CustomEvent("app-language-changed", {
+        detail: { language: lang },
+      })
+    );
   }
 }
 

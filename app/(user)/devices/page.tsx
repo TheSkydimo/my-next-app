@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { AppLanguage } from "../../client-prefs";
+import { getInitialLanguage } from "../../client-prefs";
+import { getUserMessages } from "../../user-i18n";
 
 type Device = {
   id: number;
@@ -10,6 +13,7 @@ type Device = {
 };
 
 export default function UserDevicesPage() {
+  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(false);
@@ -21,6 +25,28 @@ export default function UserDevicesPage() {
   const pageSize = 5;
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const initialLang = getInitialLanguage();
+    setLanguage(initialLang);
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ language: AppLanguage }>;
+      if (custom.detail?.language) {
+        setLanguage(custom.detail.language);
+      }
+    };
+
+    window.addEventListener("app-language-changed", handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        "app-language-changed",
+        handler as EventListener
+      );
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       const email = window.localStorage.getItem("loggedInUserEmail");
       if (email) {
@@ -28,6 +54,7 @@ export default function UserDevicesPage() {
       }
     }
   }, []);
+
 
   useEffect(() => {
     const loadDevices = async (email: string, pageNumber: number) => {
@@ -47,7 +74,7 @@ export default function UserDevicesPage() {
             return;
           }
           const text = await res.text();
-          throw new Error(text || "获取设备信息失败");
+          throw new Error(text || messages.devices.fetchFailed);
         }
         const data: unknown = await res.json();
         if (Array.isArray(data)) {
@@ -66,7 +93,9 @@ export default function UserDevicesPage() {
           setTotal(typeof obj.total === "number" ? obj.total : items.length);
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "获取设备信息失败");
+        setError(
+          e instanceof Error ? e.message : messages.devices.fetchFailed
+        );
       } finally {
         setLoading(false);
       }
@@ -77,6 +106,8 @@ export default function UserDevicesPage() {
     }
   }, [userEmail, page]);
 
+  const messages = getUserMessages(language);
+
   const maxPage = Math.max(1, Math.ceil(total / pageSize) || 1);
   const hasPrev = page > 1;
   const hasNext = page < maxPage;
@@ -84,24 +115,26 @@ export default function UserDevicesPage() {
   if (!userEmail) {
     return (
       <div style={{ maxWidth: 640, margin: "10px auto" }}>
-        <h1>设备信息管理</h1>
-        <p>未检测到用户登录，请先登录。</p>
-        <Link href="/login">去登录</Link>
+        <h1>{messages.devices.title}</h1>
+        <p>{messages.common.loginRequired}</p>
+        <Link href="/login">{messages.common.goLogin}</Link>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: 640, margin: "10px auto" }}>
-      <h1>设备信息管理</h1>
+      <h1>{messages.devices.title}</h1>
       <p style={{ marginTop: 8, fontSize: 14, color: "#9ca3af" }}>
-        管理并查看与你账号绑定的设备信息。
+        {messages.devices.subtitle}
       </p>
 
-      {loading && <p style={{ marginTop: 16 }}>加载中...</p>}
+      {loading && (
+        <p style={{ marginTop: 16 }}>{messages.common.loading}</p>
+      )}
       {error && (
         <p style={{ marginTop: 16, color: "red" }}>
-          {error || "获取设备信息失败"}
+          {error || messages.devices.fetchFailed}
         </p>
       )}
       {okMsg && (
@@ -112,15 +145,17 @@ export default function UserDevicesPage() {
 
       <section className="user-page-section">
         <div className="user-page-section__header">
-          <h2 className="user-page-section__title">添加设备</h2>
+          <h2 className="user-page-section__title">
+            {messages.devices.addSectionTitle}
+          </h2>
           <p className="user-page-section__subtext">
-            输入设备 ID 并点击“添加设备”，系统会自动为你记录并计算质保到期时间。
+            {messages.devices.addSectionDesc}
           </p>
         </div>
         <div className="user-page-card">
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input
-              placeholder="请输入设备 ID"
+              placeholder={messages.devices.inputPlaceholder}
               value={newDeviceId}
               onChange={(e) => setNewDeviceId(e.target.value)}
               style={{ flex: 1 }}
@@ -131,7 +166,7 @@ export default function UserDevicesPage() {
                 if (!userEmail) return;
                 const trimmed = newDeviceId.trim();
                 if (!trimmed) {
-                  setError("请输入设备 ID");
+                  setError(messages.devices.addEmptyError);
                   setOkMsg("");
                   return;
                 }
@@ -150,19 +185,23 @@ export default function UserDevicesPage() {
                   });
                   if (!res.ok) {
                     const text = await res.text();
-                    throw new Error(text || "添加设备失败");
+                    throw new Error(text || messages.devices.addFailed);
                   }
                   await res.json();
-                  setOkMsg("设备已添加");
+                  setOkMsg(messages.devices.addSuccess);
                   setNewDeviceId("");
                   setTotal((prev) => prev + 1);
                   setPage(1);
                 } catch (e) {
-                  setError(e instanceof Error ? e.message : "添加设备失败");
+                  setError(
+                    e instanceof Error
+                      ? e.message
+                      : messages.devices.addFailed
+                  );
                 }
               }}
             >
-              添加设备
+              {messages.devices.addButton}
             </button>
           </div>
         </div>
@@ -170,15 +209,17 @@ export default function UserDevicesPage() {
 
       <section className="user-page-section" style={{ marginTop: 28 }}>
         <div className="user-page-section__header">
-          <h2 className="user-page-section__title">我的设备列表</h2>
+          <h2 className="user-page-section__title">
+            {messages.devices.listTitle}
+          </h2>
           <p className="user-page-section__subtext">
-            查看当前账号下已登记的全部设备及对应的质保到期时间。
+            {messages.devices.listSubtitle}
           </p>
         </div>
         <div className="user-page-card">
           {devices.length === 0 ? (
             <p className="user-page-card__item-meta">
-              当前没有已登记的设备。
+              {messages.devices.emptyText}
             </p>
           ) : (
             devices.map((d) => (
@@ -186,10 +227,11 @@ export default function UserDevicesPage() {
                 <div className="user-device-card__row">
                   <div>
                     <div className="user-page-card__item-title">
-                      设备 ID：<strong>{d.deviceId}</strong>
+                      {messages.devices.inputPlaceholder}：
+                      <strong>{d.deviceId}</strong>
                     </div>
                     <div className="user-page-card__item-meta">
-                      质保到期时间：
+                      {messages.devices.warrantyLabel}
                       <strong>
                         {new Date(d.warrantyExpiresAt).toLocaleString()}
                       </strong>
@@ -201,7 +243,7 @@ export default function UserDevicesPage() {
                     onClick={async () => {
                       if (!userEmail) return;
                       const ok = window.confirm(
-                        `确定要删除设备 ${d.deviceId} 吗？删除后将无法恢复。`
+                        messages.devices.deleteConfirm(d.deviceId)
                       );
                       if (!ok) return;
 
@@ -219,7 +261,7 @@ export default function UserDevicesPage() {
                         });
                         if (!res.ok) {
                           const text = await res.text();
-                          throw new Error(text || "删除设备失败");
+                          throw new Error(text || messages.devices.deleteFailed);
                         }
                         setDevices((prev) => {
                           const next = prev.filter((item) => item.id !== d.id);
@@ -229,15 +271,17 @@ export default function UserDevicesPage() {
                           return next;
                         });
                         setTotal((prev) => Math.max(0, prev - 1));
-                        setOkMsg("设备已删除");
+                        setOkMsg(messages.devices.deleteSuccess);
                       } catch (e) {
                         setError(
-                          e instanceof Error ? e.message : "删除设备失败"
+                          e instanceof Error
+                            ? e.message
+                            : messages.devices.deleteFailed
                         );
                       }
                     }}
                   >
-                    删除设备
+                    {messages.devices.deleteButton}
                   </button>
                 </div>
               </div>
@@ -256,7 +300,11 @@ export default function UserDevicesPage() {
           }}
         >
           <span>
-            共 {total} 台设备，当前第 {Math.min(page, maxPage)} / {maxPage} 页
+            {messages.devices.pagerText(
+              total,
+              Math.min(page, maxPage),
+              maxPage
+            )}
           </span>
           <div style={{ display: "flex", gap: 8 }}>
             <button
@@ -270,7 +318,7 @@ export default function UserDevicesPage() {
                 opacity: hasPrev ? 1 : 0.5,
               }}
             >
-              上一页
+              {language === "zh-CN" ? "上一页" : "Prev"}
             </button>
             <button
               type="button"
@@ -285,7 +333,7 @@ export default function UserDevicesPage() {
                 opacity: hasNext ? 1 : 0.5,
               }}
             >
-              下一页
+              {language === "zh-CN" ? "下一页" : "Next"}
             </button>
           </div>
         </div>

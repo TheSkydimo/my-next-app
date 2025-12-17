@@ -2,10 +2,36 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { AppLanguage } from "../client-prefs";
+import { getInitialLanguage } from "../client-prefs";
+import { getUserMessages } from "../user-i18n";
 
 export default function Home() {
+  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const initialLang = getInitialLanguage();
+    setLanguage(initialLang);
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ language: AppLanguage }>;
+      if (custom.detail?.language) {
+        setLanguage(custom.detail.language);
+      }
+    };
+
+    window.addEventListener("app-language-changed", handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        "app-language-changed",
+        handler as EventListener
+      );
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -16,27 +42,32 @@ export default function Home() {
     }
   }, []);
 
+  const messages = getUserMessages(language);
+
   return (
     <div className="home-page">
       {displayName ? (
         <div className="home-card home-card--welcome">
-          <h1>欢迎，{displayName}！</h1>
+          <h1>{messages.home.welcomeTitle(displayName)}</h1>
           {userEmail && (
-            <p className="home-card__subtext">当前登录邮箱：{userEmail}</p>
+            <p className="home-card__subtext">
+              {messages.home.currentEmailPrefix}
+              {userEmail}
+            </p>
           )}
         </div>
       ) : (
         <div className="home-card home-card--guest">
-          <h1>欢迎来到Skydimo用户管理系统</h1>
+          <h1>{messages.home.guestTitle}</h1>
           <p className="home-card__subtext">
-            你还没有登录，请先登录或注册。
+            {messages.home.guestSubtitle}
           </p>
           <div className="home-card__actions">
             <Link href="/login" className="home-card__primary-link">
-              去登录
+              {messages.home.loginButton}
             </Link>
             <Link href="/register" className="home-card__secondary-link">
-              去注册
+              {messages.home.registerButton}
             </Link>
           </div>
         </div>
@@ -44,5 +75,4 @@ export default function Home() {
     </div>
   );
 }
-
 

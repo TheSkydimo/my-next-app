@@ -1,7 +1,92 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { applyTheme, getInitialTheme, type AppTheme } from "../client-prefs";
+import {
+  applyTheme,
+  getInitialLanguage,
+  getInitialTheme,
+  type AppLanguage,
+  type AppTheme,
+} from "../client-prefs";
+
+type Lang = "zh-CN" | "en";
+
+const TEXTS: Record<
+  Lang,
+  {
+    title: string;
+    usernamePlaceholder: string;
+    emailPlaceholder: string;
+    emailCodePlaceholder: string;
+    sendCodeButton: string;
+    sendingCodeButton: string;
+    passwordPlaceholder: string;
+    confirmPasswordPlaceholder: string;
+    captchaPlaceholder: string;
+    captchaTitle: string;
+    submitButton: string;
+    errorEmailRequired: string;
+    errorAllRequired: string;
+    errorPasswordMismatch: string;
+    errorCaptchaRequired: string;
+    errorCaptchaIncorrect: string;
+    errorSendCode: string;
+    successCodeSent: string;
+    errorRegisterFailed: string;
+    successRegister: string;
+    showPassword: string;
+    hidePassword: string;
+  }
+> = {
+  "zh-CN": {
+    title: "用户注册",
+    usernamePlaceholder: "用户名",
+    emailPlaceholder: "邮箱",
+    emailCodePlaceholder: "邮箱验证码",
+    sendCodeButton: "获取邮箱验证码",
+    sendingCodeButton: "发送中...",
+    passwordPlaceholder: "密码",
+    confirmPasswordPlaceholder: "确认密码",
+    captchaPlaceholder: "验证码",
+    captchaTitle: "点击更换验证码",
+    submitButton: "注册",
+    errorEmailRequired: "请先填写邮箱",
+    errorAllRequired: "请完整填写所有字段（包括邮箱验证码）",
+    errorPasswordMismatch: "两次输入的密码不一致",
+    errorCaptchaRequired: "请输入图形验证码",
+    errorCaptchaIncorrect: "图形验证码错误",
+    errorSendCode: "发送邮箱验证码失败",
+    successCodeSent: "验证码已发送到邮箱，请注意查收",
+    errorRegisterFailed: "注册失败",
+    successRegister: "注册成功，即将跳转到登录页…",
+    showPassword: "显示",
+    hidePassword: "隐藏",
+  },
+  en: {
+    title: "Sign up",
+    usernamePlaceholder: "Username",
+    emailPlaceholder: "Email",
+    emailCodePlaceholder: "Email code",
+    sendCodeButton: "Send email code",
+    sendingCodeButton: "Sending...",
+    passwordPlaceholder: "Password",
+    confirmPasswordPlaceholder: "Confirm password",
+    captchaPlaceholder: "Captcha",
+    captchaTitle: "Click to refresh captcha",
+    submitButton: "Register",
+    errorEmailRequired: "Please enter your email first",
+    errorAllRequired: "Please fill in all fields (including email code).",
+    errorPasswordMismatch: "The two passwords do not match",
+    errorCaptchaRequired: "Please enter the captcha",
+    errorCaptchaIncorrect: "Captcha is incorrect",
+    errorSendCode: "Failed to send email code",
+    successCodeSent: "Verification code has been sent to your email",
+    errorRegisterFailed: "Registration failed",
+    successRegister: "Registration successful. Redirecting to login…",
+    showPassword: "Show",
+    hidePassword: "Hide",
+  },
+};
 // 简单验证码生成（0-9, a-z, A-Z）
 function generateCaptcha(length = 5): string {
   const chars =
@@ -29,6 +114,9 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [theme, setTheme] = useState<AppTheme>("dark");
+  const [lang, setLang] = useState<Lang>("zh-CN");
+
+  const t = TEXTS[lang];
 
   // 初始生成验证码 & 同步全局主题
   useEffect(() => {
@@ -37,6 +125,10 @@ export default function RegisterPage() {
     const initialTheme = getInitialTheme();
     setTheme(initialTheme);
     applyTheme(initialTheme);
+
+    const initialLang: AppLanguage =
+      typeof window === "undefined" ? "zh-CN" : getInitialLanguage();
+    setLang(initialLang === "en-US" ? "en" : "zh-CN");
   }, []);
 
   const refreshCaptcha = () => {
@@ -49,7 +141,7 @@ export default function RegisterPage() {
     setCodeMsg("");
 
     if (!email) {
-      setError("请先填写邮箱");
+      setError(t.errorEmailRequired);
       return;
     }
 
@@ -63,14 +155,14 @@ export default function RegisterPage() {
 
       if (!res.ok) {
         const text = await res.text();
-        setError(text || "发送邮箱验证码失败");
+        setError(text || t.errorSendCode);
         return;
       }
 
-      setCodeMsg("验证码已发送到邮箱，请注意查收");
+      setCodeMsg(t.successCodeSent);
     } catch (error) {
       console.error(error);
-      setError("发送邮箱验证码失败");
+      setError(t.errorSendCode);
     } finally {
       setSendingCode(false);
     }
@@ -82,22 +174,22 @@ export default function RegisterPage() {
     setOk(false);
 
     if (!username || !email || !password || !confirmPassword || !emailCode) {
-      setError("请完整填写所有字段（包括邮箱验证码）");
+      setError(t.errorAllRequired);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("两次输入的密码不一致");
+      setError(t.errorPasswordMismatch);
       return;
     }
 
     if (!captchaInput) {
-      setError("请输入图形验证码");
+      setError(t.errorCaptchaRequired);
       return;
     }
 
     if (captchaInput.trim().toLowerCase() !== captcha.toLowerCase()) {
-      setError("图形验证码错误");
+      setError(t.errorCaptchaIncorrect);
       refreshCaptcha();
       return;
     }
@@ -110,7 +202,7 @@ export default function RegisterPage() {
 
     if (!res.ok) {
       const text = await res.text();
-      setError(text || "注册失败");
+      setError(text || t.errorRegisterFailed);
       refreshCaptcha();
       return;
     }
@@ -125,24 +217,24 @@ export default function RegisterPage() {
   return (
     <div className={`auth-page auth-page--${theme}`}>
       <div className="auth-card">
-        <h1>用户注册</h1>
+        <h1>{t.title}</h1>
 
         <form onSubmit={submit} className="auth-card__form">
           <input
-            placeholder="用户名"
+            placeholder={t.usernamePlaceholder}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
 
           <input
-            placeholder="邮箱"
+            placeholder={t.emailPlaceholder}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
           <div className="auth-card__field-row">
             <input
-              placeholder="邮箱验证码"
+              placeholder={t.emailCodePlaceholder}
               value={emailCode}
               onChange={(e) => setEmailCode(e.target.value)}
               className="auth-card__field-grow"
@@ -153,14 +245,14 @@ export default function RegisterPage() {
               disabled={sendingCode}
               className="auth-card__secondary-button"
             >
-              {sendingCode ? "发送中..." : "获取邮箱验证码"}
+              {sendingCode ? t.sendingCodeButton : t.sendCodeButton}
             </button>
           </div>
 
           <div className="auth-card__field-row">
             <input
               type={showPassword ? "text" : "password"}
-              placeholder="密码"
+              placeholder={t.passwordPlaceholder}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="auth-card__field-grow"
@@ -170,14 +262,14 @@ export default function RegisterPage() {
               onClick={() => setShowPassword((v) => !v)}
               className="auth-card__ghost-button"
             >
-              {showPassword ? "隐藏" : "显示"}
+              {showPassword ? t.hidePassword : t.showPassword}
             </button>
           </div>
 
           <div className="auth-card__field-row">
             <input
               type={showConfirmPassword ? "text" : "password"}
-              placeholder="确认密码"
+              placeholder={t.confirmPasswordPlaceholder}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="auth-card__field-grow"
@@ -187,13 +279,13 @@ export default function RegisterPage() {
               onClick={() => setShowConfirmPassword((v) => !v)}
               className="auth-card__ghost-button"
             >
-              {showConfirmPassword ? "隐藏" : "显示"}
+              {showConfirmPassword ? t.hidePassword : t.showPassword}
             </button>
           </div>
 
           <div className="auth-card__field-row">
             <input
-              placeholder="验证码"
+              placeholder={t.captchaPlaceholder}
               value={captchaInput}
               onChange={(e) => setCaptchaInput(e.target.value)}
               className="auth-card__field-grow"
@@ -201,21 +293,21 @@ export default function RegisterPage() {
             <div
               onClick={refreshCaptcha}
               className="auth-card__captcha"
-              title="点击更换验证码"
+              title={t.captchaTitle}
             >
               {captcha}
             </div>
           </div>
 
           <button type="submit" className="auth-card__submit-button">
-            注册
+            {t.submitButton}
           </button>
         </form>
 
         {error && <p className="auth-card__error">{error}</p>}
         {codeMsg && <p className="auth-card__success">{codeMsg}</p>}
         {ok && (
-          <p className="auth-card__success">注册成功，即将跳转到登录页…</p>
+          <p className="auth-card__success">{t.successRegister}</p>
         )}
       </div>
     </div>

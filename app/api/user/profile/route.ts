@@ -60,7 +60,7 @@ export async function GET(request: Request) {
 // 更新用户个人信息
 export async function POST(request: Request) {
   const body = (await request.json()) as {
-    email?: string; // 当前邮箱
+    email?: string;
     username?: string;
     oldPassword?: string;
     newPassword?: string;

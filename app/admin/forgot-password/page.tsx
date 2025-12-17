@@ -2,6 +2,90 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { AppLanguage } from "../../client-prefs";
+import { getInitialLanguage } from "../../client-prefs";
+
+type Lang = "zh-CN" | "en";
+
+const TEXTS: Record<
+  Lang,
+  {
+    title: string;
+    backToLoginPrefix: string;
+    backToLoginLink: string;
+    emailPlaceholder: string;
+    emailCodePlaceholder: string;
+    sendCodeButton: string;
+    sendingCodeButton: string;
+    passwordPlaceholder: string;
+    confirmPasswordPlaceholder: string;
+    captchaPlaceholder: string;
+    captchaTitle: string;
+    submitButton: string;
+    errorEmailRequired: string;
+    errorAllRequired: string;
+    errorPasswordMismatch: string;
+    errorCaptchaRequired: string;
+    errorCaptchaIncorrect: string;
+    errorSendCode: string;
+    successCodeSent: string;
+    errorResetFailed: string;
+    successReset: string;
+    showPassword: string;
+    hidePassword: string;
+  }
+> = {
+  "zh-CN": {
+    title: "管理员忘记密码",
+    backToLoginPrefix: "返回管理员登录：",
+    backToLoginLink: "管理员登录",
+    emailPlaceholder: "管理员邮箱",
+    emailCodePlaceholder: "邮箱验证码",
+    sendCodeButton: "获取邮箱验证码",
+    sendingCodeButton: "发送中...",
+    passwordPlaceholder: "新密码",
+    confirmPasswordPlaceholder: "确认新密码",
+    captchaPlaceholder: "验证码",
+    captchaTitle: "点击更换验证码",
+    submitButton: "重置管理员密码",
+    errorEmailRequired: "请先填写管理员邮箱",
+    errorAllRequired: "请完整填写所有字段（包括邮箱验证码）",
+    errorPasswordMismatch: "两次输入的密码不一致",
+    errorCaptchaRequired: "请输入图形验证码",
+    errorCaptchaIncorrect: "图形验证码错误",
+    errorSendCode: "发送邮箱验证码失败",
+    successCodeSent: "验证码已发送到管理员邮箱，请注意查收",
+    errorResetFailed: "重置管理员密码失败",
+    successReset: "密码重置成功，即将跳转到管理员登录页…",
+    showPassword: "显示",
+    hidePassword: "隐藏",
+  },
+  en: {
+    title: "Admin password reset",
+    backToLoginPrefix: "Back to admin login: ",
+    backToLoginLink: "Admin login",
+    emailPlaceholder: "Admin email",
+    emailCodePlaceholder: "Email code",
+    sendCodeButton: "Send email code",
+    sendingCodeButton: "Sending...",
+    passwordPlaceholder: "New password",
+    confirmPasswordPlaceholder: "Confirm new password",
+    captchaPlaceholder: "Captcha",
+    captchaTitle: "Click to refresh captcha",
+    submitButton: "Reset admin password",
+    errorEmailRequired: "Please enter the admin email first",
+    errorAllRequired: "Please fill in all fields (including email code).",
+    errorPasswordMismatch: "The two passwords do not match",
+    errorCaptchaRequired: "Please enter the captcha",
+    errorCaptchaIncorrect: "Captcha is incorrect",
+    errorSendCode: "Failed to send email code",
+    successCodeSent: "Verification code has been sent to the admin email",
+    errorResetFailed: "Failed to reset admin password",
+    successReset: "Password reset successfully. Redirecting to admin login…",
+    showPassword: "Show",
+    hidePassword: "Hide",
+  },
+};
 
 function generateCaptcha(length = 5): string {
   const chars =
@@ -27,9 +111,16 @@ export default function AdminForgotPasswordPage() {
   const [codeMsg, setCodeMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [lang, setLang] = useState<Lang>("zh-CN");
+
+  const t = TEXTS[lang];
 
   useEffect(() => {
     setCaptcha(generateCaptcha());
+
+    const initial: AppLanguage =
+      typeof window === "undefined" ? "zh-CN" : getInitialLanguage();
+    setLang(initial === "en-US" ? "en" : "zh-CN");
   }, []);
 
   const refreshCaptcha = () => {
@@ -42,7 +133,7 @@ export default function AdminForgotPasswordPage() {
     setCodeMsg("");
 
     if (!email) {
-      setError("请先填写管理员邮箱");
+      setError(t.errorEmailRequired);
       return;
     }
 
@@ -56,13 +147,13 @@ export default function AdminForgotPasswordPage() {
 
       if (!res.ok) {
         const text = await res.text();
-        setError(text || "发送邮箱验证码失败");
+        setError(text || t.errorSendCode);
         return;
       }
 
-      setCodeMsg("验证码已发送到管理员邮箱，请注意查收");
+      setCodeMsg(t.successCodeSent);
     } catch {
-      setError("发送邮箱验证码失败");
+      setError(t.errorSendCode);
     } finally {
       setSendingCode(false);
     }
@@ -74,22 +165,22 @@ export default function AdminForgotPasswordPage() {
     setOk(false);
 
     if (!email || !password || !confirmPassword || !emailCode) {
-      setError("请完整填写所有字段（包括邮箱验证码）");
+      setError(t.errorAllRequired);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("两次输入的密码不一致");
+      setError(t.errorPasswordMismatch);
       return;
     }
 
     if (!captchaInput) {
-      setError("请输入图形验证码");
+      setError(t.errorCaptchaRequired);
       return;
     }
 
     if (captchaInput.trim().toLowerCase() !== captcha.toLowerCase()) {
-      setError("图形验证码错误");
+      setError(t.errorCaptchaIncorrect);
       refreshCaptcha();
       return;
     }
@@ -102,7 +193,7 @@ export default function AdminForgotPasswordPage() {
 
     if (!res.ok) {
       const text = await res.text();
-      setError(text || "重置管理员密码失败");
+      setError(text || t.errorResetFailed);
       refreshCaptcha();
       return;
     }
@@ -116,19 +207,19 @@ export default function AdminForgotPasswordPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <h1>管理员忘记密码</h1>
+        <h1>{t.title}</h1>
 
         <form onSubmit={submit} className="auth-card__form">
           <input
             type="email"
-            placeholder="管理员邮箱"
+            placeholder={t.emailPlaceholder}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
           <div className="auth-card__field-row">
             <input
-              placeholder="邮箱验证码"
+              placeholder={t.emailCodePlaceholder}
               value={emailCode}
               onChange={(e) => setEmailCode(e.target.value)}
               className="auth-card__field-grow"
@@ -139,14 +230,14 @@ export default function AdminForgotPasswordPage() {
               disabled={sendingCode}
               className="auth-card__secondary-button"
             >
-              {sendingCode ? "发送中..." : "获取邮箱验证码"}
+              {sendingCode ? t.sendingCodeButton : t.sendCodeButton}
             </button>
           </div>
 
           <div className="auth-card__field-row">
             <input
               type={showPassword ? "text" : "password"}
-              placeholder="新密码"
+              placeholder={t.passwordPlaceholder}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="auth-card__field-grow"
@@ -156,14 +247,14 @@ export default function AdminForgotPasswordPage() {
               onClick={() => setShowPassword((v) => !v)}
               className="auth-card__ghost-button"
             >
-              {showPassword ? "隐藏" : "显示"}
+              {showPassword ? t.hidePassword : t.showPassword}
             </button>
           </div>
 
           <div className="auth-card__field-row">
             <input
               type={showConfirmPassword ? "text" : "password"}
-              placeholder="确认新密码"
+              placeholder={t.confirmPasswordPlaceholder}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="auth-card__field-grow"
@@ -173,13 +264,13 @@ export default function AdminForgotPasswordPage() {
               onClick={() => setShowConfirmPassword((v) => !v)}
               className="auth-card__ghost-button"
             >
-              {showConfirmPassword ? "隐藏" : "显示"}
+              {showConfirmPassword ? t.hidePassword : t.showPassword}
             </button>
           </div>
 
           <div className="auth-card__field-row">
             <input
-              placeholder="验证码"
+              placeholder={t.captchaPlaceholder}
               value={captchaInput}
               onChange={(e) => setCaptchaInput(e.target.value)}
               className="auth-card__field-grow"
@@ -187,26 +278,27 @@ export default function AdminForgotPasswordPage() {
             <div
               onClick={refreshCaptcha}
               className="auth-card__captcha"
-              title="点击更换验证码"
+              title={t.captchaTitle}
             >
               {captcha}
             </div>
           </div>
 
           <button type="submit" className="auth-card__submit-button">
-            重置管理员密码
+            {t.submitButton}
           </button>
         </form>
 
         <p className="auth-card__links">
-          返回管理员登录：<Link href="/admin/login">管理员登录</Link>
+          {t.backToLoginPrefix}
+          <Link href="/admin/login">{t.backToLoginLink}</Link>
         </p>
 
         {error && <p className="auth-card__error">{error}</p>}
         {codeMsg && <p className="auth-card__success">{codeMsg}</p>}
         {ok && (
           <p className="auth-card__success">
-            密码重置成功，即将跳转到管理员登录页…
+            {t.successReset}
           </p>
         )}
       </div>

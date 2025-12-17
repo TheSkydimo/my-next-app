@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { AppLanguage } from "../../client-prefs";
+import { getInitialLanguage } from "../../client-prefs";
+import { getUserMessages } from "../../user-i18n";
 
 type Profile = {
   username: string;
@@ -13,10 +16,14 @@ function PasswordField({
   value,
   onChange,
   placeholder,
+  showLabel,
+  hideLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
+  showLabel: string;
+  hideLabel: string;
 }) {
   const [visible, setVisible] = useState(false);
   return (
@@ -38,7 +45,7 @@ function PasswordField({
           color: "#111827",
         }}
       >
-        {visible ? "隐藏" : "显示"}
+        {visible ? hideLabel : showLabel}
       </button>
     </div>
   );
@@ -46,6 +53,7 @@ function PasswordField({
 
 export default function UserProfilePage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -72,6 +80,30 @@ export default function UserProfilePage() {
   const [emailConfirmNewPassword, setEmailConfirmNewPassword] = useState("");
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const initialLang = getInitialLanguage();
+    setLanguage(initialLang);
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ language: AppLanguage }>;
+      if (custom.detail?.language) {
+        setLanguage(custom.detail.language);
+      }
+    };
+
+    window.addEventListener("app-language-changed", handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        "app-language-changed",
+        handler as EventListener
+      );
+    };
+  }, []);
+
+  const messages = getUserMessages(language);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       const email = window.localStorage.getItem("loggedInUserEmail");
       if (email) {
@@ -90,7 +122,7 @@ export default function UserProfilePage() {
       );
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "获取个人信息失败");
+        throw new Error(text || messages.profile.errorProfileLoadFailed);
       }
       const data = (await res.json()) as {
         username: string;
@@ -105,7 +137,9 @@ export default function UserProfilePage() {
       setUsernameInput(data.username);
       setAvatarUrlInput(data.avatarUrl ?? "");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "获取个人信息失败");
+      setError(
+        e instanceof Error ? e.message : messages.profile.errorProfileLoadFailed
+      );
     } finally {
       setLoading(false);
     }
@@ -132,9 +166,9 @@ export default function UserProfilePage() {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "更新用户名失败");
+        throw new Error(text || messages.profile.errorUsernameUpdateFailed);
       }
-      setOkMsg("用户名已更新");
+      setOkMsg(messages.profile.successUsernameUpdated);
       setProfile((p) =>
         p
           ? { ...p, username: usernameInput }
@@ -145,7 +179,11 @@ export default function UserProfilePage() {
         window.localStorage.setItem("loggedInUserName", usernameInput);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "更新用户名失败");
+      setError(
+        e instanceof Error
+          ? e.message
+          : messages.profile.errorUsernameUpdateFailed
+      );
     }
   };
 
@@ -164,9 +202,9 @@ export default function UserProfilePage() {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "更新头像失败");
+        throw new Error(text || messages.profile.errorAvatarUpdateFailed);
       }
-      setOkMsg("头像已更新");
+      setOkMsg(messages.profile.successAvatarUpdated);
       setProfile((p) =>
         p
           ? { ...p, avatarUrl: avatarUrlInput.trim() || null }
@@ -191,7 +229,11 @@ export default function UserProfilePage() {
         );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "更新头像失败");
+      setError(
+        e instanceof Error
+          ? e.message
+          : messages.profile.errorAvatarUpdateFailed
+      );
     }
   };
 
@@ -201,12 +243,12 @@ export default function UserProfilePage() {
     setOkMsg("");
 
     if (!oldPassword || !newPassword || !confirmNewPassword) {
-      setError("请完整填写旧密码和新密码");
+      setError(messages.profile.errorPasswordFieldsRequired);
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      setError("两次输入的新密码不一致");
+      setError(messages.profile.errorPasswordNotMatch);
       return;
     }
 
@@ -222,20 +264,24 @@ export default function UserProfilePage() {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "修改密码失败");
+        throw new Error(text || messages.profile.errorPasswordUpdateFailed);
       }
-      setOkMsg("密码已修改");
+      setOkMsg(messages.profile.successPasswordUpdated);
       setOldPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "修改密码失败");
+      setError(
+        e instanceof Error
+          ? e.message
+          : messages.profile.errorPasswordUpdateFailed
+      );
     }
   };
 
   const sendChangeEmailCode = async () => {
     if (!newEmail) {
-      setError("请先填写新邮箱");
+      setError(messages.profile.errorNewEmailRequired);
       return;
     }
     setError("");
@@ -252,11 +298,15 @@ export default function UserProfilePage() {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "发送验证码失败");
+        throw new Error(text || messages.profile.errorSendCodeFailed);
       }
-      setOkMsg("验证码已发送到新邮箱，请注意查收");
+      setOkMsg(messages.profile.successCodeSent);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "发送验证码失败");
+      setError(
+        e instanceof Error
+          ? e.message
+          : messages.profile.errorSendCodeFailed
+      );
     } finally {
       setSendingCode(false);
     }
@@ -265,17 +315,17 @@ export default function UserProfilePage() {
   const updateEmail = async () => {
     if (!userEmail) return;
     if (!newEmail || !emailCode) {
-      setError("请填写新邮箱和邮箱验证码");
+      setError(messages.profile.errorUpdateEmailFieldsRequired);
       return;
     }
 
     if (!emailOldPassword || !emailNewPassword || !emailConfirmNewPassword) {
-      setError("请在弹出的对话框中填写旧密码和新密码");
+      setError(messages.profile.errorUpdateEmailPasswordFieldsRequired);
       return;
     }
 
     if (emailNewPassword !== emailConfirmNewPassword) {
-      setError("两次输入的新密码不一致");
+      setError(messages.profile.errorUpdateEmailPasswordNotMatch);
       return;
     }
 
@@ -295,9 +345,9 @@ export default function UserProfilePage() {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "修改邮箱失败");
+        throw new Error(text || messages.profile.errorUpdateEmailFailed);
       }
-      setOkMsg("邮箱已修改，请使用新邮箱登录");
+      setOkMsg(messages.profile.successEmailUpdated);
       setEmailOldPassword("");
       setEmailNewPassword("");
       setEmailConfirmNewPassword("");
@@ -313,22 +363,26 @@ export default function UserProfilePage() {
         }, 1200);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "修改邮箱失败");
+      setError(
+        e instanceof Error
+          ? e.message
+          : messages.profile.errorUpdateEmailFailed
+      );
     }
   };
 
   if (!userEmail) {
     return (
       <div style={{ maxWidth: 640, margin: "10px auto" }}>
-        <p>未检测到用户登录，请先登录。</p>
-        <Link href="/login">去登录</Link>
+        <p>{messages.common.loginRequired}</p>
+        <Link href="/login">{messages.common.goLogin}</Link>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: 640, margin: "10px auto" }}>
-      {loading && <p>加载中...</p>}
+      {loading && <p>{messages.common.loading}</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
       {okMsg && <p style={{ color: "green" }}>{okMsg}</p>}
 
@@ -369,11 +423,11 @@ export default function UserProfilePage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={profile.avatarUrl}
-                      alt="用户头像"
+                      alt="avatar"
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                   ) : (
-                    <span>无头像</span>
+                    <span>{messages.profile.avatarNone}</span>
                   )}
                 </div>
                 {editing && (
@@ -387,12 +441,13 @@ export default function UserProfilePage() {
                       setShowAvatarDialog(true);
                     }}
                   >
-                    {profile.avatarUrl ? "更换头像" : "设置头像"}
+                    {profile.avatarUrl ? messages.profile.changeAvatar : messages.profile.setAvatar}
                   </button>
                 )}
               </div>
               <label style={{ fontSize: 14 }}>
-                当前邮箱：<strong>{profile.email}</strong>
+                {messages.profile.currentEmail}
+                <strong>{profile.email}</strong>
               </label>
               <label
                 style={{ fontSize: 14, cursor: editing ? "pointer" : "default" }}
@@ -408,7 +463,8 @@ export default function UserProfilePage() {
                     : undefined
                 }
               >
-                用户名：<strong>{profile.username}</strong>
+                {messages.profile.username}
+                <strong>{profile.username}</strong>
               </label>
             </div>
           </section>
@@ -416,9 +472,11 @@ export default function UserProfilePage() {
           {showAvatarDialog && (
             <div className="dialog-overlay">
               <div className="dialog-card">
-                <h3 className="dialog-card__title">设置头像</h3>
+                <h3 className="dialog-card__title">
+                  {messages.profile.avatarDialogTitle}
+                </h3>
                 <p className="dialog-card__desc dialog-card__desc--muted">
-                  你可以直接上传本地图片，或手动输入图片 URL。留空后保存则清除头像。
+                  {messages.profile.avatarDialogDesc}
                 </p>
                 <div className="dialog-card__body">
                   <input
@@ -429,7 +487,7 @@ export default function UserProfilePage() {
                       if (!file) return;
 
                       if (file.size > 300 * 1024) {
-                        setError("头像图片大小请控制在 300KB 以内");
+                        setError(messages.profile.errorAvatarTooLarge);
                         return;
                       }
 
@@ -444,7 +502,7 @@ export default function UserProfilePage() {
                     }}
                   />
                   <input
-                    placeholder="或输入图片 URL，例如：https://example.com/avatar.png"
+                    placeholder="https://example.com/avatar.png"
                     value={avatarUrlInput}
                     onChange={(e) => setAvatarUrlInput(e.target.value)}
                   />
@@ -458,7 +516,7 @@ export default function UserProfilePage() {
                     }}
                     className="dialog-card__cancel"
                   >
-                    取消
+                    {messages.profile.avatarDialogCancel}
                   </button>
                   <button
                     type="button"
@@ -468,7 +526,7 @@ export default function UserProfilePage() {
                     }}
                     className="dialog-card__primary"
                   >
-                    保存
+                    {messages.profile.avatarDialogSave}
                   </button>
                 </div>
               </div>
@@ -478,10 +536,12 @@ export default function UserProfilePage() {
           {showUsernameDialog && (
             <div className="dialog-overlay">
               <div className="dialog-card">
-                <h3 className="dialog-card__title">修改用户名</h3>
+                <h3 className="dialog-card__title">
+                  {messages.profile.usernameDialogTitle}
+                </h3>
                 <div className="dialog-card__body">
                   <input
-                    placeholder="新用户名"
+                    placeholder={messages.profile.username}
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
                   />
@@ -495,7 +555,7 @@ export default function UserProfilePage() {
                     }}
                     className="dialog-card__cancel"
                   >
-                    取消
+                    {messages.profile.usernameDialogCancel}
                   </button>
                   <button
                     type="button"
@@ -505,7 +565,7 @@ export default function UserProfilePage() {
                     }}
                     className="dialog-card__primary"
                   >
-                    保存
+                    {messages.profile.usernameDialogSave}
                   </button>
                 </div>
               </div>
@@ -523,7 +583,9 @@ export default function UserProfilePage() {
                   gap: 8,
                 }}
               >
-                <h2 style={{ fontSize: 16 }}>修改密码</h2>
+                <h2 style={{ fontSize: 16 }}>
+                  {messages.profile.passwordSectionTitle}
+                </h2>
                 <button
                   type="button"
                   className="user-profile-button user-profile-button--tertiary user-profile-inline-link"
@@ -533,7 +595,7 @@ export default function UserProfilePage() {
                     setShowPasswordDialog(true);
                   }}
                 >
-                  修改
+                  {messages.profile.passwordSectionEdit}
                 </button>
               </div>
             </section>
@@ -542,22 +604,30 @@ export default function UserProfilePage() {
           {showPasswordDialog && (
             <div className="dialog-overlay">
               <div className="dialog-card">
-                <h3 className="dialog-card__title">修改密码</h3>
+                <h3 className="dialog-card__title">
+                  {messages.profile.passwordDialogTitle}
+                </h3>
                 <div className="dialog-card__body">
                   <PasswordField
-                    placeholder="旧密码"
+                    placeholder={messages.profile.passwordOldPlaceholder}
                     value={oldPassword}
                     onChange={setOldPassword}
+                    showLabel={messages.profile.showPassword}
+                    hideLabel={messages.profile.hidePassword}
                   />
                   <PasswordField
-                    placeholder="新密码"
+                    placeholder={messages.profile.passwordNewPlaceholder}
                     value={newPassword}
                     onChange={setNewPassword}
+                    showLabel={messages.profile.showPassword}
+                    hideLabel={messages.profile.hidePassword}
                   />
                   <PasswordField
-                    placeholder="确认新密码"
+                    placeholder={messages.profile.passwordConfirmPlaceholder}
                     value={confirmNewPassword}
                     onChange={setConfirmNewPassword}
+                    showLabel={messages.profile.showPassword}
+                    hideLabel={messages.profile.hidePassword}
                   />
                 </div>
                 <div className="dialog-card__actions">
@@ -571,7 +641,7 @@ export default function UserProfilePage() {
                     }}
                     className="dialog-card__cancel"
                   >
-                    取消
+                    {messages.profile.passwordDialogCancel}
                   </button>
                   <button
                     type="button"
@@ -581,7 +651,7 @@ export default function UserProfilePage() {
                     }}
                     className="dialog-card__primary"
                   >
-                    确认修改
+                    {messages.profile.passwordDialogConfirm}
                   </button>
                 </div>
               </div>
@@ -599,7 +669,9 @@ export default function UserProfilePage() {
                   gap: 8,
                 }}
               >
-                <h2 style={{ fontSize: 16 }}>修改邮箱</h2>
+                <h2 style={{ fontSize: 16 }}>
+                  {messages.profile.emailSectionTitle}
+                </h2>
                 <button
                   type="button"
                   className="user-profile-button user-profile-button--tertiary user-profile-inline-link"
@@ -609,7 +681,7 @@ export default function UserProfilePage() {
                     setShowEmailDialog(true);
                   }}
                 >
-                  修改
+                  {messages.profile.emailSectionEdit}
                 </button>
               </div>
             </section>
@@ -630,7 +702,9 @@ export default function UserProfilePage() {
                 className="user-profile-button user-profile-button--primary user-profile-button--compact"
                 onClick={() => setEditing((prev) => !prev)}
               >
-                {editing ? "完成信息修改" : "更新信息"}
+                {editing
+                  ? messages.profile.finishUpdateInfo
+                  : messages.profile.updateInfo}
               </button>
             </div>
           </section>
@@ -638,20 +712,22 @@ export default function UserProfilePage() {
           {showEmailDialog && (
             <div className="dialog-overlay">
               <div className="dialog-card">
-                <h3 className="dialog-card__title">确认修改邮箱</h3>
+                <h3 className="dialog-card__title">
+                  {messages.profile.emailDialogTitle}
+                </h3>
                 <p className="dialog-card__desc dialog-card__desc--warn">
-                  修改邮箱时会同时更新登录密码，请先验证新邮箱并设置新密码。
+                  {messages.profile.emailDialogDesc}
                 </p>
                 <div className="dialog-card__body">
                   <input
                     type="email"
-                    placeholder="新邮箱"
+                    placeholder={messages.profile.emailNewPlaceholder}
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <input
-                      placeholder="邮箱验证码"
+                      placeholder={messages.profile.emailCodePlaceholder}
                       value={emailCode}
                       onChange={(e) => setEmailCode(e.target.value)}
                       style={{ flex: 1 }}
@@ -661,23 +737,33 @@ export default function UserProfilePage() {
                       onClick={sendChangeEmailCode}
                       disabled={sendingCode}
                     >
-                      {sendingCode ? "发送中..." : "获取验证码"}
+                      {sendingCode
+                        ? messages.profile.emailSendingCode
+                        : messages.profile.emailSendCode}
                     </button>
                   </div>
                   <PasswordField
-                    placeholder="旧密码"
+                    placeholder={messages.profile.emailOldPasswordPlaceholder}
                     value={emailOldPassword}
                     onChange={setEmailOldPassword}
+                    showLabel={messages.profile.showPassword}
+                    hideLabel={messages.profile.hidePassword}
                   />
                   <PasswordField
-                    placeholder="新密码"
+                    placeholder={messages.profile.emailNewPasswordPlaceholder}
                     value={emailNewPassword}
                     onChange={setEmailNewPassword}
+                    showLabel={messages.profile.showPassword}
+                    hideLabel={messages.profile.hidePassword}
                   />
                   <PasswordField
-                    placeholder="确认新密码"
+                    placeholder={
+                      messages.profile.emailConfirmNewPasswordPlaceholder
+                    }
                     value={emailConfirmNewPassword}
                     onChange={setEmailConfirmNewPassword}
+                    showLabel={messages.profile.showPassword}
+                    hideLabel={messages.profile.hidePassword}
                   />
                 </div>
                 <div className="dialog-card__actions">
@@ -693,7 +779,7 @@ export default function UserProfilePage() {
                     }}
                     className="dialog-card__cancel"
                   >
-                    取消
+                    {messages.profile.emailDialogCancel}
                   </button>
                   <button
                     type="button"
@@ -703,7 +789,7 @@ export default function UserProfilePage() {
                     }}
                     className="dialog-card__primary"
                   >
-                    确认修改
+                    {messages.profile.emailDialogConfirm}
                   </button>
                 </div>
               </div>

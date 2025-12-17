@@ -12,6 +12,7 @@ import {
   type AppLanguage,
   type AppTheme,
 } from "../client-prefs";
+import { getUserMessages } from "../user-i18n";
 
 export default function UserLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -22,6 +23,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [searchValue, setSearchValue] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const messages = getUserMessages(language);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -167,7 +169,9 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     if (matched) {
       window.location.href = matched.href;
     } else {
-      window.alert("未找到相关功能，请尝试：首页 / 信息 / 设备");
+      window.alert(
+        `${messages.layout.searchNotFound}${messages.layout.searchNotFoundHint}`
+      );
     }
   };
 
@@ -219,7 +223,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
                 isActive("/") ? "user-layout__nav-link--active" : ""
               }`}
             >
-              首页
+              {messages.layout.navHome}
             </Link>
             <Link
               href="/profile"
@@ -227,7 +231,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
                 isActive("/profile") ? "user-layout__nav-link--active" : ""
               }`}
             >
-              信息管理
+              {messages.layout.navProfile}
             </Link>
             <Link
               href="/devices"
@@ -235,7 +239,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
                 isActive("/devices") ? "user-layout__nav-link--active" : ""
               }`}
             >
-              设备信息管理
+              {messages.layout.navDevices}
             </Link>
           </nav>
         </aside>
@@ -246,14 +250,16 @@ export default function UserLayout({ children }: { children: ReactNode }) {
               <div className="user-topbar">
                 <div className="topbar-brand">
                   <div className="topbar-brand__mark" />
-                  <span className="topbar-brand__text">Skydimo</span>
+                  <span className="topbar-brand__text">
+                    {messages.layout.brand}
+                  </span>
                 </div>
                 <div className="user-topbar__search">
                   <span className="user-topbar__search-icon">🔍</span>
                   <input
                     className="user-topbar__search-input"
                     ref={searchInputRef}
-                    placeholder="搜索功能 / Ctrl + K"
+                    placeholder={messages.layout.searchPlaceholder}
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     onKeyDown={(e) => {
@@ -291,7 +297,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
                     className="user-topbar__icon-btn"
                     onClick={logout}
                   >
-                    退出
+                    {messages.layout.logout}
                   </button>
                 </div>
               </div>

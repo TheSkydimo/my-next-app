@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import type { AppLanguage } from "../../client-prefs";
+import { getInitialLanguage } from "../../client-prefs";
+import { getAdminMessages } from "../../admin-i18n";
 
 type UserItem = {
   id: number;
@@ -21,6 +24,7 @@ type Pagination = {
 };
 
 export default function AdminUsersPage() {
+  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +33,30 @@ export default function AdminUsersPage() {
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const initialLang = getInitialLanguage();
+    setLanguage(initialLang);
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ language: AppLanguage }>;
+      if (custom.detail?.language) {
+        setLanguage(custom.detail.language);
+      }
+    };
+
+    window.addEventListener("app-language-changed", handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        "app-language-changed",
+        handler as EventListener
+      );
+    };
+  }, []);
+
+  const messages = getAdminMessages(language);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -62,7 +90,7 @@ export default function AdminUsersPage() {
         const res = await fetch(`/api/admin/users?${params.toString()}`);
         if (!res.ok) {
           const text = await res.text();
-          throw new Error(text || "获取用户列表失败");
+          throw new Error(text || messages.users.fetchFailed);
         }
         const data = (await res.json()) as {
           users: UserItem[];
@@ -72,7 +100,9 @@ export default function AdminUsersPage() {
         setPagination(data.pagination);
         setPage(data.pagination.page);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "获取用户列表失败");
+        setError(
+          e instanceof Error ? e.message : messages.users.fetchFailed
+        );
       } finally {
         setLoading(false);
       }
@@ -91,7 +121,9 @@ export default function AdminUsersPage() {
     setError("");
 
     if (action === "remove") {
-      const ok = window.confirm(`确定要删除用户「${user.username}」吗？`);
+      const ok = window.confirm(
+        messages.users.deleteConfirm(user.username)
+      );
       if (!ok) return;
     }
 
@@ -108,12 +140,14 @@ export default function AdminUsersPage() {
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "操作失败");
+        throw new Error(text || messages.users.actionFailed);
       }
 
       await fetchUsers({ q: keyword });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "操作失败");
+      setError(
+        e instanceof Error ? e.message : messages.users.actionFailed
+      );
     }
   };
 
@@ -125,7 +159,7 @@ export default function AdminUsersPage() {
       ? user.vipExpiresAt.slice(0, 10)
       : "";
     const input = window.prompt(
-      "请输入会员到期日期（格式：YYYY-MM-DD），留空表示取消会员：",
+      messages.users.setVipPrompt(currentDateText),
       currentDateText
     );
     if (input === null) return;
@@ -151,21 +185,23 @@ export default function AdminUsersPage() {
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "设置会员失败");
+        throw new Error(text || messages.users.setVipFailed);
       }
 
       await fetchUsers({ q: keyword });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "设置会员失败");
+      setError(
+        e instanceof Error ? e.message : messages.users.setVipFailed
+      );
     }
   };
 
   if (!adminEmail) {
     return (
       <div style={{ maxWidth: 720, margin: "10px auto" }}>
-        <h1>普通用户管理</h1>
-        <p>未检测到管理员登录，请先登录管理员后台。</p>
-        <Link href="/admin/login">去管理员登录</Link>
+        <h1>{messages.users.title}</h1>
+        <p>{messages.common.adminLoginRequired}</p>
+        <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
       </div>
     );
   }
@@ -183,12 +219,13 @@ export default function AdminUsersPage() {
         }}
       >
         <div>
-          <h1>普通用户管理</h1>
+          <h1>{messages.users.title}</h1>
           <p style={{ fontSize: 14, color: "#6b7280" }}>
-            当前管理员：{adminEmail}
+            {messages.users.adminLabelPrefix}
+            {adminEmail}
           </p>
         </div>
-        <Link href="/admin">返回管理员首页</Link>
+        <Link href="/admin">{messages.users.backToHome}</Link>
       </div>
 
       <div
@@ -201,7 +238,7 @@ export default function AdminUsersPage() {
         }}
       >
         <input
-          placeholder="按用户名或邮箱搜索"
+          placeholder={messages.users.searchPlaceholder}
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           style={{ flex: 1 }}
@@ -210,7 +247,7 @@ export default function AdminUsersPage() {
           onClick={() => fetchUsers({ q: keyword, page: 1 })}
           disabled={loading}
         >
-          搜索
+          {messages.users.searchButton}
         </button>
         <button
           onClick={() => {
@@ -219,16 +256,16 @@ export default function AdminUsersPage() {
           }}
           disabled={loading}
         >
-          重置
+          {messages.users.resetButton}
         </button>
       </div>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
 
       {loading ? (
-        <p>加载中...</p>
+        <p>{messages.common.loading}</p>
       ) : users.length === 0 ? (
-        <p>暂无用户。</p>
+        <p>{messages.users.emptyText}</p>
       ) : (
         <table
           style={{
@@ -240,28 +277,28 @@ export default function AdminUsersPage() {
           <thead>
             <tr>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                序号
+                {messages.users.tableIndex}
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                用户名
+                {messages.users.tableUsername}
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                邮箱
+                {messages.users.tableEmail}
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                角色
+                {messages.users.tableRole}
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                会员状态
+                {messages.users.tableVipStatus}
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                会员到期时间
+                {messages.users.tableVipExpiresAt}
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                注册时间
+                {messages.users.tableCreatedAt}
               </th>
               <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                操作
+                {messages.users.tableActions}
               </th>
             </tr>
           </thead>
@@ -302,7 +339,9 @@ export default function AdminUsersPage() {
                     textAlign: "center",
                   }}
                 >
-                  {u.isAdmin ? "管理员" : "普通用户"}
+                  {u.isAdmin
+                    ? messages.users.roleAdmin
+                    : messages.users.roleUser}
                 </td>
                 <td
                   style={{
@@ -312,7 +351,7 @@ export default function AdminUsersPage() {
                     color: u.isVip ? "#16a34a" : "#6b7280",
                   }}
                 >
-                  {u.isVip ? "会员中" : "非会员"}
+                  {u.isVip ? messages.users.vipOn : messages.users.vipOff}
                 </td>
                 <td
                   style={{
@@ -354,7 +393,7 @@ export default function AdminUsersPage() {
                       padding: "4px 8px",
                     }}
                   >
-                    设置会员
+                    {messages.users.btnSetVip}
                   </button>
                   {!u.isAdmin && isSuperAdmin && (
                     <button
@@ -366,7 +405,7 @@ export default function AdminUsersPage() {
                         padding: "4px 8px",
                       }}
                     >
-                      设为管理员
+                      {messages.users.btnSetAdmin}
                     </button>
                   )}
                   {u.email !== adminEmail && !u.isVip && (
@@ -379,7 +418,7 @@ export default function AdminUsersPage() {
                         padding: "4px 8px",
                       }}
                     >
-                      删除
+                      {messages.users.btnDelete}
                     </button>
                   )}
                 </td>
@@ -406,10 +445,14 @@ export default function AdminUsersPage() {
             }
             disabled={page <= 1 || loading}
           >
-            上一页
+            {messages.users.pagerPrev}
           </button>
           <span>
-            第 {page} / {pagination.totalPages} 页（共 {pagination.total} 个用户）
+            {messages.users.pagerText(
+              page,
+              pagination.totalPages,
+              pagination.total
+            )}
           </span>
           <button
             onClick={() =>
@@ -420,7 +463,7 @@ export default function AdminUsersPage() {
             }
             disabled={page >= pagination.totalPages || loading}
           >
-            下一页
+            {messages.users.pagerNext}
           </button>
         </div>
       )}

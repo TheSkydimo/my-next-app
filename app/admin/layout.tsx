@@ -12,6 +12,7 @@ import {
   type AppLanguage,
   type AppTheme,
 } from "../client-prefs";
+import { getAdminMessages } from "../admin-i18n";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -24,6 +25,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [searchValue, setSearchValue] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const messages = getAdminMessages(language);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -134,10 +136,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <h1>管理后台</h1>
-          <p>未检测到管理员登录，请先登录。</p>
+          <h1>{messages.layout.unauthTitle}</h1>
+          <p>{messages.layout.unauthDesc}</p>
           <p style={{ marginTop: 12 }}>
-            <Link href="/admin/login">去登录</Link>
+            <Link href="/admin/login">{messages.layout.unauthLoginLink}</Link>
           </p>
         </div>
       </div>
@@ -149,9 +151,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isSuperAdmin = adminRole === "super_admin";
   const roleLabel =
     adminRole === "super_admin"
-      ? "超级管理员"
+      ? messages.layout.roleSuperAdmin
       : adminRole === "admin"
-      ? "管理员"
+      ? messages.layout.roleAdmin
       : null;
 
   const toggleTheme = () => {
@@ -194,7 +196,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (matched) {
       window.location.href = matched.href;
     } else {
-      window.alert("未找到相关功能，请尝试：用户 / 管理员 / 信息 / 首页");
+      window.alert(
+        `${messages.layout.searchNotFound}${messages.layout.searchNotFoundHint}`
+      );
     }
   };
 
@@ -259,7 +263,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 isActive("/admin") ? "admin-layout__nav-link--active" : ""
               }`}
             >
-              首页
+              {messages.layout.navHome}
             </Link>
             <Link
               href="/admin/profile"
@@ -269,7 +273,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   : ""
               }`}
             >
-              信息管理
+              {messages.layout.navProfile}
             </Link>
             {isSuperAdmin && (
               <Link
@@ -280,7 +284,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     : ""
                 }`}
               >
-                管理员管理
+                {messages.layout.navAdmins}
               </Link>
             )}
             <Link
@@ -291,7 +295,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   : ""
               }`}
             >
-              用户管理
+              {messages.layout.navUsers}
             </Link>
           </nav>
         </aside>
@@ -303,13 +307,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <div className="admin-topbar">
                 <div className="topbar-brand">
                   <div className="topbar-brand__mark" />
-                  <span className="topbar-brand__text">Skydimo Admin</span>
+                  <span className="topbar-brand__text">
+                    {messages.layout.brand}
+                  </span>
                 </div>
                 <div className="admin-topbar__search">
                   <span className="admin-topbar__search-icon">🔍</span>
                   <input
                     className="admin-topbar__search-input"
-                    placeholder="搜索功能 / Ctrl + K"
+                    placeholder={messages.layout.searchPlaceholder}
                     ref={searchInputRef}
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
@@ -377,7 +383,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       <div className="admin-topbar__user-menu">
                         <div className="admin-topbar__user-meta">
                           <div className="admin-topbar__user-name">
-                            {displayName || "管理员"}
+                            {displayName || messages.layout.userMenuNameFallback}
                           </div>
                           {roleLabel && (
                             <div className="admin-topbar__user-role">
@@ -393,7 +399,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                             setUserMenuOpen(false);
                           }}
                         >
-                          个人中心
+                          {messages.layout.userMenuProfile}
                         </button>
                         <button
                           type="button"
@@ -403,7 +409,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                             logout();
                           }}
                         >
-                          退出登录
+                          {messages.layout.userMenuLogout}
                         </button>
                       </div>
                     )}
