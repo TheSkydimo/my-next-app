@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { applyTheme, getInitialTheme, type AppTheme } from "../../client-prefs";
 import Link from "next/link";
 
 export default function AdminLoginPage() {
@@ -8,6 +9,13 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [theme, setTheme] = useState<AppTheme>("dark");
+
+  useEffect(() => {
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +54,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="auth-page">
+    <div className={`auth-page auth-page--${theme}`}>
       <div className="auth-card">
         <h1>管理员登录</h1>
 
@@ -69,7 +77,7 @@ export default function AdminLoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="auth-card__ghost-button"
+              className="auth-card__ghost-button auth-card__ghost-button--link"
             >
               {showPassword ? "隐藏" : "显示"}
             </button>

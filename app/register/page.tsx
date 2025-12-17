@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+import { applyTheme, getInitialTheme, type AppTheme } from "../client-prefs";
 // 简单验证码生成（0-9, a-z, A-Z）
 function generateCaptcha(length = 5): string {
   const chars =
@@ -28,10 +28,15 @@ export default function RegisterPage() {
   const [codeMsg, setCodeMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [theme, setTheme] = useState<AppTheme>("dark");
 
-  // 初始生成验证码
+  // 初始生成验证码 & 同步全局主题
   useEffect(() => {
     setCaptcha(generateCaptcha());
+
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
   }, []);
 
   const refreshCaptcha = () => {
@@ -118,7 +123,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="auth-page">
+    <div className={`auth-page auth-page--${theme}`}>
       <div className="auth-card">
         <h1>用户注册</h1>
 

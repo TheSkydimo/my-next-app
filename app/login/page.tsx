@@ -3,8 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  applyLanguage,
+  applyTheme,
+  getInitialLanguage,
+  getInitialTheme,
+  type AppLanguage,
+  type AppTheme,
+} from "../client-prefs";
 
-type ThemeMode = "dark" | "light";
 type PrimaryColorKey = "blue" | "purple" | "magenta" | "gold" | "green" | "gray";
 type AlignMode = "left" | "center" | "right";
 type Lang = "zh-CN" | "en";
@@ -97,7 +104,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [theme, setTheme] = useState<ThemeMode>("dark");
+  const [theme, setTheme] = useState<AppTheme>("dark");
   const [primary, setPrimary] = useState<PrimaryColorKey>("green");
   const [align, setAlign] = useState<AlignMode>("center");
   const [lang, setLang] = useState<Lang>("zh-CN");
@@ -110,10 +117,14 @@ export default function LoginPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const storedTheme = window.localStorage.getItem("authTheme");
-    if (storedTheme === "light" || storedTheme === "dark") {
-      setTheme(storedTheme);
-    }
+    // 统一使用全局主题 / 语言首选项（与用户端 / 管理端保持一致）
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
+
+    const initialAppLang = getInitialLanguage();
+    const initialLang: Lang = initialAppLang === "en-US" ? "en" : "zh-CN";
+    setLang(initialLang);
 
     const storedPrimary = window.localStorage.getItem("authPrimary") as PrimaryColorKey | null;
     if (storedPrimary && PRIMARY_COLORS.some((c) => c.key === storedPrimary)) {
@@ -124,19 +135,12 @@ export default function LoginPage() {
     if (storedAlign === "left" || storedAlign === "center" || storedAlign === "right") {
       setAlign(storedAlign);
     }
-
-    const storedLang = window.localStorage.getItem("authLang") as Lang | null;
-    if (storedLang === "zh-CN" || storedLang === "en") {
-      setLang(storedLang);
-    }
   }, []);
 
   const toggleTheme = () => {
     setTheme((prev) => {
-      const next: ThemeMode = prev === "dark" ? "light" : "dark";
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("authTheme", next);
-      }
+      const next: AppTheme = prev === "dark" ? "light" : "dark";
+      applyTheme(next);
       return next;
     });
   };
@@ -160,9 +164,10 @@ export default function LoginPage() {
   const changeLang = (value: Lang) => {
     setLang(value);
     setLangMenuOpen(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("authLang", value);
-    }
+
+    // 将登录页语言切换同步到全局 App 语言（用于后续页面）
+    const appLang: AppLanguage = value === "en" ? "en-US" : "zh-CN";
+    applyLanguage(appLang);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -331,7 +336,7 @@ export default function LoginPage() {
         </div>
         <section className="auth-page__visual">
           <div className="auth-page__visual-inner">
-            <div className="auth-page__badge">{t.heroBadge}</div>
+            {/* 去掉顶部徽标文案，只保留主标题和副标题 */}
             <h1 className="auth-page__title">
               {t.heroTitlePrefix}
               <span className="auth-page__title-highlight">{t.heroTitleHighlight}</span>
@@ -352,13 +357,6 @@ export default function LoginPage() {
                   priority
                 />
               </div>
-            </div>
-
-            <div className="auth-page__tips">
-              <span className="auth-page__tips-dot" />
-              <span className="auth-page__tips-text">
-                {t.heroTips}
-              </span>
             </div>
           </div>
         </section>
