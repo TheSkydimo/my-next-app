@@ -13,8 +13,8 @@
 }
 
 :root[data-theme="light"] .admin-layout__sidebar {
-	border-right: 1px solid rgba(148, 163, 184, 0.7);
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.98));
+	border-right: none;
+	background: transparent;
 }
 
 :root[data-theme="light"] .admin-layout__display-name {
@@ -26,8 +26,9 @@
 	color: #111827;
 }
 
+
 :root[data-theme="light"] .admin-layout__nav-link:hover {
-	background: radial-gradient(circle at 0 0, rgba(59, 130, 246, 0.22), transparent 75%);
+	background: rgba(0, 0, 0, 0.9);
 	box-shadow: 0 8px 16px rgba(148, 163, 184, 0.4);
 }
 
@@ -46,11 +47,10 @@
 }
 
 :root[data-theme="light"] .admin-topbar {
-	background: rgba(255, 255, 255, 0.96);
-	border: 1px solid rgba(209, 213, 219, 0.9);
-	box-shadow:
-		0 8px 18px rgba(15, 23, 42, 0.12),
-		0 0 0 1px rgba(209, 213, 219, 0.8);
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	border-radius: 0;
 }
 
 :root[data-theme="light"] .admin-topbar__search {
@@ -81,7 +81,7 @@
 }
 
 :root[data-theme="dark"] {
-	--background: #020617;
+	--background: #000000;
 	--foreground: #e5e7eb;
 }
 
@@ -686,15 +686,12 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	content: "";
 	position: fixed;
 	inset: -25%;
-	background:
-		radial-gradient(circle at 0% 0%, rgba(96, 165, 250, 0.7), transparent 55%),
-		radial-gradient(circle at 100% 0%, rgba(244, 114, 182, 0.7), transparent 55%),
-		radial-gradient(circle at 0% 100%, rgba(52, 211, 153, 0.7), transparent 55%);
-	filter: blur(40px);
-	opacity: 0.55;
+	background: #000000;
+	filter: none;
+	opacity: 1;
 	z-index: 0;
 	pointer-events: none;
-	animation: user-layout-gradient-shift 22s ease-in-out infinite alternate;
+	animation: none;
 }
 
 .user-layout__body {
@@ -711,12 +708,12 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	width: 230px;
 	padding: var(--shell-header-height) 14px 18px;
 	box-sizing: border-box;
-	/* 取消独立卡片背景，让左侧导航与整体背景一体，仅保留右侧分割线 */
+	/* 取消独立卡片背景，让左侧导航与整体背景融为一体 */
 	border-radius: 0;
 	border: 0;
 	background: transparent;
 	box-shadow: none;
-	border-right: 1px solid rgba(15, 23, 42, 0.85);
+	border-right: none;
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
@@ -1225,13 +1222,11 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	justify-content: space-between;
 	gap: 12px;
 	padding: 4px 14px;
-	border-radius: 9999px;
-	background: rgba(15, 23, 42, 0.96);
-	border: 1px solid rgba(31, 41, 55, 0.7);
-	box-shadow:
-		0 6px 18px rgba(15, 23, 42, 0.85),
-		0 0 0 1px rgba(15, 23, 42, 0.9);
-	backdrop-filter: blur(18px);
+	border-radius: 0;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	backdrop-filter: none;
 	max-width: 1120px;
 	width: 100%;
 }
@@ -1341,11 +1336,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 
 /* 浅色主题下的用户顶部工具栏样式 */
 :root[data-theme="light"] .user-topbar {
-	background: rgba(255, 255, 255, 0.96);
-	border: 1px solid rgba(209, 213, 219, 0.9);
-	box-shadow:
-		0 8px 18px rgba(15, 23, 42, 0.12),
-		0 0 0 1px rgba(209, 213, 219, 0.8);
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	border-radius: 0;
 }
 
 :root[data-theme="light"] .user-topbar__search {
@@ -1402,7 +1396,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	box-sizing: border-box;
 	overflow: hidden;
 	color: #e5e7eb;
-	background: radial-gradient(circle at top, #020617, #020617 38%, #020617 60%, #020617 80%, #020617);
+	background: #000000;
 }
 
 .auth-page--dark {
@@ -1458,13 +1452,11 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	border-radius: 28px;
 	overflow: hidden;
 	border: 1px solid rgba(148, 163, 184, 0.55);
-	background:
-		radial-gradient(circle at 0 0, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98)),
-		radial-gradient(circle at 100% 0, rgba(30, 64, 175, 0.8), rgba(15, 23, 42, 0.95));
+	background: #000000;
 	box-shadow:
-		0 32px 70px rgba(15, 23, 42, 0.9),
-		0 0 0 1px rgba(15, 23, 42, 0.9);
-	backdrop-filter: blur(28px);
+		0 32px 70px rgba(0, 0, 0, 0.9),
+		0 0 0 1px rgba(0, 0, 0, 0.9);
+	backdrop-filter: none;
 }
 
 .auth-page--light .auth-page__split-shell {
@@ -1490,11 +1482,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	align-items: center;
 	justify-content: center;
 	overflow: hidden;
-	background:
-		radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.35), transparent 60%),
-		radial-gradient(circle at 80% 100%, rgba(56, 189, 248, 0.25), transparent 60%),
-		radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.35), transparent 52%),
-		radial-gradient(circle at 50% 60%, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 1));
+	background: #000000;
 }
 
 .auth-page--light .auth-page__visual {
@@ -1509,11 +1497,9 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	content: "";
 	position: absolute;
 	inset: -20%;
-	background:
-		radial-gradient(circle at 0 0, rgba(191, 219, 254, 0.2), transparent 55%),
-		radial-gradient(circle at 100% 30%, rgba(251, 207, 232, 0.18), transparent 55%);
-	filter: blur(12px);
-	opacity: 0.7;
+	background: #000000;
+	filter: none;
+	opacity: 1;
 	z-index: 0;
 }
 
@@ -1602,17 +1588,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 }
 
 .auth-page__visual-orbit {
-	position: absolute;
-	inset-inline-start: -40px;
-	top: 40%;
-	width: 260px;
-	height: 260px;
-	border-radius: 9999px;
-	border: 1px solid rgba(148, 163, 184, 0.35);
-	opacity: 0.8;
-	box-shadow:
-		0 0 0 1px rgba(15, 23, 42, 0.95),
-		0 0 80px rgba(59, 130, 246, 0.55);
+	display: none;
 }
 
 .auth-page--light .auth-page__visual-orbit {
@@ -1684,7 +1660,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	align-items: center;
 	justify-content: center;
 	padding: 32px 32px 32px 24px;
-	background: radial-gradient(circle at 0 0, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 1));
+	background: #000000;
 }
 
 .auth-page--light .auth-page__panel {
@@ -1695,15 +1671,12 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	content: "";
 	position: fixed;
 	inset: -20%;
-	background:
-		radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.7), transparent 60%),
-		radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.7), transparent 60%),
-		radial-gradient(circle at 15% 100%, rgba(45, 212, 191, 0.7), transparent 60%);
-	filter: blur(40px);
-	opacity: 0.7;
+	background: #000000;
+	filter: none;
+	opacity: 1;
 	z-index: 0;
 	pointer-events: none;
-	animation: auth-page-gradient-shift 24s ease-in-out infinite alternate;
+	animation: none;
 }
 
 .auth-page--light::before {
@@ -1894,13 +1867,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	border-radius: 24px;
 	box-sizing: border-box;
 	border: 1px solid rgba(148, 163, 184, 0.55);
-	background:
-		linear-gradient(145deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.86)),
-		linear-gradient(135deg, rgba(59, 130, 246, 0.45), rgba(236, 72, 153, 0.45));
-	background-blend-mode: soft-light, normal;
+	background: #000000;
 	box-shadow:
-		0 26px 52px rgba(15, 23, 42, 0.85),
-		0 0 0 1px rgba(15, 23, 42, 0.95);
+		0 26px 52px rgba(0, 0, 0, 0.85),
+		0 0 0 1px rgba(0, 0, 0, 0.95);
 	backdrop-filter: blur(26px);
 }
 
@@ -2332,7 +2302,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	border: 0;
 	background: transparent;
 	box-shadow: none;
-	border-right: 1px solid rgba(15, 23, 42, 0.9);
+	border-right: none;
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
@@ -2457,7 +2427,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 }
 
 .admin-layout__nav-link:hover {
-	background: radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.6), transparent 70%);
+	background: rgba(0, 0, 0, 0.9);
 	transform: translateX(2px);
 	box-shadow: 0 10px 18px rgba(15, 23, 42, 0.8);
 }
@@ -2523,13 +2493,11 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	justify-content: space-between;
 	gap: 12px;
 	padding: 6px 16px;
-	border-radius: 9999px;
-	background: rgba(15, 23, 42, 0.96);
-	border: 1px solid rgba(31, 41, 55, 0.7);
-	box-shadow:
-		0 6px 18px rgba(15, 23, 42, 0.85),
-		0 0 0 1px rgba(15, 23, 42, 0.9);
-	backdrop-filter: blur(18px);
+	border-radius: 0;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	backdrop-filter: none;
 	max-width: 1180px;
 	width: 100%;
 }
@@ -3167,8 +3135,8 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 }
 
 :root[data-theme="light"] .user-layout__sidebar {
-	border-right: 1px solid rgba(148, 163, 184, 0.7);
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.98));
+	border-right: none;
+	background: transparent;
 }
 
 :root[data-theme="light"] .user-layout__display-name {
