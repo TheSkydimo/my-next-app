@@ -44,7 +44,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   const initialized = adminContext?.initialized ?? false;
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<AppTheme>("dark");
+  const [theme, setTheme] = useState<AppTheme>("light");
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [searchValue, setSearchValue] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -586,10 +586,9 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="admin-layout__right">
-          <main className="admin-layout__main">
-            {/* 右侧顶部横向工具栏：搜索 + 快捷操作 + 用户头像 */}
-            <div className="admin-layout__logout">
-              <div className="admin-topbar">
+          {/* 顶栏外壳：将顶部工具栏独立于内容区 */}
+          <div className="admin-shell admin-shell--topbar">
+            <div className="admin-topbar">
                 <div className="topbar-brand">
                   <div className="topbar-brand__mark" />
                   <span className="topbar-brand__text">
@@ -918,6 +917,9 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
               </div>
             </div>
 
+
+          {/* 内容外壳：主要内容区域 */}
+          <main className="admin-shell admin-shell--content">
             {children}
           </main>
         </div>

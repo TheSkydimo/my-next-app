@@ -5,17 +5,14 @@ const THEME_KEY = "appTheme";
 const LANG_KEY = "appLanguage";
 
 export function getInitialTheme(): AppTheme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
 
   const stored = window.localStorage.getItem(THEME_KEY) as AppTheme | null;
   if (stored === "light" || stored === "dark") {
     return stored;
   }
 
-  if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
-    return "dark";
-  }
-
+  // 统一默认使用浅色主题
   return "light";
 }
 

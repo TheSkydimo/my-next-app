@@ -41,7 +41,7 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
   const avatarUrl = userContext?.profile?.avatarUrl ?? null;
   const displayName = userContext?.profile?.username ?? userContext?.profile?.email ?? null;
 
-  const [theme, setTheme] = useState<AppTheme>("dark");
+  const [theme, setTheme] = useState<AppTheme>("light");
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [searchValue, setSearchValue] = useState("");
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);

@@ -46,6 +46,35 @@
 	text-shadow: none;
 }
 
+/* 管理端浅色主题整体优化 */
+:root[data-theme="light"] .admin-layout {
+	color: #111827;
+}
+
+:root[data-theme="light"] .admin-layout::before {
+	background:
+		radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.12), transparent 55%),
+		radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.12), transparent 55%),
+		radial-gradient(circle at 0% 100%, rgba(45, 212, 191, 0.12), transparent 55%);
+	opacity: 0.5;
+}
+
+:root[data-theme="light"] .admin-layout__main {
+	color: #111827;
+}
+
+:root[data-theme="light"] .admin-layout__main p {
+	color: #374151;
+}
+
+:root[data-theme="light"] .admin-layout__main a {
+	color: #2563eb;
+}
+
+:root[data-theme="light"] .admin-layout__main a:hover {
+	color: #1d4ed8;
+}
+
 :root[data-theme="light"] .admin-topbar {
 	background: transparent;
 	border: none;
@@ -111,7 +140,7 @@ body {
 /* 小屏下：管理员布局保持左侧菜单，只缩放尺寸，避免占用过多空间 */
 @media (max-width: 768px) {
 	.admin-layout__body {
-		padding: 14px;
+		padding: 10px;
 		min-height: 100vh;
 	}
 
@@ -144,24 +173,23 @@ body {
 		font-size: 13px;
 	}
 
-	/* 右侧内容区收紧内边距，预留更多空间给表格等内容，并允许自由压缩 */
-	.admin-layout__main {
-		flex: 1 1 0%;
-		/* 管理员端右侧内容也增加最小宽度，避免被压缩得完全不可读，同时避免过早出现横向滚动 */
-		min-width: 190px;
-		margin-left: 14px;
-		padding: 16px 14px 20px;
-		/* 小屏下不再额外绘制一块“卡片背景”，让顶部横栏和内容自然衔接，类似 Vben Admin 的一体化内容区 */
-		border-radius: 0;
-		border: 0;
-		background: transparent;
-		box-shadow: none;
+	/* 右侧外壳区域响应式 */
+	.admin-layout__right {
+		gap: 10px;
+		padding: 10px;
 	}
 
-	/* 右上角退出按钮在小屏更靠边一点 */
-	.admin-layout__logout {
-		top: 10px;
-		right: 10px;
+	.admin-shell {
+		border-radius: 12px;
+	}
+
+	.admin-shell--topbar {
+		padding: 6px 12px;
+	}
+
+	.admin-shell--content {
+		padding: 16px 14px;
+		min-width: 190px;
 	}
 }
 
@@ -183,6 +211,23 @@ input {
 	border-radius: 4px;
 	border: 1px solid #ccc;
 	font-size: 14px;
+}
+
+/* 浅色主题下的通用输入框样式 */
+:root[data-theme="light"] input {
+	background: #ffffff;
+	border-color: #d1d5db;
+	color: #111827;
+}
+
+:root[data-theme="light"] input::placeholder {
+	color: #9ca3af;
+}
+
+:root[data-theme="light"] input:focus {
+	border-color: #3b82f6;
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 /* 原生 button 基础样式（兼容未使用 .btn 类的按钮，排除导航和工具栏按钮） */
@@ -2446,34 +2491,12 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 		0 14px 24px rgba(55, 48, 163, 0.9);
 }
 
+/* 兼容旧的 main 样式（已迁移到 admin-shell--content，保留回退） */
 .admin-layout__main {
 	flex: 1;
-	margin-left: 18px;
-	/* 顶栏贴顶：去掉对 shell-header 的额外预留，改为紧凑内边距 */
-	padding: 12px 20px 24px;
 	box-sizing: border-box;
 	overflow: auto;
 	min-height: 0;
-	/* 取消原来的厚重卡片感，让右侧内容区和顶部横栏看起来是一整块工作区，贴近 Vben Admin 风格 */
-	border-radius: 0;
-	border: 0;
-	background: transparent;
-	box-shadow: none;
-}
-
-.admin-layout__main h1,
-.admin-layout__main h2,
-.admin-layout__main h3 {
-	color: #e5e7eb;
-	text-shadow: 0 1px 10px rgba(15, 23, 42, 0.9);
-}
-
-.admin-layout__main a {
-	color: #bfdbfe;
-}
-
-.admin-layout__main a:hover {
-	color: #eff6ff;
 }
 
 .admin-layout__right {
@@ -2481,16 +2504,97 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+	gap: 16px;
+	padding: 16px;
 }
 
-.admin-layout__logout {
-	position: sticky;
-	top: 0;
-	z-index: 10;
-	padding: 8px 24px 10px;
+/* ========== Admin Shell 外壳系统 ========== */
+/* 顶栏外壳与内容外壳，形成视觉层次分离 */
+
+.admin-shell {
+	border-radius: 16px;
+	background: rgba(15, 23, 42, 0.6);
+	backdrop-filter: blur(12px);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	box-shadow:
+		0 4px 24px rgba(0, 0, 0, 0.15),
+		0 1px 3px rgba(0, 0, 0, 0.1),
+		inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* 顶栏外壳 */
+.admin-shell--topbar {
+	flex-shrink: 0;
+	padding: 8px 16px;
 	display: flex;
 	justify-content: center;
-	background: transparent;
+	align-items: center;
+}
+
+/* 内容外壳 */
+.admin-shell--content {
+	flex: 1;
+	padding: 24px 28px;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+/* 浅色主题下的外壳样式 */
+:root[data-theme="light"] .admin-shell {
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(16px);
+	border: 1px solid rgba(229, 231, 235, 0.9);
+	box-shadow:
+		0 4px 24px rgba(0, 0, 0, 0.06),
+		0 1px 3px rgba(0, 0, 0, 0.04),
+		inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+:root[data-theme="light"] .admin-shell--topbar {
+	background: rgba(255, 255, 255, 0.9);
+}
+
+:root[data-theme="light"] .admin-shell--content {
+	background: rgba(249, 250, 251, 0.95);
+}
+
+/* 外壳内的标题样式优化 */
+.admin-shell--content h1,
+.admin-shell--content h2,
+.admin-shell--content h3 {
+	color: #e5e7eb;
+	text-shadow: 0 1px 10px rgba(15, 23, 42, 0.9);
+}
+
+:root[data-theme="light"] .admin-shell--content h1,
+:root[data-theme="light"] .admin-shell--content h2,
+:root[data-theme="light"] .admin-shell--content h3 {
+	color: #111827;
+	text-shadow: none;
+}
+
+.admin-shell--content a {
+	color: #bfdbfe;
+}
+
+.admin-shell--content a:hover {
+	color: #eff6ff;
+}
+
+:root[data-theme="light"] .admin-shell--content a {
+	color: #2563eb;
+}
+
+:root[data-theme="light"] .admin-shell--content a:hover {
+	color: #1d4ed8;
+}
+
+/* ========== End Admin Shell ========== */
+
+/* 兼容旧的 logout 样式（已迁移到 shell 系统，保留以防回退） */
+.admin-layout__logout {
+	display: none;
 }
 
 .admin-topbar {
@@ -2585,6 +2689,13 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	backdrop-filter: blur(18px);
 }
 
+/* 浅色主题下的反馈面板样式 */
+:root[data-theme="light"] .admin-topbar__feedback-panel {
+	background: linear-gradient(145deg, #ffffff, #f8fafc);
+	border-color: rgba(209, 213, 219, 0.9);
+	box-shadow: 0 18px 45px rgba(15, 23, 42, 0.15);
+}
+
 .admin-topbar__feedback-header {
 	display: flex;
 	align-items: center;
@@ -2595,6 +2706,11 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	color: #e5e7eb;
 }
 
+:root[data-theme="light"] .admin-topbar__feedback-header {
+	border-bottom-color: rgba(209, 213, 219, 0.9);
+	color: #111827;
+}
+
 .admin-topbar__feedback-close {
 	border: none;
 	background: transparent;
@@ -2602,6 +2718,14 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	cursor: pointer;
 	font-size: 18px;
 	line-height: 1;
+}
+
+:root[data-theme="light"] .admin-topbar__feedback-close {
+	color: #6b7280;
+}
+
+:root[data-theme="light"] .admin-topbar__feedback-close:hover {
+	color: #111827;
 }
 
 .admin-topbar__feedback-body {
@@ -2614,6 +2738,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	font-size: 12px;
 	color: #9ca3af;
 	padding: 4px 2px;
+}
+
+:root[data-theme="light"] .admin-topbar__feedback-meta {
+	color: #6b7280;
 }
 
 .admin-topbar__feedback-list {
@@ -2636,11 +2764,21 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	border: 1px solid rgba(55, 65, 81, 0.9);
 }
 
+:root[data-theme="light"] .admin-topbar__feedback-item {
+	background: linear-gradient(135deg, #ffffff, #f8fafc);
+	border-color: rgba(209, 213, 219, 0.9);
+	box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
 .admin-topbar__feedback-email {
 	font-size: 11px;
 	color: #a5b4fc;
 	margin-bottom: 4px;
 	word-break: break-all;
+}
+
+:root[data-theme="light"] .admin-topbar__feedback-email {
+	color: #4f46e5;
 }
 
 .admin-topbar__feedback-content {
@@ -2653,9 +2791,17 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	overflow: hidden;
 }
 
+:root[data-theme="light"] .admin-topbar__feedback-content {
+	color: #111827;
+}
+
 .admin-topbar__feedback-time {
 	font-size: 11px;
 	color: #9ca3af;
+}
+
+:root[data-theme="light"] .admin-topbar__feedback-time {
+	color: #6b7280;
 }
 
 .admin-topbar__feedback-reply-row {
@@ -2697,6 +2843,16 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	padding: 4px 6px;
 }
 
+:root[data-theme="light"] .admin-topbar__feedback-reply-box textarea {
+	background-color: #ffffff;
+	border-color: rgba(209, 213, 219, 0.9);
+	color: #111827;
+}
+
+:root[data-theme="light"] .admin-topbar__feedback-reply-box textarea::placeholder {
+	color: #9ca3af;
+}
+
 .admin-topbar__feedback-reply-actions {
 	display: flex;
 	justify-content: flex-end;
@@ -2722,6 +2878,22 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	);
 }
 
+:root[data-theme="light"] .admin-topbar__feedback-reply-actions button {
+	background-color: #f3f4f6;
+	border-color: rgba(209, 213, 219, 0.9);
+	color: #374151;
+}
+
+:root[data-theme="light"] .admin-topbar__feedback-reply-actions button:hover {
+	background-color: #e5e7eb;
+}
+
+:root[data-theme="light"] .admin-topbar__feedback-reply-actions button:first-of-type {
+	border-color: rgba(59, 130, 246, 0.9);
+	background: linear-gradient(90deg, #3b82f6, #2563eb);
+	color: #ffffff;
+}
+
 .admin-topbar__icon-btn {
 	width: 26px;
 	height: 26px;
@@ -2738,6 +2910,17 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 
 .admin-topbar__icon-btn:hover {
 	background: rgba(55, 65, 81, 0.98);
+}
+
+:root[data-theme="light"] .admin-topbar__icon-btn {
+	background: #f3f4f6;
+	border: 1px solid rgba(209, 213, 219, 0.9);
+	color: #374151;
+}
+
+:root[data-theme="light"] .admin-topbar__icon-btn:hover {
+	background: #e5e7eb;
+	border-color: rgba(156, 163, 175, 0.9);
 }
 
 /* 顶栏语言按钮内部文字样式 */
@@ -2794,6 +2977,15 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	color: #e5e7eb;
 }
 
+:root[data-theme="light"] .admin-topbar__avatar-btn {
+	background: #f3f4f6;
+	border: 1px solid rgba(209, 213, 219, 0.9);
+}
+
+:root[data-theme="light"] .admin-topbar__avatar-initial {
+	color: #374151;
+}
+
 .admin-topbar__user-menu {
 	position: absolute;
 	top: 110%;
@@ -2808,10 +3000,20 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 		0 0 0 1px rgba(15, 23, 42, 0.95);
 }
 
+:root[data-theme="light"] .admin-topbar__user-menu {
+	background: #ffffff;
+	border-color: rgba(209, 213, 219, 0.9);
+	box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+}
+
 .admin-topbar__user-meta {
 	padding: 4px 4px 6px;
 	border-bottom: 1px solid rgba(55, 65, 81, 0.9);
 	margin-bottom: 4px;
+}
+
+:root[data-theme="light"] .admin-topbar__user-meta {
+	border-bottom-color: rgba(209, 213, 219, 0.9);
 }
 
 .admin-topbar__user-name {
@@ -2819,10 +3021,18 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	color: #e5e7eb;
 }
 
+:root[data-theme="light"] .admin-topbar__user-name {
+	color: #111827;
+}
+
 .admin-topbar__user-role {
 	margin-top: 2px;
 	font-size: 11px;
 	color: #9ca3af;
+}
+
+:root[data-theme="light"] .admin-topbar__user-role {
+	color: #6b7280;
 }
 
 .admin-topbar__user-menu-item {
@@ -2843,6 +3053,18 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 
 .admin-topbar__user-menu-item--danger {
 	color: #fecaca;
+}
+
+:root[data-theme="light"] .admin-topbar__user-menu-item {
+	color: #374151;
+}
+
+:root[data-theme="light"] .admin-topbar__user-menu-item:hover {
+	background: #f3f4f6;
+}
+
+:root[data-theme="light"] .admin-topbar__user-menu-item--danger {
+	color: #dc2626;
 }
 
 /* ========== 通用弹窗（用户 / 管理员资料页） ========== */
@@ -3577,6 +3799,16 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 		0 8px 24px rgba(0, 0, 0, 0.1);
 	animation: feedbackPanelSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 	overflow: hidden;
+	/* 默认深色主题 */
+	background: linear-gradient(145deg, #111827, #1f2937);
+	border-color: rgba(55, 65, 81, 0.8);
+	color: #e5e7eb;
+}
+
+:root[data-theme="light"] .feedback-bubble__panel {
+	background: linear-gradient(145deg, #ffffff, #f8fafc);
+	border-color: rgba(209, 213, 219, 0.9);
+	color: #111827;
 }
 
 @keyframes feedbackPanelSlideIn {
@@ -3602,6 +3834,11 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	margin: 0;
 	font-size: 16px;
 	font-weight: 600;
+	color: #e5e7eb;
+}
+
+:root[data-theme="light"] .feedback-bubble__title {
+	color: #111827;
 }
 
 .feedback-bubble__close {
@@ -3640,6 +3877,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	line-height: 1.5;
 	transition: border-color 0.2s, box-shadow 0.2s;
 	box-sizing: border-box;
+	/* 默认深色主题 */
+	background: rgba(17, 24, 39, 0.9);
+	border-color: rgba(55, 65, 81, 0.9);
+	color: #e5e7eb;
 }
 
 .feedback-bubble__textarea:focus {
@@ -3650,6 +3891,16 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 
 .feedback-bubble__textarea::placeholder {
 	color: #94a3b8;
+}
+
+:root[data-theme="light"] .feedback-bubble__textarea {
+	background: #ffffff;
+	border-color: rgba(209, 213, 219, 0.9);
+	color: #111827;
+}
+
+:root[data-theme="light"] .feedback-bubble__textarea::placeholder {
+	color: #9ca3af;
 }
 
 .feedback-bubble__email {
