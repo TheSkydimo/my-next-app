@@ -26,6 +26,12 @@
 			"remote": true
 		}
 	],
+	"r2_buckets": [
+		{
+			"binding": "ORDER_IMAGES",
+			"bucket_name": "order-images"
+		}
+	],
 	"vars": {
 		"APP_NAME": "订阅管理",
 		"SMTP_HOST": "smtp.qiye.aliyun.com",

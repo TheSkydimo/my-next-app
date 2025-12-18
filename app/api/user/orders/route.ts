@@ -321,6 +321,20 @@ async function extractOrderInfoFromImage(
   }
 }
 
+/**
+ * 将数据库中的 image_url 转换为前端可用的 URL
+ * - r2:// 开头的转为 API 路径
+ * - data: 开头的保持不变（兼容旧数据）
+ */
+function convertImageUrl(dbUrl: string): string {
+  if (dbUrl.startsWith("r2://")) {
+    const r2Key = dbUrl.slice(5); // 去掉 "r2://" 前缀
+    return `/api/user/orders/image?key=${encodeURIComponent(r2Key)}`;
+  }
+  // 兼容旧的 data URL 格式
+  return dbUrl;
+}
+
 // 获取当前用户的订单截图列表（按设备可选过滤）
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -368,7 +382,7 @@ export async function GET(request: Request) {
     results?.map((row) => ({
       id: row.id,
       deviceId: row.device_id,
-      imageUrl: row.image_url,
+      imageUrl: convertImageUrl(row.image_url),
       note: row.note,
       createdAt: row.created_at,
       orderNo: row.order_no ?? null,
@@ -382,8 +396,18 @@ export async function GET(request: Request) {
   return Response.json({ items });
 }
 
-// 上传订单截图（当前实现：将图片以 Data URL 文本形式直接存入数据库）
-// 注意：适用于早期小规模使用，如后续图片增多，请迁移到 R2 等对象存储，仅在表中保存 URL。
+/**
+ * 生成唯一的 R2 对象 Key
+ * 格式: orders/{userId}/{timestamp}-{random}.{ext}
+ */
+function generateR2Key(userId: number, mimeType: string): string {
+  const ext = mimeType.split("/")[1] || "png";
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 10);
+  return `orders/${userId}/${timestamp}-${random}.${ext}`;
+}
+
+// 上传订单截图（图片存储到 R2，数据库只保存 R2 Key）
 export async function POST(request: Request) {
   const lang = detectApiLanguage(request);
   const t = getUserOrderApiMessages(lang);
@@ -411,6 +435,7 @@ export async function POST(request: Request) {
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
+  const r2 = env.ORDER_IMAGES as R2Bucket;
 
   await ensureOrderTable(db);
 
@@ -451,11 +476,19 @@ export async function POST(request: Request) {
     }
   }
 
-  // 这里为简单起见，将截图存为 Data URL 文本（适合小图、低频）
-  const buffer = await file.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString("base64");
+  // 将图片上传到 R2
   const mimeType = file.type || "image/png";
-  const dataUrl = `data:${mimeType};base64,${base64}`;
+  const r2Key = generateR2Key(user.id, mimeType);
+  const buffer = await file.arrayBuffer();
+
+  await r2.put(r2Key, buffer, {
+    httpMetadata: {
+      contentType: mimeType,
+    },
+  });
+
+  // 数据库中保存 R2 Key（格式: r2://{key}），便于区分旧的 data URL 格式
+  const imageUrl = `r2://${r2Key}`;
 
   const insert = await db
     .prepare(
@@ -464,7 +497,7 @@ export async function POST(request: Request) {
     .bind(
       user.id,
       deviceId,
-      dataUrl,
+      imageUrl,
       typeof note === "string" ? note : null,
       parsed?.orderNo ?? null,
       parsed?.orderCreatedTime ?? null,
@@ -480,7 +513,8 @@ export async function POST(request: Request) {
   return Response.json({
     id: insertedId,
     deviceId,
-    imageUrl: dataUrl,
+    // 返回给前端的 URL 指向图片读取 API
+    imageUrl: `/api/user/orders/image?key=${encodeURIComponent(r2Key)}`,
     note: typeof note === "string" ? note : null,
     orderNo: parsed?.orderNo ?? null,
     orderCreatedTime: parsed?.orderCreatedTime ?? null,
@@ -493,7 +527,7 @@ export async function POST(request: Request) {
   });
 }
 
-// 删除指定订单截图（仅允许删除当前用户自己的记录）
+// 删除指定订单截图（仅允许删除当前用户自己的记录，同时删除 R2 中的图片）
 export async function DELETE(request: Request) {
   const lang = detectApiLanguage(request);
   const t = getUserOrderApiMessages(lang);
@@ -514,6 +548,7 @@ export async function DELETE(request: Request) {
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
+  const r2 = env.ORDER_IMAGES as R2Bucket;
 
   await ensureOrderTable(db);
 
@@ -527,6 +562,29 @@ export async function DELETE(request: Request) {
     return new Response(t.userNotFound, { status: 404 });
   }
 
+  // 先查询订单记录，获取 image_url 以便删除 R2 中的文件
+  const orderQuery = await db
+    .prepare("SELECT image_url FROM user_orders WHERE id = ? AND user_id = ?")
+    .bind(id, user.id)
+    .all<{ image_url: string }>();
+
+  const order = orderQuery.results?.[0];
+  if (!order) {
+    return new Response(t.deleteNotFoundOrNotOwned, { status: 404 });
+  }
+
+  // 如果是 R2 存储的图片，先删除 R2 中的文件
+  if (order.image_url.startsWith("r2://")) {
+    const r2Key = order.image_url.slice(5);
+    try {
+      await r2.delete(r2Key);
+    } catch {
+      // R2 删除失败不阻断流程，只记录错误
+      console.error(`Failed to delete R2 object: ${r2Key}`);
+    }
+  }
+
+  // 删除数据库记录
   const result = await db
     .prepare("DELETE FROM user_orders WHERE id = ? AND user_id = ?")
     .bind(id, user.id)

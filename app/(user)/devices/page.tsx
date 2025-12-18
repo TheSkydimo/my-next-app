@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
@@ -190,7 +189,8 @@ function OrderThumbnailList({
                 }}
               >
                 <a href={o.imageUrl} target="_blank" rel="noreferrer">
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={o.imageUrl}
                     alt="order"
                     width={80}

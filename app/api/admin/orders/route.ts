@@ -29,6 +29,20 @@ async function assertAdmin(db: D1Database, adminEmail: string | null) {
   return null;
 }
 
+/**
+ * 将数据库中的 image_url 转换为前端可用的 URL
+ * - r2:// 开头的转为 API 路径
+ * - data: 开头的保持不变（兼容旧数据）
+ */
+function convertImageUrl(dbUrl: string): string {
+  if (dbUrl.startsWith("r2://")) {
+    const r2Key = dbUrl.slice(5); // 去掉 "r2://" 前缀
+    return `/api/user/orders/image?key=${encodeURIComponent(r2Key)}`;
+  }
+  // 兼容旧的 data URL 格式
+  return dbUrl;
+}
+
 async function ensureOrderTable(db: D1Database) {
   await db
     .prepare(
@@ -123,7 +137,7 @@ export async function GET(request: Request) {
       id: row.id,
       userEmail: row.user_email,
       deviceId: row.device_id,
-      imageUrl: row.image_url,
+      imageUrl: convertImageUrl(row.image_url),
       note: row.note,
       createdAt: row.created_at,
       orderNo: row.order_no ?? null,
