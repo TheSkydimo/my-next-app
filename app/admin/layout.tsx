@@ -287,10 +287,36 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           items?: FeedbackItem[];
           unreadCount?: number;
         };
-        setFeedbackItems(data.items ?? []);
-        setFeedbackBadge(
-          typeof data.unreadCount === "number" ? data.unreadCount : 0
-        );
+        const newItems = data.items ?? [];
+        const newUnreadCount =
+          typeof data.unreadCount === "number" ? data.unreadCount : 0;
+
+        // 只有当数据真正变化时才更新状态，避免闪烁
+        setFeedbackItems((prev) => {
+          if (prev.length !== newItems.length) return newItems;
+          // 比较第一个和最后一个工单的 ID 来判断是否有变化
+          const prevFirstId = prev[0]?.id;
+          const newFirstId = newItems[0]?.id;
+          const prevLastId = prev[prev.length - 1]?.id;
+          const newLastId = newItems[newItems.length - 1]?.id;
+          if (prevFirstId !== newFirstId || prevLastId !== newLastId)
+            return newItems;
+          // 检查状态变化
+          const hasStatusChange = prev.some((item, idx) => {
+            const newItem = newItems[idx];
+            return (
+              newItem &&
+              (item.status !== newItem.status ||
+                item.latestReplyContent !== newItem.latestReplyContent)
+            );
+          });
+          if (hasStatusChange) return newItems;
+          return prev;
+        });
+        setFeedbackBadge((prev) => {
+          if (prev !== newUnreadCount) return newUnreadCount;
+          return prev;
+        });
       } catch {
         // 轮询失败不影响其它功能
       }
@@ -398,8 +424,27 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       return;
     }
 
+    const targetId = replyTargetId;
+
+    // 乐观更新：立即在界面显示回复
+    setFeedbackItems((prev) =>
+      prev.map((item) =>
+        item.id === targetId
+          ? {
+              ...item,
+              status: "read",
+              latestReplyContent: text,
+              latestReplyAdminEmail: adminEmail,
+              latestReplyAt: new Date().toISOString(),
+            }
+          : item
+      )
+    );
+    setReplyContent("");
+    setReplyTargetId(null);
     setReplySubmitting(true);
     setFeedbackError("");
+
     try {
       const res = await fetch("/api/admin/feedback", {
         method: "POST",
@@ -407,7 +452,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           adminEmail,
           action: "reply",
-          feedbackId: replyTargetId,
+          feedbackId: targetId,
           content: text,
         }),
       });
@@ -415,11 +460,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         const textRes = await res.text();
         throw new Error(textRes || "回复失败，请稍后重试。");
       }
-
-      setReplyContent("");
-      setReplyTargetId(null);
-      await loadFeedbackList();
+      // 静默刷新列表（不显示 loading）
     } catch (e) {
+      // 发送失败，恢复回复框
+      setReplyTargetId(targetId);
+      setReplyContent(text);
       setFeedbackError(
         e instanceof Error
           ? e.message
@@ -443,7 +488,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
     if (!ok) return;
 
+    // 乐观更新：立即在界面显示工单已关闭
+    const prevItems = feedbackItems;
+    setFeedbackItems((prev) =>
+      prev.map((item) =>
+        item.id === feedbackId
+          ? { ...item, status: "closed", closedAt: new Date().toISOString() }
+          : item
+      )
+    );
     setFeedbackError("");
+
     try {
       const res = await fetch("/api/admin/feedback", {
         method: "POST",
@@ -458,8 +513,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         const text = await res.text();
         throw new Error(text || "关闭工单失败");
       }
-      await loadFeedbackList();
+      // 静默刷新（不显示 loading）
     } catch (e) {
+      // 失败时恢复原状态
+      setFeedbackItems(prevItems);
       setFeedbackError(
         e instanceof Error
           ? e.message

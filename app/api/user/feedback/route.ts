@@ -83,6 +83,74 @@ export async function POST(request: Request) {
   });
 }
 
+// 用户删除自己的已关闭历史工单
+export async function DELETE(request: Request) {
+  const body = (await request.json()) as {
+    email?: string;
+    feedbackId?: number;
+  };
+
+  const email = body.email?.trim();
+  const feedbackId = body.feedbackId;
+
+  if (!email) {
+    return new Response("缺少 email 参数", { status: 400 });
+  }
+  if (typeof feedbackId !== "number") {
+    return new Response("缺少工单 ID", { status: 400 });
+  }
+
+  const { env } = await getCloudflareContext();
+  const db = env.my_user_db as D1Database;
+
+  await ensureFeedbackTable(db);
+  await ensureFeedbackReplyTable(db);
+
+  // 验证用户存在
+  const userQuery = await db
+    .prepare("SELECT id FROM users WHERE email = ?")
+    .bind(email)
+    .all<{ id: number }>();
+
+  const user = userQuery.results?.[0];
+  if (!user) {
+    return new Response("用户不存在", { status: 404 });
+  }
+
+  // 验证工单存在且属于该用户
+  const feedbackQuery = await db
+    .prepare("SELECT id, user_id, status FROM user_feedback WHERE id = ?")
+    .bind(feedbackId)
+    .all<{ id: number; user_id: number; status: string }>();
+
+  const feedback = feedbackQuery.results?.[0];
+  if (!feedback) {
+    return new Response("工单不存在", { status: 404 });
+  }
+  if (feedback.user_id !== user.id) {
+    return new Response("无权删除他人工单", { status: 403 });
+  }
+
+  // 只允许删除已关闭的工单
+  if (feedback.status !== "closed") {
+    return new Response("只能删除已关闭的工单", { status: 400 });
+  }
+
+  // 先删除相关的回复记录
+  await db
+    .prepare("DELETE FROM user_feedback_replies WHERE feedback_id = ?")
+    .bind(feedbackId)
+    .run();
+
+  // 删除工单
+  await db
+    .prepare("DELETE FROM user_feedback WHERE id = ?")
+    .bind(feedbackId)
+    .run();
+
+  return Response.json({ ok: true });
+}
+
 // 当前用户查看自己历史反馈（按时间顺序，最多返回最近 50 条）
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

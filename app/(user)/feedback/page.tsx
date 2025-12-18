@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { AppLanguage } from "../../client-prefs";
-import { getInitialLanguage } from "../../client-prefs";
+import type { AppLanguage, AppTheme } from "../../client-prefs";
+import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
 
 type FeedbackItem = {
@@ -27,6 +27,7 @@ type TicketMessage = {
 
 export default function UserFeedbackPage() {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [theme, setTheme] = useState<AppTheme>("dark");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -47,28 +48,91 @@ export default function UserFeedbackPage() {
   );
   const [loadingActiveMessages, setLoadingActiveMessages] = useState(false);
   const [activeMessageError, setActiveMessageError] = useState("");
+  // 历史工单的完整对话记录（按工单 ID 存储）
+  const [historyMessagesById, setHistoryMessagesById] = useState<
+    Record<number, TicketMessage[]>
+  >({});
+  const [loadingHistoryMessagesById, setLoadingHistoryMessagesById] = useState<
+    Record<number, boolean>
+  >({});
   const [replyContent, setReplyContent] = useState("");
   const [replySubmitting, setReplySubmitting] = useState(false);
+  // 删除历史工单相关状态
+  const [deletingTicketId, setDeletingTicketId] = useState<number | null>(null);
+
+  // 主题相关颜色
+  const isLight = theme === "light";
+  const colors = {
+    // 卡片/区块背景
+    cardBg: isLight ? "#ffffff" : "#020617",
+    // 边框
+    border: isLight ? "#e5e7eb" : "#1f2937",
+    borderLight: isLight ? "rgba(209,213,219,0.8)" : "rgba(55,65,81,0.8)",
+    // 主文字
+    text: isLight ? "#111827" : "#e5e7eb",
+    // 次级文字
+    textMuted: isLight ? "#6b7280" : "#9ca3af",
+    textDim: isLight ? "#9ca3af" : "#6b7280",
+    // 输入框背景
+    inputBg: isLight ? "#f9fafb" : "#020617",
+    inputBorder: isLight ? "#d1d5db" : "#4b5563",
+    // 按钮背景
+    btnSecondaryBg: isLight ? "#f3f4f6" : "#111827",
+    btnSecondaryBorder: isLight ? "#d1d5db" : "#d1d5db",
+    // 消息气泡（非用户）
+    msgBubbleBg: isLight
+      ? "linear-gradient(135deg, #f3f4f6, #e5e7eb)"
+      : "linear-gradient(135deg, #020617, #111827)",
+    msgBubbleBorder: isLight ? "#d1d5db" : "#374151",
+    msgBubbleShadow: isLight
+      ? "0 4px 12px rgba(0,0,0,0.08)"
+      : "0 8px 18px rgba(15,23,42,0.7)",
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const initialLang = getInitialLanguage();
     setLanguage(initialLang);
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
 
-    const handler = (event: Event) => {
+    const langHandler = (event: Event) => {
       const custom = event as CustomEvent<{ language: AppLanguage }>;
       if (custom.detail?.language) {
         setLanguage(custom.detail.language);
       }
     };
 
-    window.addEventListener("app-language-changed", handler as EventListener);
+    // 监听主题变化
+    const themeHandler = () => {
+      const currentTheme = document.documentElement.dataset.theme as AppTheme;
+      if (currentTheme === "light" || currentTheme === "dark") {
+        setTheme(currentTheme);
+      }
+    };
+
+    window.addEventListener("app-language-changed", langHandler as EventListener);
+
+    // 使用 MutationObserver 监听 data-theme 变化
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === "attributes" &&
+          mutation.attributeName === "data-theme"
+        ) {
+          themeHandler();
+        }
+      });
+    });
+    observer.observe(document.documentElement, { attributes: true });
+
     return () => {
       window.removeEventListener(
         "app-language-changed",
-        handler as EventListener
+        langHandler as EventListener
       );
+      observer.disconnect();
     };
   }, []);
 
@@ -182,18 +246,31 @@ export default function UserFeedbackPage() {
     item,
     isOpen,
     onToggle,
+    onDelete,
+    isDeleting,
   }: {
     item: FeedbackItem;
     isOpen: boolean;
     onToggle: () => void;
+    onDelete?: () => void;
+    isDeleting?: boolean;
   }) => {
     const time = new Date(item.createdAt).toLocaleString();
-    const match = item.content.match(/^\[[^\]]+\]\s*(.*)$/);
-    const myText = match && match[1] ? match[1].trim() : item.content;
     const isClosed = item.status === "closed" || item.closedAt !== null;
     const isUnread = item.status === "unread";
     const statusLabel = renderStatusLabel(item);
     const typeLabel = renderTypeLabel(item.type);
+
+    // 获取该工单的完整对话记录
+    const ticketMessages = historyMessagesById[item.id];
+    const isLoadingMessages = loadingHistoryMessagesById[item.id] ?? false;
+
+    // 当展开且还没有加载过消息时，触发加载
+    useEffect(() => {
+      if (isOpen && !ticketMessages && !isLoadingMessages && userEmail) {
+        void loadHistoryMessages(userEmail, item.id);
+      }
+    }, [isOpen, ticketMessages, isLoadingMessages, item.id]);
 
     return (
       <div
@@ -201,10 +278,9 @@ export default function UserFeedbackPage() {
         style={{
           fontSize: 13,
           borderRadius: 12,
-          border: "1px solid #1f2937",
+          border: `1px solid ${colors.border}`,
           padding: 8,
-          background:
-            "radial-gradient(circle at top left, #020617, #020617 30%, #020617)",
+          backgroundColor: colors.cardBg,
           opacity: isClosed ? 0.8 : 1,
         }}
       >
@@ -220,7 +296,7 @@ export default function UserFeedbackPage() {
           <div
             style={{
               fontSize: 11,
-              color: "#9ca3af",
+              color: colors.textMuted,
             }}
           >
             {language === "zh-CN" ? "工单编号" : "Ticket ID"} #{item.id}
@@ -231,9 +307,9 @@ export default function UserFeedbackPage() {
                 fontSize: 11,
                 padding: "2px 8px",
                 borderRadius: 9999,
-                border: "1px solid rgba(55,65,81,0.8)",
-                backgroundColor: "#020617",
-                color: "#e5e7eb",
+                border: `1px solid ${colors.borderLight}`,
+                backgroundColor: colors.cardBg,
+                color: colors.text,
                 maxWidth: 160,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -266,7 +342,7 @@ export default function UserFeedbackPage() {
             <span
               style={{
                 fontSize: 11,
-                color: "#6b7280",
+                color: colors.textDim,
               }}
             >
               {time}
@@ -279,9 +355,9 @@ export default function UserFeedbackPage() {
                 fontSize: 11,
                 padding: "2px 8px",
                 borderRadius: 9999,
-                border: "1px solid rgba(55,65,81,0.8)",
-                backgroundColor: "#020617",
-                color: "#e5e7eb",
+                border: `1px solid ${colors.borderLight}`,
+                backgroundColor: colors.cardBg,
+                color: colors.text,
                 cursor: "pointer",
                 whiteSpace: "nowrap",
               }}
@@ -294,81 +370,134 @@ export default function UserFeedbackPage() {
                   ? "Hide"
                   : "Show"}
             </button>
+            {/* 只对已关闭的工单显示删除按钮 */}
+            {isClosed && onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={isDeleting}
+                style={{
+                  marginLeft: 4,
+                  fontSize: 11,
+                  padding: "2px 8px",
+                  borderRadius: 9999,
+                  border: "1px solid rgba(239,68,68,0.5)",
+                  backgroundColor: "rgba(239,68,68,0.1)",
+                  color: "#f87171",
+                  cursor: isDeleting ? "not-allowed" : "pointer",
+                  whiteSpace: "nowrap",
+                  opacity: isDeleting ? 0.6 : 1,
+                }}
+              >
+                {isDeleting
+                  ? language === "zh-CN"
+                    ? "删除中..."
+                    : "Deleting..."
+                  : language === "zh-CN"
+                    ? "删除"
+                    : "Delete"}
+              </button>
+            )}
           </div>
         </div>
         {isOpen && (
           <>
-            {/* 用户消息气泡（右侧） */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                marginTop: 6,
-                marginBottom: 4,
-              }}
-            >
-              <div style={{ maxWidth: "75%" }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "#9ca3af",
-                    textAlign: "right",
-                    marginBottom: 2,
-                  }}
-                >
-                  {language === "zh-CN" ? "我" : "Me"}
-                </div>
-                <div
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(96,165,250,0.8)",
-                    background:
-                      "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(37,99,235,0.95))",
-                    color: "#f9fafb",
-                    boxShadow: "0 8px 20px rgba(15,23,42,0.6)",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {myText}
-                </div>
-              </div>
-            </div>
-            {/* 技术回复气泡（左侧，仅在有回复时显示） */}
-            {item.latestReplyContent && (
+            {isLoadingMessages ? (
+              <p
+                style={{
+                  marginTop: 6,
+                  fontSize: 12,
+                  color: colors.textMuted,
+                }}
+              >
+                {language === "zh-CN" ? "加载对话中..." : "Loading..."}
+              </p>
+            ) : ticketMessages && ticketMessages.length > 0 ? (
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "flex-start",
+                  flexDirection: "column",
+                  gap: 8,
+                  marginTop: 6,
+                  maxHeight: 260,
+                  overflowY: "auto",
+                  paddingRight: 4,
                 }}
               >
-                <div style={{ maxWidth: "75%" }}>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "#9ca3af",
-                      marginBottom: 2,
-                    }}
-                  >
-                    {language === "zh-CN" ? "技术" : "Support"}
-                  </div>
-                  <div
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 12,
-                      border: "1px solid #374151",
-                      background:
-                        "linear-gradient(135deg, #020617, #111827)",
-                      color: "#e5e7eb",
-                      boxShadow: "0 8px 18px rgba(15,23,42,0.7)",
-                      wordBreak: "break-word",
-                      fontSize: 12,
-                    }}
-                  >
-                    {item.latestReplyContent}
-                  </div>
-                </div>
+                {ticketMessages.map((msg) => {
+                  const isUser = msg.sender === "user";
+                  const msgTime = new Date(msg.createdAt).toLocaleString();
+                  return (
+                    <div
+                      key={msg.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: isUser ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      <div style={{ maxWidth: "75%" }}>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: colors.textMuted,
+                            marginBottom: 2,
+                            textAlign: isUser ? "right" : "left",
+                          }}
+                        >
+                          {isUser
+                            ? language === "zh-CN"
+                              ? "我"
+                              : "Me"
+                            : language === "zh-CN"
+                              ? "技术"
+                              : "Support"}
+                          <span
+                            style={{
+                              marginLeft: 6,
+                              fontSize: 10,
+                              color: colors.textDim,
+                            }}
+                          >
+                            {msgTime}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 12,
+                            border: isUser
+                              ? "1px solid rgba(96,165,250,0.8)"
+                              : `1px solid ${colors.msgBubbleBorder}`,
+                            background: isUser
+                              ? "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(37,99,235,0.95))"
+                              : colors.msgBubbleBg,
+                            color: isUser ? "#f9fafb" : colors.text,
+                            boxShadow: isUser
+                              ? "0 8px 20px rgba(15,23,42,0.6)"
+                              : colors.msgBubbleShadow,
+                            wordBreak: "break-word",
+                            fontSize: 12,
+                          }}
+                        >
+                          {msg.content}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+            ) : (
+              <p
+                style={{
+                  marginTop: 6,
+                  fontSize: 12,
+                  color: colors.textMuted,
+                }}
+              >
+                {language === "zh-CN"
+                  ? "暂无对话记录。"
+                  : "No conversation messages."}
+              </p>
             )}
           </>
         )}
@@ -376,8 +505,11 @@ export default function UserFeedbackPage() {
     );
   };
 
-  const loadHistory = async (email: string) => {
-    setLoadingHistory(true);
+  const loadHistory = async (email: string, isPolling = false) => {
+    // 轮询时不显示 loading 状态，避免闪烁
+    if (!isPolling) {
+      setLoadingHistory(true);
+    }
     try {
       const params = new URLSearchParams({ email });
       const res = await fetch(`/api/user/feedback?${params.toString()}`);
@@ -386,16 +518,48 @@ export default function UserFeedbackPage() {
         return;
       }
       const data = (await res.json()) as { items?: FeedbackItem[] };
-      setHistory(data.items ?? []);
+      const newItems = data.items ?? [];
+
+      // 只有当数据真正变化时才更新状态，避免闪烁
+      setHistory((prev) => {
+        if (prev.length !== newItems.length) return newItems;
+        // 比较第一个和最后一个工单来判断是否有变化
+        const prevFirstId = prev[0]?.id;
+        const newFirstId = newItems[0]?.id;
+        const prevLastId = prev[prev.length - 1]?.id;
+        const newLastId = newItems[newItems.length - 1]?.id;
+        if (prevFirstId !== newFirstId || prevLastId !== newLastId)
+          return newItems;
+        // 检查状态变化
+        const hasChange = prev.some((item, idx) => {
+          const newItem = newItems[idx];
+          return (
+            newItem &&
+            (item.status !== newItem.status ||
+              item.latestReplyContent !== newItem.latestReplyContent)
+          );
+        });
+        if (hasChange) return newItems;
+        return prev;
+      });
     } catch {
       // ignore
     } finally {
-      setLoadingHistory(false);
+      if (!isPolling) {
+        setLoadingHistory(false);
+      }
     }
   };
 
-  const loadActiveMessages = async (email: string, feedbackId: number) => {
-    setLoadingActiveMessages(true);
+  const loadActiveMessages = async (
+    email: string,
+    feedbackId: number,
+    isPolling = false
+  ) => {
+    // 轮询时不显示 loading 状态，避免闪烁
+    if (!isPolling) {
+      setLoadingActiveMessages(true);
+    }
     setActiveMessageError("");
     try {
       const params = new URLSearchParams({
@@ -410,18 +574,102 @@ export default function UserFeedbackPage() {
         throw new Error(text || "加载对话失败");
       }
       const data = (await res.json()) as { items?: TicketMessage[] };
-      setActiveMessages(data.items ?? []);
+      const newMessages = data.items ?? [];
+
+      // 只有当数据真正变化时才更新状态，避免闪烁
+      setActiveMessages((prev) => {
+        if (!prev) return newMessages;
+        if (prev.length !== newMessages.length) return newMessages;
+        // 比较最后一条消息的 ID 来判断是否有新消息
+        const prevLastId = prev[prev.length - 1]?.id;
+        const newLastId = newMessages[newMessages.length - 1]?.id;
+        if (prevLastId !== newLastId) return newMessages;
+        return prev;
+      });
     } catch (e) {
-      setActiveMessages(null);
-      setActiveMessageError(
+      if (!isPolling) {
+        setActiveMessages(null);
+        setActiveMessageError(
+          e instanceof Error
+            ? e.message
+            : language === "zh-CN"
+              ? "加载对话失败，请稍后再试。"
+              : "Failed to load messages. Please try again later."
+        );
+      }
+    } finally {
+      if (!isPolling) {
+        setLoadingActiveMessages(false);
+      }
+    }
+  };
+
+  // 删除历史工单
+  const handleDeleteTicket = async (feedbackId: number) => {
+    if (!userEmail) return;
+
+    const confirmMsg =
+      language === "zh-CN"
+        ? "确定要删除该工单吗？删除后将无法恢复。"
+        : "Are you sure you want to delete this ticket? This action cannot be undone.";
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeletingTicketId(feedbackId);
+    try {
+      const res = await fetch("/api/user/feedback", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail,
+          feedbackId,
+        }),
+      });
+      if (!res.ok) {
+        const textRes = await res.text();
+        throw new Error(
+          textRes ||
+            (language === "zh-CN"
+              ? "删除工单失败，请稍后再试。"
+              : "Failed to delete ticket. Please try again later.")
+        );
+      }
+
+      // 删除成功后刷新列表
+      void loadHistory(userEmail, true);
+    } catch (e) {
+      alert(
         e instanceof Error
           ? e.message
           : language === "zh-CN"
-            ? "加载对话失败，请稍后再试。"
-            : "Failed to load messages. Please try again later."
+            ? "删除工单失败，请稍后再试。"
+            : "Failed to delete ticket. Please try again later."
       );
     } finally {
-      setLoadingActiveMessages(false);
+      setDeletingTicketId(null);
+    }
+  };
+
+  // 加载历史工单的完整对话
+  const loadHistoryMessages = async (email: string, feedbackId: number) => {
+    setLoadingHistoryMessagesById((prev) => ({ ...prev, [feedbackId]: true }));
+    try {
+      const params = new URLSearchParams({
+        email,
+        feedbackId: String(feedbackId),
+      });
+      const res = await fetch(
+        `/api/user/feedback/messages?${params.toString()}`
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as { items?: TicketMessage[] };
+      setHistoryMessagesById((prev) => ({
+        ...prev,
+        [feedbackId]: data.items ?? [],
+      }));
+    } catch {
+      // 加载失败不阻塞展示
+    } finally {
+      setLoadingHistoryMessagesById((prev) => ({ ...prev, [feedbackId]: false }));
     }
   };
 
@@ -429,14 +677,15 @@ export default function UserFeedbackPage() {
     if (!userEmail) return;
     if (typeof window === "undefined") return;
 
+    // 首次加载（显示 loading）
+    void loadHistory(userEmail, false);
+
+    // 轮询刷新（静默刷新，不显示 loading）
     const poll = () => {
-      void loadHistory(userEmail);
+      void loadHistory(userEmail, true);
     };
 
-    // 首次进入页面或切换视图时，立即加载一次历史记录
-    poll();
-
-    // 在查看“历史工单”时，加快轮询频率；其他情况下保持较低频率
+    // 在查看"历史工单"时，加快轮询频率；其他情况下保持较低频率
     const intervalMs = viewTab === "history" ? 5000 : 15000;
     const timer = window.setInterval(poll, intervalMs);
 
@@ -461,12 +710,12 @@ export default function UserFeedbackPage() {
       return;
     }
 
-    // 首次加载
-    void loadActiveMessages(userEmail, activeTicket.id);
+    // 首次加载（非轮询模式，显示 loading）
+    void loadActiveMessages(userEmail, activeTicket.id, false);
 
-    // 轮询刷新对话消息（每 5 秒）
+    // 轮询刷新对话消息（每 5 秒，使用轮询模式避免闪烁）
     const pollMessages = () => {
-      void loadActiveMessages(userEmail, activeTicket.id);
+      void loadActiveMessages(userEmail, activeTicket.id, true);
     };
     const timer = window.setInterval(pollMessages, 5000);
 
@@ -538,8 +787,9 @@ export default function UserFeedbackPage() {
       );
       setContent("");
       setFeedbackType("bug");
+      // 静默刷新工单列表
       if (userEmail) {
-        void loadHistory(userEmail);
+        void loadHistory(userEmail, true);
       }
     } catch (e) {
       setError(
@@ -566,8 +816,20 @@ export default function UserFeedbackPage() {
       return;
     }
 
+    // 乐观更新：立即在界面显示消息
+    const optimisticMessage: TicketMessage = {
+      id: `temp-${Date.now()}`,
+      sender: "user",
+      content: text,
+      createdAt: new Date().toISOString(),
+    };
+    setActiveMessages((prev) =>
+      prev ? [...prev, optimisticMessage] : [optimisticMessage]
+    );
+    setReplyContent("");
     setReplySubmitting(true);
     setActiveMessageError("");
+
     try {
       const res = await fetch("/api/user/feedback/messages", {
         method: "POST",
@@ -588,14 +850,17 @@ export default function UserFeedbackPage() {
         );
       }
 
-      setReplyContent("");
-
-      // 发送成功后刷新对话与工单状态
+      // 发送成功后静默刷新对话与工单状态
       if (userEmail) {
-        void loadActiveMessages(userEmail, activeTicket.id);
-        void loadHistory(userEmail);
+        void loadActiveMessages(userEmail, activeTicket.id, true);
+        void loadHistory(userEmail, true);
       }
     } catch (e) {
+      // 发送失败，移除乐观更新的消息
+      setActiveMessages((prev) =>
+        prev ? prev.filter((m) => m.id !== optimisticMessage.id) : null
+      );
+      setReplyContent(text); // 恢复输入内容
       setActiveMessageError(
         e instanceof Error
           ? e.message
@@ -639,19 +904,19 @@ export default function UserFeedbackPage() {
             marginTop: 20,
             padding: 8,
             borderRadius: 12,
-            border: "1px solid #1f2937",
-            backgroundColor: "#020617",
+            border: `1px solid ${colors.border}`,
+            backgroundColor: colors.cardBg,
           }}
         >
-          <h2 style={{ fontSize: 16 }}>
+          <h2 style={{ fontSize: 16, color: colors.text }}>
             {language === "zh-CN" ? "历史工单" : "History tickets"}
           </h2>
           {loadingHistory ? (
-            <p style={{ marginTop: 8, fontSize: 13, color: "#9ca3af" }}>
+            <p style={{ marginTop: 8, fontSize: 13, color: colors.textMuted }}>
               {messages.common.loading}
             </p>
           ) : closedTickets.length === 0 ? (
-            <p style={{ marginTop: 8, fontSize: 13, color: "#9ca3af" }}>
+            <p style={{ marginTop: 8, fontSize: 13, color: colors.textMuted }}>
               {language === "zh-CN"
                 ? "暂无历史工单记录。"
                 : "No history tickets yet."}
@@ -678,9 +943,9 @@ export default function UserFeedbackPage() {
                         width: "100%",
                         padding: "6px 10px",
                         borderRadius: 8,
-                        border: "1px solid #1f2937",
-                        backgroundColor: "#020617",
-                        color: "#e5e7eb",
+                        border: `1px solid ${colors.border}`,
+                        backgroundColor: colors.cardBg,
+                        color: colors.text,
                         fontSize: 13,
                         cursor: "pointer",
                       }}
@@ -717,6 +982,8 @@ export default function UserFeedbackPage() {
                                   [ticket.id]: !isTicketOpen,
                                 }))
                               }
+                              onDelete={() => handleDeleteTicket(ticket.id)}
+                              isDeleting={deletingTicketId === ticket.id}
                             />
                           );
                         })}
@@ -735,7 +1002,7 @@ export default function UserFeedbackPage() {
           id="feedback-new-section"
           style={{ marginTop: 20 }}
         >
-          <h2 style={{ fontSize: 16 }}>
+          <h2 style={{ fontSize: 16, color: colors.text }}>
             {language === "zh-CN" ? "提交新的反馈" : "Send new feedback"}
           </h2>
           {okMsg && (
@@ -756,7 +1023,7 @@ export default function UserFeedbackPage() {
 
               return (
                 <>
-                  <p style={{ marginTop: 8, fontSize: 13, color: "#9ca3af" }}>
+                  <p style={{ marginTop: 8, fontSize: 13, color: colors.textMuted }}>
                     {language === "zh-CN"
                       ? "你当前有一个正在处理中的工单，请在下方查看并补充说明。该工单关闭后，你可以再次提交新的反馈。"
                       : "You currently have an open ticket in progress. Please check the conversation below and add more details if needed. Once it is closed, you can submit a new ticket."}
@@ -766,8 +1033,8 @@ export default function UserFeedbackPage() {
                       marginTop: 12,
                       padding: 10,
                       borderRadius: 12,
-                      border: "1px solid #1f2937",
-                      backgroundColor: "#020617",
+                      border: `1px solid ${colors.border}`,
+                      backgroundColor: colors.cardBg,
                     }}
                   >
                     <div
@@ -781,7 +1048,7 @@ export default function UserFeedbackPage() {
                       <div
                         style={{
                           fontSize: 11,
-                          color: "#9ca3af",
+                          color: colors.textMuted,
                         }}
                       >
                         {language === "zh-CN" ? "工单编号" : "Ticket ID"} #
@@ -795,9 +1062,9 @@ export default function UserFeedbackPage() {
                             fontSize: 11,
                             padding: "2px 8px",
                             borderRadius: 9999,
-                            border: "1px solid rgba(55,65,81,0.8)",
-                            backgroundColor: "#020617",
-                            color: "#e5e7eb",
+                            border: `1px solid ${colors.borderLight}`,
+                            backgroundColor: colors.cardBg,
+                            color: colors.text,
                             maxWidth: 160,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -834,7 +1101,7 @@ export default function UserFeedbackPage() {
                         <span
                           style={{
                             fontSize: 11,
-                            color: "#6b7280",
+                            color: colors.textDim,
                           }}
                         >
                           {time}
@@ -846,7 +1113,7 @@ export default function UserFeedbackPage() {
                       style={{
                         fontSize: 13,
                         marginBottom: 8,
-                        color: "#e5e7eb",
+                        color: colors.text,
                       }}
                     >
                       {language === "zh-CN" ? "对话记录" : "Conversation"}
@@ -856,7 +1123,7 @@ export default function UserFeedbackPage() {
                         style={{
                           marginTop: 4,
                           fontSize: 13,
-                          color: "#9ca3af",
+                          color: colors.textMuted,
                         }}
                       >
                         {messages.common.loading}
@@ -891,7 +1158,7 @@ export default function UserFeedbackPage() {
                                 <div
                                   style={{
                                     fontSize: 11,
-                                    color: "#9ca3af",
+                                    color: colors.textMuted,
                                     marginBottom: 2,
                                     textAlign: isUser ? "right" : "left",
                                   }}
@@ -907,7 +1174,7 @@ export default function UserFeedbackPage() {
                                     style={{
                                       marginLeft: 6,
                                       fontSize: 10,
-                                      color: "#6b7280",
+                                      color: colors.textDim,
                                     }}
                                   >
                                     {msgTime}
@@ -919,14 +1186,14 @@ export default function UserFeedbackPage() {
                                     borderRadius: 12,
                                     border: isUser
                                       ? "1px solid rgba(96,165,250,0.8)"
-                                      : "1px solid #374151",
+                                      : `1px solid ${colors.msgBubbleBorder}`,
                                     background: isUser
                                       ? "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(37,99,235,0.95))"
-                                      : "linear-gradient(135deg, #020617, #111827)",
-                                    color: isUser ? "#f9fafb" : "#e5e7eb",
+                                      : colors.msgBubbleBg,
+                                    color: isUser ? "#f9fafb" : colors.text,
                                     boxShadow: isUser
                                       ? "0 8px 20px rgba(15,23,42,0.6)"
-                                      : "0 8px 18px rgba(15,23,42,0.7)",
+                                      : colors.msgBubbleShadow,
                                     wordBreak: "break-word",
                                     fontSize: 12,
                                   }}
@@ -943,7 +1210,7 @@ export default function UserFeedbackPage() {
                         style={{
                           marginTop: 4,
                           fontSize: 13,
-                          color: "#9ca3af",
+                          color: colors.textMuted,
                         }}
                       >
                         {language === "zh-CN"
@@ -984,9 +1251,9 @@ export default function UserFeedbackPage() {
                       resize: "vertical",
                       padding: 8,
                       borderRadius: 8,
-                      border: "1px solid #4b5563",
-                      backgroundColor: "#020617",
-                      color: "#e5e7eb",
+                      border: `1px solid ${colors.inputBorder}`,
+                      backgroundColor: colors.inputBg,
+                      color: colors.text,
                       fontSize: 13,
                     }}
                   />
@@ -1027,7 +1294,7 @@ export default function UserFeedbackPage() {
                     display: "block",
                     fontSize: 13,
                     marginBottom: 4,
-                    color: "#e5e7eb",
+                    color: colors.text,
                   }}
                 >
                   {language === "zh-CN" ? "反馈类型" : "Feedback type"}
@@ -1039,9 +1306,9 @@ export default function UserFeedbackPage() {
                     width: "100%",
                     padding: "6px 8px",
                     borderRadius: 8,
-                    border: "1px solid #4b5563",
-                    backgroundColor: "#020617",
-                    color: "#e5e7eb",
+                    border: `1px solid ${colors.inputBorder}`,
+                    backgroundColor: colors.inputBg,
+                    color: colors.text,
                     fontSize: 13,
                   }}
                 >
@@ -1066,6 +1333,11 @@ export default function UserFeedbackPage() {
                     minHeight: 120,
                     resize: "vertical",
                     padding: 8,
+                    borderRadius: 8,
+                    border: `1px solid ${colors.inputBorder}`,
+                    backgroundColor: colors.inputBg,
+                    color: colors.text,
+                    fontSize: 13,
                   }}
                 />
               </div>
@@ -1113,9 +1385,9 @@ export default function UserFeedbackPage() {
                   style={{
                     padding: "6px 12px",
                     borderRadius: 9999,
-                    border: "1px solid #d1d5db",
-                    backgroundColor: "#111827",
-                    color: "#e5e7eb",
+                    border: `1px solid ${colors.btnSecondaryBorder}`,
+                    backgroundColor: colors.btnSecondaryBg,
+                    color: colors.text,
                     cursor: "pointer",
                     opacity: submitting ? 0.7 : 1,
                   }}

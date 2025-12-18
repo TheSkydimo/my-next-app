@@ -57,6 +57,9 @@ export async function GET(request: Request) {
   const whereParts: string[] = [];
   const bindValues: unknown[] = [];
 
+  // 管理端不显示已关闭的工单
+  whereParts.push("f.status != 'closed'");
+
   if (status === "unread") {
     whereParts.push("f.status = 'unread'");
   }
