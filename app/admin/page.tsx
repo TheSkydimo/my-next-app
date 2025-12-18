@@ -5,25 +5,17 @@ import { useEffect, useState } from "react";
 import type { AppLanguage } from "../client-prefs";
 import { getInitialLanguage } from "../client-prefs";
 import { getAdminMessages } from "../admin-i18n";
+import { useOptionalAdmin } from "../contexts/AdminContext";
 
 export default function AdminHomePage() {
-  const [adminName, setAdminName] = useState<string | null>(null);
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  // 使用 AdminContext 获取预加载的管理员信息
+  const adminContext = useOptionalAdmin();
+  const adminName = adminContext?.profile?.username ?? null;
+  const adminEmail = adminContext?.profile?.email ?? null;
+
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
 
   const messages = getAdminMessages(language);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isAdmin = window.localStorage.getItem("isAdmin");
-      const name = window.localStorage.getItem("adminName");
-      const email = window.localStorage.getItem("adminEmail");
-      if (isAdmin === "true") {
-        setAdminName(name);
-        setAdminEmail(email);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

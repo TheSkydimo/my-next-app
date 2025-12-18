@@ -107,17 +107,25 @@ export default function AdminLoginPage() {
     const data = (await res.json()) as {
       ok: boolean;
       admin: {
+        id: number;
         username: string;
         email: string;
+        avatarUrl: string | null;
         role?: string;
         isSuperAdmin?: boolean;
       };
     };
 
+    // 登录成功：保存完整管理员信息到 localStorage，避免进入后台后再次请求加载
     if (typeof window !== "undefined") {
       window.localStorage.setItem("adminEmail", data.admin.email);
       window.localStorage.setItem("adminName", data.admin.username);
       window.localStorage.setItem("isAdmin", "true");
+      if (data.admin.avatarUrl) {
+        window.localStorage.setItem("adminAvatarUrl", data.admin.avatarUrl);
+      } else {
+        window.localStorage.removeItem("adminAvatarUrl");
+      }
       if (data.admin.role) {
         window.localStorage.setItem("adminRole", data.admin.role);
       } else if (data.admin.isSuperAdmin) {

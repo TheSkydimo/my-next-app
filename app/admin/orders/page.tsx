@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
+import { useAdmin } from "../../contexts/AdminContext";
 
 type AdminOrderItem = {
   id: number;
@@ -19,8 +20,11 @@ type AdminOrderItem = {
 };
 
 export default function AdminOrdersPage() {
+  // 使用 AdminContext 获取预加载的管理员信息
+  const adminContext = useAdmin();
+  const adminEmail = adminContext.profile?.email ?? null;
+
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [orders, setOrders] = useState<AdminOrderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -48,16 +52,6 @@ export default function AdminOrdersPage() {
         handler as EventListener
       );
     };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isAdmin = window.localStorage.getItem("isAdmin");
-      const email = window.localStorage.getItem("adminEmail");
-      if (isAdmin === "true" && email) {
-        setAdminEmail(email);
-      }
-    }
   }, []);
 
   useEffect(() => {

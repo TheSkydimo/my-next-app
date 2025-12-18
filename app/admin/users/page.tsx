@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
+import { useAdmin } from "../../contexts/AdminContext";
 
 type UserItem = {
   id: number;
@@ -24,15 +25,18 @@ type Pagination = {
 };
 
 export default function AdminUsersPage() {
+  // 使用 AdminContext 获取预加载的管理员信息
+  const adminContext = useAdmin();
+  const adminEmail = adminContext.profile?.email ?? null;
+  const isSuperAdmin = adminContext.profile?.isSuperAdmin ?? false;
+
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [keyword, setKeyword] = useState("");
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -57,18 +61,6 @@ export default function AdminUsersPage() {
   }, []);
 
   const messages = getAdminMessages(language);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isAdmin = window.localStorage.getItem("isAdmin");
-      const email = window.localStorage.getItem("adminEmail");
-      if (isAdmin === "true" && email) {
-        setAdminEmail(email);
-        const role = window.localStorage.getItem("adminRole");
-        setIsSuperAdmin(role === "super_admin");
-      }
-    }
-  }, []);
 
   const fetchUsers = useCallback(
     async (opts?: { q?: string; page?: number }) => {

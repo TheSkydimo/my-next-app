@@ -13,14 +13,36 @@ import {
   type AppTheme,
 } from "../client-prefs";
 import { getAdminMessages } from "../admin-i18n";
+import { AdminProvider, useOptionalAdmin } from "../contexts/AdminContext";
 
+/**
+ * 管理端布局组件（外层包装）
+ * 使用 AdminProvider 提供全局管理员状态
+ */
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  return (
+    <AdminProvider>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </AdminProvider>
+  );
+}
+
+/**
+ * 管理端布局内部组件
+ * 使用 AdminContext 获取已预加载的管理员信息
+ */
+function AdminLayoutInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [adminRole, setAdminRole] = useState<string | null>(null);
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const adminContext = useOptionalAdmin();
+
+  // 从 AdminContext 获取管理员信息，避免重复请求
+  const isAuthed = adminContext?.isAuthed ?? false;
+  const avatarUrl = adminContext?.profile?.avatarUrl ?? null;
+  const displayName = adminContext?.profile?.username ?? adminContext?.profile?.email ?? null;
+  const adminRole = adminContext?.profile?.role ?? null;
+  const adminEmail = adminContext?.profile?.email ?? null;
+  const initialized = adminContext?.initialized ?? false;
+
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
@@ -77,42 +99,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   };
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isAdmin = window.localStorage.getItem("isAdmin");
-      const email = window.localStorage.getItem("adminEmail");
-      const storedAvatar = window.localStorage.getItem("adminAvatarUrl");
-      const storedRole = window.localStorage.getItem("adminRole");
-
-      const authed = isAdmin === "true" && !!email;
-      setIsAuthed(authed);
-      setAdminEmail(email || null);
-      setAvatarUrl(storedAvatar || null);
-      setAdminRole(storedRole || null);
-
-      // 尝试从后端刷新一次管理员头像（忽略错误）
-      if (email) {
-        fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
-          .then(async (res) => {
-            if (!res.ok) return;
-            const data = (await res.json()) as {
-              username: string;
-              email: string;
-              avatarUrl: string | null;
-            };
-            setDisplayName(data.username || data.email);
-            setAvatarUrl(data.avatarUrl ?? null);
-            if (data.avatarUrl) {
-              window.localStorage.setItem("adminAvatarUrl", data.avatarUrl);
-            } else {
-              window.localStorage.removeItem("adminAvatarUrl");
-            }
-          })
-          .catch(() => {});
-      }
-    }
-  }, []);
-
   // 初始化主题 / 语言，并处理 Ctrl + K 聚焦搜索框
   useEffect(() => {
     const initialTheme = getInitialTheme();
@@ -136,36 +122,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // 监听来自管理员资料页的头像更新事件，实时同步右上角头像
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handler = (event: Event) => {
-      const custom = event as CustomEvent<{
-        avatarUrl: string | null;
-        displayName?: string | null;
-      }>;
-      const detail = custom.detail;
-      if (!detail) return;
-      setAvatarUrl(detail.avatarUrl);
-      if (detail.displayName) {
-        setDisplayName(detail.displayName);
-      }
-    };
-
-    window.addEventListener("admin-avatar-updated", handler as EventListener);
-    return () => {
-      window.removeEventListener(
-        "admin-avatar-updated",
-        handler as EventListener
-      );
-    };
-  }, []);
-
   const logout = () => {
+    // 使用 AdminContext 清除管理员状态
+    adminContext?.clearAdmin();
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem("adminEmail");
-      window.localStorage.removeItem("isAdmin");
       window.location.href = "/admin/login";
     }
   };
@@ -347,7 +307,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   // 初始加载阶段，避免闪烁，什么都不渲染
-  if (isAuthed === null) {
+  if (!initialized) {
     return null;
   }
 

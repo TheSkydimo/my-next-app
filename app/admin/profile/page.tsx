@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
+import { useAdmin } from "../../contexts/AdminContext";
 
 type Profile = {
   username: string;
@@ -51,7 +52,10 @@ function PasswordField({
 }
 
 export default function AdminProfilePage() {
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  // 使用 AdminContext 获取预加载的管理员信息
+  const adminContext = useAdmin();
+  const adminEmail = adminContext.profile?.email ?? null;
+
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -112,58 +116,26 @@ export default function AdminProfilePage() {
 
   const messages = getAdminMessages(language);
 
+  // 使用 AdminContext 中的预加载数据初始化 profile 状态
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isAdmin = window.localStorage.getItem("isAdmin");
-      const email = window.localStorage.getItem("adminEmail");
-      if (isAdmin === "true" && email) {
-        setAdminEmail(email);
-      }
+    if (adminContext.profile && !profile) {
+      const { username, email, avatarUrl } = adminContext.profile;
+      setProfile({ username, email, avatarUrl });
+      setUsernameInput(username);
+      setAvatarUrlInput(avatarUrl ?? "");
     }
-  }, []);
+  }, [adminContext.profile, profile]);
 
-  const loadProfile = useCallback(
-    async (email: string) => {
-      setLoading(true);
-      setError("");
-      setOkMsg("");
-      try {
-        const res = await fetch(
-          `/api/user/profile?email=${encodeURIComponent(email)}`
-        );
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || messages.profile.errorProfileLoadFailed);
-        }
-        const data = (await res.json()) as {
-          username: string;
-          email: string;
-          avatarUrl: string | null;
-        };
-        setProfile({
-          username: data.username,
-          email: data.email,
-          avatarUrl: data.avatarUrl,
-        });
-        setUsernameInput(data.username);
-        setAvatarUrlInput(data.avatarUrl ?? "");
-      } catch (e) {
-        setError(
-          e instanceof Error
-            ? e.message
-            : messages.profile.errorProfileLoadFailed
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [messages.profile.errorProfileLoadFailed]
-  );
+  // 当 AdminContext 的 loading 状态变化时，同步到本地 loading 状态
+  useEffect(() => {
+    // 只在 context 初始化过程中同步 loading 状态
+    if (!adminContext.initialized) {
+      setLoading(adminContext.loading);
+    }
+  }, [adminContext.loading, adminContext.initialized]);
 
   useEffect(() => {
     if (!adminEmail) return;
-
-    loadProfile(adminEmail);
 
     const loadOrders = async (email: string) => {
       setOrdersLoading(true);
@@ -204,7 +176,7 @@ export default function AdminProfilePage() {
     };
 
     loadOrders(adminEmail);
-  }, [adminEmail, loadProfile]);
+  }, [adminEmail]);
 
   const updateUsername = async () => {
     if (!adminEmail || !usernameInput) return;
@@ -229,6 +201,9 @@ export default function AdminProfilePage() {
           ? { ...p, username: usernameInput }
           : { username: usernameInput, email: adminEmail, avatarUrl: null }
       );
+
+      // 同步更新到 AdminContext，触发全局状态更新
+      adminContext.updateProfile({ username: usernameInput });
     } catch (e) {
       setError(
         e instanceof Error
@@ -256,33 +231,19 @@ export default function AdminProfilePage() {
         throw new Error(text || messages.profile.errorAvatarUpdateFailed);
       }
       setOkMsg(messages.profile.successAvatarUpdated);
+      const newAvatarUrl = avatarUrlInput.trim() || null;
       setProfile((p) =>
         p
-          ? { ...p, avatarUrl: avatarUrlInput.trim() || null }
+          ? { ...p, avatarUrl: newAvatarUrl }
           : {
               username: usernameInput || "",
               email: adminEmail,
-              avatarUrl: avatarUrlInput.trim() || null,
+              avatarUrl: newAvatarUrl,
             }
       );
 
-      if (typeof window !== "undefined") {
-        if (avatarUrlInput.trim()) {
-          window.localStorage.setItem("adminAvatarUrl", avatarUrlInput.trim());
-        } else {
-          window.localStorage.removeItem("adminAvatarUrl");
-        }
-
-        // 通知布局更新右上角管理员头像
-        window.dispatchEvent(
-          new CustomEvent("admin-avatar-updated", {
-            detail: {
-              avatarUrl: avatarUrlInput.trim() || null,
-              displayName: profile?.username ?? usernameInput ?? null,
-            },
-          })
-        );
-      }
+      // 同步更新到 AdminContext，触发全局状态更新（包括 localStorage 和事件通知）
+      adminContext.updateProfile({ avatarUrl: newAvatarUrl });
     } catch (e) {
       setError(
         e instanceof Error

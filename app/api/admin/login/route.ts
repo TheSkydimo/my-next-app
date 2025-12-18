@@ -5,6 +5,7 @@ type AdminRow = {
   id: number;
   username: string;
   email: string;
+  avatar_url: string | null;
   is_super_admin: number;
 };
 
@@ -26,9 +27,10 @@ export async function POST(request: Request) {
   let results: AdminRow[] | undefined;
 
   try {
+    // 返回完整管理员信息，包括 avatar_url，以便登录后直接使用，无需再次请求
     const queryResult = await db
       .prepare(
-        `SELECT id, username, email, is_super_admin FROM users WHERE email = ? AND password_hash = ? AND is_admin = 1`
+        `SELECT id, username, email, avatar_url, is_super_admin FROM users WHERE email = ? AND password_hash = ? AND is_admin = 1`
       )
       .bind(email, password_hash)
       .all<AdminRow>();
@@ -55,12 +57,14 @@ export async function POST(request: Request) {
   const isSuperAdmin = !!admin.is_super_admin;
   const role = isSuperAdmin ? "super_admin" : "admin";
 
+  // 登录成功，返回完整管理员信息（包括头像 URL）
   return Response.json({
     ok: true,
     admin: {
       id: admin.id,
       username: admin.username,
       email: admin.email,
+      avatarUrl: admin.avatar_url,
       isSuperAdmin,
       role,
     },

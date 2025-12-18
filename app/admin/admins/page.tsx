@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
+import { useAdmin } from "../../contexts/AdminContext";
 
 type AdminItem = {
   id: number;
@@ -15,12 +16,16 @@ type AdminItem = {
 };
 
 export default function AdminAdminsPage() {
+  // 使用 AdminContext 获取预加载的管理员信息
+  const adminContext = useAdmin();
+  const isSuperAdmin = adminContext.profile?.isSuperAdmin ?? false;
+  const adminEmail = isSuperAdmin ? (adminContext.profile?.email ?? null) : null;
+  const unauthorized = adminContext.initialized && !isSuperAdmin;
+
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [unauthorized, setUnauthorized] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -45,21 +50,6 @@ export default function AdminAdminsPage() {
   }, []);
 
   const messages = getAdminMessages(language);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isAdmin = window.localStorage.getItem("isAdmin");
-      const email = window.localStorage.getItem("adminEmail");
-      if (isAdmin === "true" && email) {
-        const role = window.localStorage.getItem("adminRole");
-        if (role === "super_admin") {
-          setAdminEmail(email);
-        } else {
-          setUnauthorized(true);
-        }
-      }
-    }
-  }, []);
 
   const fetchAdmins = useCallback(async () => {
     if (!adminEmail) return;
