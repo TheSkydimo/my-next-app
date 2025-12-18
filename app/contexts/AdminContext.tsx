@@ -256,6 +256,7 @@ export function AdminProvider({ children }: AdminProviderProps) {
 
   /**
    * 清除管理员状态（登出时调用）
+   * 同时清空所有本地缓存（localStorage 和 sessionStorage）
    */
   const clearAdmin = useCallback(() => {
     setProfile(null);
@@ -263,11 +264,9 @@ export function AdminProvider({ children }: AdminProviderProps) {
     setIsAuthed(false);
 
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem("adminEmail");
-      window.localStorage.removeItem("adminName");
-      window.localStorage.removeItem("adminAvatarUrl");
-      window.localStorage.removeItem("adminRole");
-      window.localStorage.removeItem("isAdmin");
+      // 清空所有本地缓存
+      window.localStorage.clear();
+      window.sessionStorage.clear();
     }
   }, []);
 

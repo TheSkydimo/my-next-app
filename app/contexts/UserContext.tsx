@@ -221,15 +221,16 @@ export function UserProvider({ children }: UserProviderProps) {
 
   /**
    * 清除用户状态（登出时调用）
+   * 同时清空所有本地缓存（localStorage 和 sessionStorage）
    */
   const clearUser = useCallback(() => {
     setProfile(null);
     setError(null);
 
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem("loggedInUserEmail");
-      window.localStorage.removeItem("loggedInUserName");
-      window.localStorage.removeItem("loggedInUserAvatar");
+      // 清空所有本地缓存
+      window.localStorage.clear();
+      window.sessionStorage.clear();
     }
   }, []);
 
