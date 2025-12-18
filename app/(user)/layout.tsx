@@ -13,6 +13,7 @@ import {
   type AppTheme,
 } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
+import FeedbackBubble from "../components/FeedbackBubble";
 
 export default function UserLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -248,6 +249,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="user-layout">
+      <FeedbackBubble />
       <div className="user-layout__body">
         <aside className="user-layout__sidebar">
           {hasUser && (

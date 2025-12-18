@@ -2864,3 +2864,247 @@ button:hover {
 	color: #4b5563;
 	text-shadow: none;
 }
+
+/* =============================================
+   Feedback Bubble 反馈气泡组件样式
+   ============================================= */
+
+/* 气泡触发按钮 - 固定在右下角 */
+.feedback-bubble__trigger {
+	position: fixed;
+	bottom: 24px;
+	right: 24px;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 56px;
+	height: 56px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	color: #ffffff;
+	cursor: pointer;
+	box-shadow:
+		0 4px 20px rgba(59, 130, 246, 0.4),
+		0 8px 32px rgba(99, 102, 241, 0.3);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.feedback-bubble__trigger:hover {
+	transform: translateY(-2px) scale(1.08);
+	box-shadow:
+		0 6px 28px rgba(59, 130, 246, 0.5),
+		0 12px 40px rgba(99, 102, 241, 0.35);
+}
+
+.feedback-bubble__trigger:active {
+	transform: translateY(0) scale(0.95);
+}
+
+/* 反馈面板 */
+.feedback-bubble__panel {
+	position: fixed;
+	bottom: 90px;
+	right: 24px;
+	z-index: 9998;
+	width: 340px;
+	max-width: calc(100vw - 48px);
+	border-radius: 16px;
+	border: 1px solid;
+	box-shadow:
+		0 16px 48px rgba(0, 0, 0, 0.15),
+		0 8px 24px rgba(0, 0, 0, 0.1);
+	animation: feedbackPanelSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	overflow: hidden;
+}
+
+@keyframes feedbackPanelSlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(12px) scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.feedback-bubble__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 18px;
+	border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.feedback-bubble__title {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.feedback-bubble__close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.feedback-bubble__close:hover {
+	background: rgba(148, 163, 184, 0.15);
+}
+
+.feedback-bubble__body {
+	padding: 16px 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.feedback-bubble__textarea {
+	width: 100%;
+	min-height: 100px;
+	padding: 12px;
+	border-radius: 10px;
+	border: 1px solid;
+	resize: vertical;
+	font-family: inherit;
+	font-size: 14px;
+	line-height: 1.5;
+	transition: border-color 0.2s, box-shadow 0.2s;
+	box-sizing: border-box;
+}
+
+.feedback-bubble__textarea:focus {
+	outline: none;
+	border-color: #3b82f6;
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.feedback-bubble__textarea::placeholder {
+	color: #94a3b8;
+}
+
+.feedback-bubble__email {
+	width: 100%;
+	padding: 10px 12px;
+	border-radius: 8px;
+	border: 1px solid;
+	font-family: inherit;
+	font-size: 14px;
+	transition: border-color 0.2s, box-shadow 0.2s;
+	box-sizing: border-box;
+}
+
+.feedback-bubble__email:focus {
+	outline: none;
+	border-color: #3b82f6;
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.feedback-bubble__email::placeholder {
+	color: #94a3b8;
+}
+
+.feedback-bubble__error {
+	font-size: 13px;
+	padding: 8px 12px;
+	background: rgba(239, 68, 68, 0.1);
+	border-radius: 6px;
+}
+
+.feedback-bubble__footer {
+	padding: 12px 18px 18px;
+	display: flex;
+	justify-content: flex-end;
+}
+
+.feedback-bubble__send {
+	padding: 10px 24px;
+	border: none;
+	border-radius: 8px;
+	color: #ffffff;
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.feedback-bubble__send:hover:not(:disabled) {
+	transform: translateY(-1px);
+	box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+
+.feedback-bubble__send:disabled {
+	cursor: not-allowed;
+}
+
+/* 成功状态 */
+.feedback-bubble__success {
+	padding: 32px 24px;
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+}
+
+.feedback-bubble__success-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	color: #ffffff;
+	animation: feedbackSuccessPop 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes feedbackSuccessPop {
+	0% {
+		transform: scale(0);
+	}
+	60% {
+		transform: scale(1.15);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+.feedback-bubble__success-title {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.feedback-bubble__success-message {
+	margin: 0;
+	font-size: 14px;
+}
+
+/* 响应式适配 */
+@media (max-width: 480px) {
+	.feedback-bubble__trigger {
+		bottom: 16px;
+		right: 16px;
+		width: 50px;
+		height: 50px;
+	}
+
+	.feedback-bubble__panel {
+		bottom: 76px;
+		right: 16px;
+		left: 16px;
+		width: auto;
+		max-width: none;
+	}
+}

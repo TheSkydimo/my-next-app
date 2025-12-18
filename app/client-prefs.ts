@@ -25,6 +25,13 @@ export function applyTheme(theme: AppTheme) {
   document.documentElement.dataset.theme = theme;
   if (typeof window !== "undefined") {
     window.localStorage.setItem(THEME_KEY, theme);
+
+    // 向全局广播主题变更事件，便于页面/组件订阅并实时更新样式
+    window.dispatchEvent(
+      new CustomEvent("app-theme-changed", {
+        detail: { theme },
+      })
+    );
   }
 }
 
