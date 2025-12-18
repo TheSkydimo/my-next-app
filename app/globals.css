@@ -3350,6 +3350,208 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	}
 }
 
+/* ========== 移动端小屏布局适配（抽屉式菜单） ========== */
+@media (max-width: 640px) {
+	/* 移动端遮罩层 */
+	.user-layout__mobile-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 998;
+		background: rgba(0, 0, 0, 0.6);
+		animation: fadeIn 0.2s ease-out;
+	}
+
+	/* 移动端汉堡菜单按钮 */
+	.user-layout__mobile-toggle {
+		display: flex;
+		position: fixed;
+		top: 16px;
+		left: 16px;
+		z-index: 1001;
+		width: 44px;
+		height: 44px;
+		padding: 0;
+		border: none;
+		border-radius: 12px;
+		background: rgba(15, 23, 42, 0.95);
+		border: 1px solid rgba(148, 163, 184, 0.4);
+		cursor: pointer;
+		align-items: center;
+		justify-content: center;
+		box-shadow:
+			0 4px 16px rgba(0, 0, 0, 0.3),
+			0 0 0 1px rgba(59, 130, 246, 0.3);
+		transition: all 0.2s ease;
+	}
+
+	.user-layout__mobile-toggle:active {
+		transform: scale(0.95);
+	}
+
+	:root[data-theme="light"] .user-layout__mobile-toggle {
+		background: rgba(255, 255, 255, 0.95);
+		border-color: rgba(209, 213, 219, 0.9);
+		box-shadow:
+			0 4px 16px rgba(0, 0, 0, 0.1),
+			0 0 0 1px rgba(59, 130, 246, 0.2);
+	}
+
+	/* 汉堡图标 */
+	.user-layout__hamburger {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		gap: 5px;
+		width: 20px;
+		height: 16px;
+	}
+
+	.user-layout__hamburger span {
+		display: block;
+		width: 100%;
+		height: 2px;
+		background: #e5e7eb;
+		border-radius: 2px;
+		transition: all 0.25s ease;
+		transform-origin: center;
+	}
+
+	:root[data-theme="light"] .user-layout__hamburger span {
+		background: #374151;
+	}
+
+	/* 汉堡图标变叉号动画 */
+	.user-layout__hamburger--open span:nth-child(1) {
+		transform: translateY(7px) rotate(45deg);
+	}
+
+	.user-layout__hamburger--open span:nth-child(2) {
+		opacity: 0;
+		transform: scaleX(0);
+	}
+
+	.user-layout__hamburger--open span:nth-child(3) {
+		transform: translateY(-7px) rotate(-45deg);
+	}
+
+	/* 侧边栏改为抽屉式 */
+	.user-layout__sidebar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 999;
+		width: 280px;
+		max-width: 85vw;
+		height: 100vh;
+		padding: 72px 16px 24px;
+		box-sizing: border-box;
+		background: #0f172a;
+		border-right: 1px solid rgba(148, 163, 184, 0.3);
+		box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+		transform: translateX(-100%);
+		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		overflow-y: auto;
+	}
+
+	:root[data-theme="light"] .user-layout__sidebar {
+		background: #ffffff;
+		border-right-color: rgba(209, 213, 219, 0.8);
+		box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+	}
+
+	.user-layout__sidebar--open {
+		transform: translateX(0);
+	}
+
+	/* 主内容区域占满屏幕 */
+	.user-layout__body {
+		padding: 0;
+	}
+
+	.user-layout__right {
+		width: 100%;
+	}
+
+	.user-layout__main {
+		flex: 1;
+		margin-left: 0;
+		padding: 16px;
+		border-radius: 0;
+		min-width: 0;
+	}
+
+	/* 顶部栏调整，给汉堡按钮留位置 */
+	.user-layout__logout {
+		padding: 8px 16px 8px 64px;
+	}
+
+	.user-topbar {
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.user-topbar__search {
+		flex: 1;
+		min-width: 120px;
+	}
+
+	.user-topbar__search-input {
+		width: 100%;
+	}
+
+	.user-topbar__actions {
+		flex-shrink: 0;
+	}
+
+	/* 用户头像和名称在侧边栏中的样式 */
+	.user-layout__profile {
+		margin-bottom: 16px;
+		padding-bottom: 16px;
+		border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+	}
+
+	.user-layout__avatar {
+		width: 48px;
+		height: 48px;
+	}
+
+	.user-layout__display-name {
+		font-size: 15px;
+	}
+
+	/* 导航菜单样式 */
+	.user-layout__nav {
+		gap: 6px;
+		font-size: 15px;
+	}
+
+	.user-layout__nav-link {
+		padding: 12px 14px;
+		border-radius: 10px;
+	}
+
+	.user-layout__nav-sub {
+		margin-left: 32px;
+	}
+
+	.user-layout__nav-sub-link {
+		padding: 10px 14px;
+		font-size: 14px;
+	}
+}
+
+/* 大于 640px 时隐藏移动端专属元素 */
+@media (min-width: 641px) {
+	.user-layout__mobile-toggle {
+		display: none;
+	}
+
+	.user-layout__mobile-overlay {
+		display: none;
+	}
+}
+
 :root[data-theme="light"] .user-profile-helper-text {
 	color: #4b5563;
 	text-shadow: none;

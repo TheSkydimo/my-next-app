@@ -30,6 +30,7 @@ export default function UserFeedbackPage() {
   // 使用 UserContext 获取预加载的用户信息
   const userContext = useUser();
   const userEmail = userContext.profile?.email ?? null;
+  const isUserInitialized = userContext.initialized;
 
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [theme, setTheme] = useState<AppTheme>("dark");
@@ -870,6 +871,15 @@ export default function UserFeedbackPage() {
       setReplySubmitting(false);
     }
   };
+
+  // 等待 UserContext 初始化完成再判断登录状态
+  if (!isUserInitialized) {
+    return (
+      <div style={{ maxWidth: 640, margin: "10px auto" }}>
+        <p>{messages.common.loading}</p>
+      </div>
+    );
+  }
 
   if (!userEmail) {
     return (

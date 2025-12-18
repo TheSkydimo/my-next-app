@@ -366,6 +366,7 @@ export default function UserDevicesPage() {
   // 使用 UserContext 获取预加载的用户信息
   const userContext = useUser();
   const userEmail = userContext.profile?.email ?? null;
+  const isUserInitialized = userContext.initialized;
 
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [devices, setDevices] = useState<Device[]>([]);
@@ -671,6 +672,16 @@ export default function UserDevicesPage() {
   const maxPage = Math.max(1, Math.ceil(total / pageSize) || 1);
   const hasPrev = page > 1;
   const hasNext = page < maxPage;
+
+  // 等待 UserContext 初始化完成再判断登录状态
+  if (!isUserInitialized) {
+    return (
+      <div style={{ maxWidth: 640, margin: "10px auto" }}>
+        <h1>{messages.devices.title}</h1>
+        <p>{messages.common.loading}</p>
+      </div>
+    );
+  }
 
   if (!userEmail) {
     return (

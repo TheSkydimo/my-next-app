@@ -56,6 +56,7 @@ export default function UserProfilePage() {
   // 使用 UserContext 获取预加载的用户信息，避免重复请求
   const userContext = useUser();
   const userEmail = userContext.profile?.email ?? null;
+  const isUserInitialized = userContext.initialized;
   
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -329,6 +330,15 @@ export default function UserProfilePage() {
       );
     }
   };
+
+  // 等待 UserContext 初始化完成再判断登录状态
+  if (!isUserInitialized) {
+    return (
+      <div style={{ maxWidth: 640, margin: "10px auto" }}>
+        <p>{messages.common.loading}</p>
+      </div>
+    );
+  }
 
   if (!userEmail) {
     return (

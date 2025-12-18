@@ -52,6 +52,8 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
   const [feedbackSubTab, setFeedbackSubTab] = useState<"new" | "history" | null>(
     null
   );
+  // 移动端菜单状态
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const messages = getUserMessages(language);
 
@@ -201,11 +203,37 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
     }
   };
 
+  // 点击菜单项后在移动端自动关闭侧边栏
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="user-layout">
       <FeedbackBubble />
+      {/* 移动端遮罩层 */}
+      {isMobileMenuOpen && (
+        <div
+          className="user-layout__mobile-overlay"
+          onClick={closeMobileMenu}
+          aria-hidden="true"
+        />
+      )}
       <div className="user-layout__body">
-        <aside className="user-layout__sidebar">
+        {/* 移动端汉堡菜单按钮 */}
+        <button
+          type="button"
+          className="user-layout__mobile-toggle"
+          aria-label={isMobileMenuOpen ? "关闭菜单" : "打开菜单"}
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          <span className={`user-layout__hamburger ${isMobileMenuOpen ? "user-layout__hamburger--open" : ""}`}>
+            <span />
+            <span />
+            <span />
+          </span>
+        </button>
+        <aside className={`user-layout__sidebar ${isMobileMenuOpen ? "user-layout__sidebar--open" : ""}`}>
           {hasUser && (
             <div className="user-layout__profile">
               <div
@@ -249,6 +277,7 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
               className={`user-layout__nav-link ${
                 isActive("/") ? "user-layout__nav-link--active" : ""
               }`}
+              onClick={closeMobileMenu}
             >
               {messages.layout.navHome}
             </Link>
@@ -257,6 +286,7 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
               className={`user-layout__nav-link ${
                 isActive("/profile") ? "user-layout__nav-link--active" : ""
               }`}
+              onClick={closeMobileMenu}
             >
               {messages.layout.navProfile}
             </Link>
@@ -296,6 +326,7 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
                     }`}
                     onClick={() => {
                       setFeedbackSubTab("new");
+                      closeMobileMenu();
                       if (typeof window !== "undefined") {
                         window.dispatchEvent(
                           new CustomEvent("user-feedback-section-changed", {
@@ -316,6 +347,7 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
                     }`}
                     onClick={() => {
                       setFeedbackSubTab("history");
+                      closeMobileMenu();
                       if (typeof window !== "undefined") {
                         window.dispatchEvent(
                           new CustomEvent("user-feedback-section-changed", {
@@ -369,8 +401,9 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
                     }`}
                     onClick={() => {
                       setDeviceSubTab("order");
+                      closeMobileMenu();
                       if (typeof window !== "undefined") {
-                        // 通知设备信息页切换到“订单信息”区域
+                        // 通知设备信息页切换到"订单信息"区域
                         window.dispatchEvent(
                           new CustomEvent("user-devices-section-changed", {
                             detail: { section: "order" },
@@ -390,8 +423,9 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
                     }`}
                     onClick={() => {
                       setDeviceSubTab("warranty");
+                      closeMobileMenu();
                       if (typeof window !== "undefined") {
-                        // 通知设备信息页切换到“质保信息”区域
+                        // 通知设备信息页切换到"质保信息"区域
                         window.dispatchEvent(
                           new CustomEvent("user-devices-section-changed", {
                             detail: { section: "warranty" },
