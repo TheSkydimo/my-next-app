@@ -140,18 +140,22 @@ body {
 /* 小屏下：管理员布局保持左侧菜单，只缩放尺寸，避免占用过多空间 */
 @media (max-width: 768px) {
 	.admin-layout__body {
-		padding: 10px;
+		padding: 0;
 		min-height: 100vh;
 	}
 
-	/* 左侧菜单保持竖向，小屏按比例占宽，而不是固定像素，避免只压缩右侧内容 */
-	.admin-layout__sidebar {
-		flex: 0 0 38%;
-		max-width: 210px;
-		min-width: 120px;
+	/* 侧边栏外壳响应式 */
+	.admin-shell--sidebar {
+		width: 160px;
 		padding: 14px 12px;
-		border-radius: 16px;
 		gap: 10px;
+		border-radius: 0;
+	}
+
+	/* 顶栏外壳响应式 */
+	.admin-shell--topbar {
+		padding: 8px 12px;
+		border-radius: 0;
 	}
 
 	/* 头像缩小，避免在小屏太夸张 */
@@ -173,21 +177,7 @@ body {
 		font-size: 13px;
 	}
 
-	/* 右侧外壳区域响应式 */
-	.admin-layout__right {
-		gap: 10px;
-		padding: 10px;
-	}
-
-	.admin-shell {
-		border-radius: 12px;
-	}
-
-	.admin-shell--topbar {
-		padding: 6px 12px;
-	}
-
-	.admin-shell--content {
+	.admin-layout__content {
 		padding: 16px 14px;
 		min-width: 190px;
 	}
@@ -2340,14 +2330,13 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	z-index: 1;
 	display: flex;
 	height: 100%;
-	padding: 0 20px 20px;
 	box-sizing: border-box;
 	backdrop-filter: none;
+	padding: 0;
+	gap: 0;
 }
 
 .admin-layout__sidebar {
-	width: 230px;
-	padding: var(--shell-header-height) 14px 18px;
 	box-sizing: border-box;
 	border-radius: 0;
 	border: 0;
@@ -2504,89 +2493,113 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
-	gap: 16px;
-	padding: 16px;
 }
 
 /* ========== Admin Shell 外壳系统 ========== */
-/* 顶栏外壳与内容外壳，形成视觉层次分离 */
+/* L形外壳：侧边栏 + 顶栏统一深色背景，灰色线分隔 */
 
 .admin-shell {
-	border-radius: 16px;
-	background: rgba(15, 23, 42, 0.6);
-	backdrop-filter: blur(12px);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	box-shadow:
-		0 4px 24px rgba(0, 0, 0, 0.15),
-		0 1px 3px rgba(0, 0, 0, 0.1),
-		inset 0 1px 0 rgba(255, 255, 255, 0.05);
-	transition: box-shadow 0.2s ease, border-color 0.2s ease;
+	background: #0f172a;
+	backdrop-filter: none;
+	border: none;
+	box-shadow: none;
 }
 
-/* 顶栏外壳 */
+/* 侧边栏外壳（L形左侧，全高，贴边） */
+.admin-shell--sidebar {
+	width: 230px;
+	padding: 20px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	overflow-y: auto;
+	border-radius: 0;
+	margin: 0;
+	/* 右侧灰色分隔线 */
+	border-right: 1px solid #334155;
+}
+
+/* 右侧区域容器 */
+.admin-layout__right {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	margin-left: 0;
+}
+
+/* 顶栏外壳（L形顶部，贴边） */
 .admin-shell--topbar {
-	flex-shrink: 0;
-	padding: 8px 16px;
+	padding: 12px 20px;
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	border-radius: 0;
+	margin: 0;
+	/* 底部灰色分隔线 */
+	border-bottom: 1px solid #334155;
 }
 
-/* 内容外壳 */
-.admin-shell--content {
+/* 内容区（无外壳，统一深色背景） */
+.admin-layout__content {
 	flex: 1;
 	padding: 24px 28px;
 	overflow-y: auto;
 	overflow-x: hidden;
+	color: #e5e7eb;
+	background: #0f172a;
 }
 
-/* 浅色主题下的外壳样式 */
-:root[data-theme="light"] .admin-shell {
-	background: rgba(255, 255, 255, 0.85);
-	backdrop-filter: blur(16px);
-	border: 1px solid rgba(229, 231, 235, 0.9);
-	box-shadow:
-		0 4px 24px rgba(0, 0, 0, 0.06),
-		0 1px 3px rgba(0, 0, 0, 0.04),
-		inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-:root[data-theme="light"] .admin-shell--topbar {
-	background: rgba(255, 255, 255, 0.9);
-}
-
-:root[data-theme="light"] .admin-shell--content {
-	background: rgba(249, 250, 251, 0.95);
-}
-
-/* 外壳内的标题样式优化 */
-.admin-shell--content h1,
-.admin-shell--content h2,
-.admin-shell--content h3 {
+.admin-layout__content h1,
+.admin-layout__content h2,
+.admin-layout__content h3 {
 	color: #e5e7eb;
 	text-shadow: 0 1px 10px rgba(15, 23, 42, 0.9);
 }
 
-:root[data-theme="light"] .admin-shell--content h1,
-:root[data-theme="light"] .admin-shell--content h2,
-:root[data-theme="light"] .admin-shell--content h3 {
+.admin-layout__content a {
+	color: #bfdbfe;
+}
+
+.admin-layout__content a:hover {
+	color: #eff6ff;
+}
+
+/* 浅色主题下的外壳样式 */
+:root[data-theme="light"] .admin-shell {
+	background: #f8fafc;
+	backdrop-filter: none;
+	box-shadow: none;
+}
+
+:root[data-theme="light"] .admin-shell--sidebar {
+	/* 右侧灰色分隔线 */
+	border-right: 1px solid #e2e8f0;
+}
+
+:root[data-theme="light"] .admin-shell--topbar {
+	/* 底部灰色分隔线 */
+	border-bottom: 1px solid #e2e8f0;
+}
+
+:root[data-theme="light"] .admin-layout__content {
+	color: #111827;
+	/* 内容区浅灰背景，与侧边栏/顶栏区分 */
+	background: #f1f5f9;
+}
+
+:root[data-theme="light"] .admin-layout__content h1,
+:root[data-theme="light"] .admin-layout__content h2,
+:root[data-theme="light"] .admin-layout__content h3 {
 	color: #111827;
 	text-shadow: none;
 }
 
-.admin-shell--content a {
-	color: #bfdbfe;
-}
-
-.admin-shell--content a:hover {
-	color: #eff6ff;
-}
-
-:root[data-theme="light"] .admin-shell--content a {
+:root[data-theme="light"] .admin-layout__content a {
 	color: #2563eb;
 }
 
-:root[data-theme="light"] .admin-shell--content a:hover {
+:root[data-theme="light"] .admin-layout__content a:hover {
 	color: #1d4ed8;
 }
 

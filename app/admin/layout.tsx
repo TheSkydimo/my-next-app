@@ -490,7 +490,8 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   return (
     <div className="admin-layout">
       <div className="admin-layout__body">
-        <aside className="admin-layout__sidebar">
+        {/* 侧边栏外壳（L形左侧） */}
+        <aside className="admin-shell admin-shell--sidebar">
           {isAuthed && (
             <div className="admin-layout__profile">
               <div
@@ -582,11 +583,12 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
             >
               {messages.layout.navUsers}
             </Link>
-          </nav>
+            </nav>
         </aside>
 
+        {/* 右侧区域 */}
         <div className="admin-layout__right">
-          {/* 顶栏外壳：将顶部工具栏独立于内容区 */}
+          {/* 顶栏外壳（L形顶部） */}
           <div className="admin-shell admin-shell--topbar">
             <div className="admin-topbar">
                 <div className="topbar-brand">
@@ -912,14 +914,13 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                         </button>
                       </div>
                     )}
-                  </div>
                 </div>
               </div>
             </div>
+          </div>
 
-
-          {/* 内容外壳：主要内容区域 */}
-          <main className="admin-shell admin-shell--content">
+          {/* 内容区（无外壳） */}
+          <main className="admin-layout__content">
             {children}
           </main>
         </div>
