@@ -78,6 +78,7 @@ export async function GET(request: Request) {
         SELECT r.content
         FROM user_feedback_replies r
         WHERE r.feedback_id = f.id
+          AND (r.sender IS NULL OR r.sender = 'admin')
         ORDER BY r.created_at DESC
         LIMIT 1
       ) AS latest_reply_content,

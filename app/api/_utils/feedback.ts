@@ -119,6 +119,17 @@ export async function ensureFeedbackReplyTable(db: D1Database) {
       "CREATE INDEX IF NOT EXISTS idx_feedback_replies_admin ON user_feedback_replies (admin_id, created_at DESC)"
     )
     .run();
+
+  // 兼容旧结构：为回复表增加 sender 字段，用于区分管理员 / 用户消息
+  try {
+    await db
+      .prepare(
+        "ALTER TABLE user_feedback_replies ADD COLUMN sender TEXT"
+      )
+      .run();
+  } catch {
+    // ignore
+  }
 }
 
 // 自动关闭超时未再次处理的工单：

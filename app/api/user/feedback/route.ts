@@ -53,6 +53,21 @@ export async function POST(request: Request) {
     return new Response("用户不存在", { status: 404 });
   }
 
+  // 限制：同一时间用户只能有一个未关闭的工单
+  const existingOpen = await db
+    .prepare(
+      "SELECT id FROM user_feedback WHERE user_id = ? AND status != 'closed' ORDER BY created_at DESC LIMIT 1"
+    )
+    .bind(user.id)
+    .all<{ id: number }>();
+
+  if (existingOpen.results && existingOpen.results.length > 0) {
+    return new Response(
+      "你已有一个正在处理中的工单，请等待处理结果或在该工单中查看回复。",
+      { status: 400 }
+    );
+  }
+
   const insert = await db
     .prepare(
       "INSERT INTO user_feedback (user_id, type, content, status) VALUES (?, ?, ?, 'unread')"
