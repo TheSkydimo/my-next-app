@@ -121,8 +121,10 @@ export default function AdminAdminsPage() {
 
   if (unauthorized) {
     return (
-      <div style={{ maxWidth: 960, margin: "10px auto" }}>
-        <h1>{messages.admins.title}</h1>
+      <div className="vben-page">
+        <div className="vben-page__header">
+          <h1 className="vben-page__title">{messages.admins.title}</h1>
+        </div>
         <p>{messages.admins.unauthorizedDesc}</p>
       </div>
     );
@@ -130,8 +132,10 @@ export default function AdminAdminsPage() {
 
   if (!adminEmail) {
     return (
-      <div style={{ maxWidth: 960, margin: "10px auto" }}>
-        <h1>{messages.admins.title}</h1>
+      <div className="vben-page">
+        <div className="vben-page__header">
+          <h1 className="vben-page__title">{messages.admins.title}</h1>
+        </div>
         <p>{messages.common.adminLoginRequired}</p>
         <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
       </div>
@@ -139,11 +143,11 @@ export default function AdminAdminsPage() {
   }
 
   return (
-    <div style={{ maxWidth: 960, margin: "10px auto" }}>
-      <h1>{messages.admins.title}</h1>
-      <p style={{ fontSize: 14, color: "#6b7280", marginTop: 4 }}>
-        {messages.admins.limitTip}
-      </p>
+    <div className="vben-page">
+      <div className="vben-page__header">
+        <h1 className="vben-page__title">{messages.admins.title}</h1>
+        <p className="vben-page__subtitle">{messages.admins.limitTip}</p>
+      </div>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
       {loading ? (

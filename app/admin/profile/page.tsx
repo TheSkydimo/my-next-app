@@ -389,14 +389,14 @@ export default function AdminProfilePage() {
 
   if (!adminEmail) {
     return (
-      <div style={{ maxWidth: 640, margin: "10px auto" }}>
+      <div className="vben-page">
         <p>{messages.common.adminLoginRequired}</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "10px auto" }}>
+    <div className="vben-page">
       {loading && <p>{messages.common.loading}</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
       {okMsg && <p style={{ color: "green" }}>{okMsg}</p>}

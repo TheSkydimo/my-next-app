@@ -85,8 +85,10 @@ export default function AdminOrdersPage() {
 
   if (!adminEmail) {
     return (
-      <div style={{ maxWidth: 960, margin: "10px auto" }}>
-        <h1>{messages.orders.title}</h1>
+      <div className="vben-page">
+        <div className="vben-page__header">
+          <h1 className="vben-page__title">{messages.orders.title}</h1>
+        </div>
         <p>{messages.common.adminLoginRequired}</p>
         <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
       </div>
@@ -94,24 +96,18 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div style={{ maxWidth: 960, margin: "10px auto" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 24,
-          gap: 12,
-        }}
-      >
-        <div>
-          <h1>{messages.orders.title}</h1>
-          <p style={{ fontSize: 14, color: "#6b7280" }}>
-            {messages.orders.adminLabelPrefix}
-            {adminEmail}
-          </p>
+    <div className="vben-page">
+      <div className="vben-page__header">
+        <div className="vben-row vben-row--between vben-row--center">
+          <div>
+            <h1 className="vben-page__title">{messages.orders.title}</h1>
+            <p className="vben-page__subtitle">
+              {messages.orders.adminLabelPrefix}
+              {adminEmail}
+            </p>
+          </div>
+          <Link href="/admin" className="btn btn-secondary btn-sm">{messages.orders.backToHome}</Link>
         </div>
-        <Link href="/admin">{messages.orders.backToHome}</Link>
       </div>
 
       {error && <p style={{ color: "red" }}>{error}</p>}

@@ -42,14 +42,16 @@ export default function Home() {
   // 与管理端保持一致：已登录用户的欢迎信息采用简单文本布局，不再使用块状卡片
   if (displayName) {
     return (
-      <div style={{ maxWidth: 640, margin: "10px auto" }}>
-        <h1>{messages.home.welcomeTitle(displayName)}</h1>
-        {userEmail && (
-          <p style={{ fontSize: 14, color: "#6b7280" }}>
-            {messages.home.currentEmailPrefix}
-            {userEmail}
-          </p>
-        )}
+      <div className="vben-page">
+        <div className="vben-page__header">
+          <h1 className="vben-page__title">{messages.home.welcomeTitle(displayName)}</h1>
+          {userEmail && (
+            <p className="vben-page__subtitle">
+              {messages.home.currentEmailPrefix}
+              {userEmail}
+            </p>
+          )}
+        </div>
       </div>
     );
   }

@@ -334,7 +334,7 @@ export default function UserProfilePage() {
   // 等待 UserContext 初始化完成再判断登录状态
   if (!isUserInitialized) {
     return (
-      <div style={{ maxWidth: 640, margin: "10px auto" }}>
+      <div className="vben-page">
         <p>{messages.common.loading}</p>
       </div>
     );
@@ -342,7 +342,7 @@ export default function UserProfilePage() {
 
   if (!userEmail) {
     return (
-      <div style={{ maxWidth: 640, margin: "10px auto" }}>
+      <div className="vben-page">
         <p>{messages.common.loginRequired}</p>
         <Link href="/login">{messages.common.goLogin}</Link>
       </div>
@@ -350,7 +350,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "10px auto" }}>
+    <div className="vben-page">
       {loading && <p>{messages.common.loading}</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
       {okMsg && <p style={{ color: "green" }}>{okMsg}</p>}

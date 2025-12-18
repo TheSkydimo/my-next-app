@@ -41,8 +41,10 @@ export default function AdminHomePage() {
 
   if (!adminName) {
     return (
-      <div style={{ maxWidth: 640, margin: "10px auto" }}>
-        <h1>{messages.home.title}</h1>
+      <div className="vben-page">
+        <div className="vben-page__header">
+          <h1 className="vben-page__title">{messages.home.title}</h1>
+        </div>
         <p>{messages.common.adminLoginRequired}</p>
         <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
       </div>
@@ -50,18 +52,20 @@ export default function AdminHomePage() {
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "10px auto" }}>
-      <h1>{messages.home.title}</h1>
-      <p>
-        {messages.home.welcomeLabel}
-        {adminName}
-      </p>
-      {adminEmail && (
-        <p style={{ fontSize: 14, color: "#6b7280" }}>
-          {messages.home.emailLabel}
-          {adminEmail}
+    <div className="vben-page">
+      <div className="vben-page__header">
+        <h1 className="vben-page__title">{messages.home.title}</h1>
+        <p className="vben-page__subtitle">
+          {messages.home.welcomeLabel}
+          {adminName}
+          {adminEmail && (
+            <span style={{ marginLeft: 16 }}>
+              {messages.home.emailLabel}
+              {adminEmail}
+            </span>
+          )}
         </p>
-      )}
+      </div>
 
       {/* 其他功能入口已经在左侧菜单中展示，这里只作为首页展示信息 */}
     </div>

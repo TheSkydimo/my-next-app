@@ -676,8 +676,10 @@ export default function UserDevicesPage() {
   // 等待 UserContext 初始化完成再判断登录状态
   if (!isUserInitialized) {
     return (
-      <div style={{ maxWidth: 640, margin: "10px auto" }}>
-        <h1>{messages.devices.title}</h1>
+      <div className="vben-page">
+        <div className="vben-page__header">
+          <h1 className="vben-page__title">{messages.devices.title}</h1>
+        </div>
         <p>{messages.common.loading}</p>
       </div>
     );
@@ -685,8 +687,10 @@ export default function UserDevicesPage() {
 
   if (!userEmail) {
     return (
-      <div style={{ maxWidth: 640, margin: "10px auto" }}>
-        <h1>{messages.devices.title}</h1>
+      <div className="vben-page">
+        <div className="vben-page__header">
+          <h1 className="vben-page__title">{messages.devices.title}</h1>
+        </div>
         <p>{messages.common.loginRequired}</p>
         <Link href="/login">{messages.common.goLogin}</Link>
       </div>
@@ -719,11 +723,11 @@ export default function UserDevicesPage() {
   };
 
   return (
-    <div style={{ maxWidth: 640, margin: "10px auto" }}>
-      <h1>{getPageTitle()}</h1>
-      <p style={{ marginTop: 8, fontSize: 14, color: "#9ca3af" }}>
-        {getPageSubtitle()}
-      </p>
+    <div className="vben-page">
+      <div className="vben-page__header">
+        <h1 className="vben-page__title">{getPageTitle()}</h1>
+        <p className="vben-page__subtitle">{getPageSubtitle()}</p>
+      </div>
 
       {loading && (
         <p style={{ marginTop: 16 }}>{messages.common.loading}</p>

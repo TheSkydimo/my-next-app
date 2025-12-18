@@ -165,8 +165,10 @@ export default function AdminUserDetailPage({
 
   if (!adminEmail) {
     return (
-      <div style={{ maxWidth: 960, margin: "10px auto" }}>
-        <h1>{messages.users.title}</h1>
+      <div className="vben-page">
+        <div className="vben-page__header">
+          <h1 className="vben-page__title">{messages.users.title}</h1>
+        </div>
         <p>{messages.common.adminLoginRequired}</p>
         <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
       </div>
@@ -174,26 +176,20 @@ export default function AdminUserDetailPage({
   }
 
   return (
-    <div style={{ maxWidth: 960, margin: "10px auto" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 24,
-          gap: 12,
-        }}
-      >
-        <div>
-          <h1>
-            {language === "zh-CN" ? "用户详情" : "User Detail"} -{" "}
-            {user?.username || userEmail}
-          </h1>
-          <p style={{ fontSize: 14, color: "#6b7280" }}>{userEmail}</p>
+    <div className="vben-page">
+      <div className="vben-page__header">
+        <div className="vben-row vben-row--between vben-row--center">
+          <div>
+            <h1 className="vben-page__title">
+              {language === "zh-CN" ? "用户详情" : "User Detail"} -{" "}
+              {user?.username || userEmail}
+            </h1>
+            <p className="vben-page__subtitle">{userEmail}</p>
+          </div>
+          <Link href="/admin/users" className="btn btn-secondary btn-sm">
+            {language === "zh-CN" ? "返回用户列表" : "Back to users"}
+          </Link>
         </div>
-        <Link href="/admin/users">
-          {language === "zh-CN" ? "返回用户列表" : "Back to users"}
-        </Link>
       </div>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
