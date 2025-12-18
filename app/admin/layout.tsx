@@ -31,6 +31,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   type FeedbackItem = {
     id: number;
     userEmail: string;
+    type: string | null;
     content: string;
     status: string;
     createdAt: string;
@@ -38,6 +39,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     latestReplyAt: string | null;
     latestReplyAdminEmail: string | null;
     latestReplyContent: string | null;
+    closedAt: string | null;
   };
 
   const [feedbackBadge, setFeedbackBadge] = useState(0);
@@ -48,6 +50,32 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [replyTargetId, setReplyTargetId] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [replySubmitting, setReplySubmitting] = useState(false);
+
+  const renderTypeLabel = (rawType: string | null) => {
+    const t = rawType || "other";
+    if (language === "zh-CN") {
+      switch (t) {
+        case "bug":
+          return "功能异常 / Bug";
+        case "feature":
+          return "功能建议";
+        case "billing":
+          return "支付 / 订单问题";
+        default:
+          return "其他";
+      }
+    }
+    switch (t) {
+      case "bug":
+        return "Bug / issue";
+      case "feature":
+        return "Feature request";
+      case "billing":
+        return "Billing / order";
+      default:
+        return "Other";
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -341,6 +369,44 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   };
 
+  const handleCloseTicket = async (feedbackId: number) => {
+    if (!adminEmail) return;
+    // 简单确认，避免误操作
+    // eslint-disable-next-line no-alert
+    const ok = window.confirm(
+      language === "zh-CN"
+        ? "确定要关闭该工单吗？关闭后将无法继续回复。"
+        : "Are you sure you want to close this ticket? You won't be able to reply afterwards."
+    );
+    if (!ok) return;
+
+    setFeedbackError("");
+    try {
+      const res = await fetch("/api/admin/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminEmail,
+          action: "close",
+          feedbackId,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "关闭工单失败");
+      }
+      await loadFeedbackList();
+    } catch (e) {
+      setFeedbackError(
+        e instanceof Error
+          ? e.message
+          : language === "zh-CN"
+            ? "关闭工单失败，请稍后重试。"
+            : "Failed to close ticket. Please try again later."
+      );
+    }
+  };
+
   return (
     <div className="admin-layout">
       <div className="admin-layout__body">
@@ -538,6 +604,41 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                                     key={fb.id}
                                     className="admin-topbar__feedback-item"
                                   >
+                                    <div className="admin-topbar__feedback-header">
+                                      <div className="admin-topbar__feedback-id">
+                                        {language === "zh-CN"
+                                          ? `工单 #${fb.id}`
+                                          : `Ticket #${fb.id}`}
+                                      </div>
+                                      <div className="admin-topbar__feedback-status">
+                                        <span
+                                          className={
+                                            fb.status === "closed"
+                                              ? "admin-topbar__feedback-status-pill admin-topbar__feedback-status-pill--closed"
+                                              : fb.status === "unread"
+                                                ? "admin-topbar__feedback-status-pill admin-topbar__feedback-status-pill--open"
+                                                : "admin-topbar__feedback-status-pill admin-topbar__feedback-status-pill--resolved"
+                                          }
+                                        >
+                                          {language === "zh-CN"
+                                            ? fb.status === "closed"
+                                              ? "已关闭"
+                                              : fb.status === "unread"
+                                                ? "待处理"
+                                                : "已处理"
+                                            : fb.status === "closed"
+                                              ? "Closed"
+                                              : fb.status === "unread"
+                                                ? "Open"
+                                                : "Resolved"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="admin-topbar__feedback-meta">
+                                      <span>
+                                        {renderTypeLabel(fb.type)}
+                                      </span>
+                                    </div>
                                     <div className="admin-topbar__feedback-email">
                                       {fb.userEmail}
                                     </div>
@@ -573,7 +674,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                                       </div>
                                     )}
                                     <div className="admin-topbar__feedback-reply-row">
-                                      {replyTargetId === fb.id ? (
+                                      {fb.status === "closed" ? (
+                                        <span className="admin-topbar__feedback-meta">
+                                          {language === "zh-CN"
+                                            ? "工单已关闭"
+                                            : "Ticket closed"}
+                                        </span>
+                                      ) : replyTargetId === fb.id ? (
                                         <div className="admin-topbar__feedback-reply-box">
                                           <textarea
                                             value={replyContent}
@@ -615,18 +722,29 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                                           </div>
                                         </div>
                                       ) : (
-                                        <button
-                                          type="button"
-                                          className="admin-topbar__feedback-reply-btn"
-                                          onClick={() => {
-                                            setReplyTargetId(fb.id);
-                                            setReplyContent("");
-                                          }}
-                                        >
-                                          {language === "zh-CN"
-                                            ? "回复"
-                                            : "Reply"}
-                                        </button>
+                                        <div className="admin-topbar__feedback-reply-actions">
+                                          <button
+                                            type="button"
+                                            className="admin-topbar__feedback-reply-btn"
+                                            onClick={() => {
+                                              setReplyTargetId(fb.id);
+                                              setReplyContent("");
+                                            }}
+                                          >
+                                            {language === "zh-CN"
+                                              ? "回复"
+                                              : "Reply"}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="admin-topbar__feedback-reply-btn admin-topbar__feedback-reply-btn--danger"
+                                            onClick={() => handleCloseTicket(fb.id)}
+                                          >
+                                            {language === "zh-CN"
+                                              ? "关闭工单"
+                                              : "Close"}
+                                          </button>
+                                        </div>
                                       )}
                                     </div>
                                   </li>

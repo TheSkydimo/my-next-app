@@ -1,14 +1,16 @@
-type FeedbackStatus = "unread" | "read";
+type FeedbackStatus = "unread" | "read" | "closed";
 
 export type FeedbackRow = {
   id: number;
   user_id: number;
+  type: string | null;
   content: string;
   status: FeedbackStatus;
   created_at: string;
   read_at: string | null;
   latest_reply_at: string | null;
   latest_reply_admin_id: number | null;
+  closed_at: string | null;
 };
 
 export async function ensureFeedbackTable(db: D1Database) {
@@ -18,12 +20,14 @@ export async function ensureFeedbackTable(db: D1Database) {
       `CREATE TABLE IF NOT EXISTS user_feedback (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
+        type TEXT,
         content TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'unread',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         read_at TIMESTAMP,
         latest_reply_at TIMESTAMP,
         latest_reply_admin_id INTEGER,
+        closed_at TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
       )`
     )
@@ -74,6 +78,20 @@ export async function ensureFeedbackTable(db: D1Database) {
   } catch {
     // ignore
   }
+  try {
+    await db
+      .prepare("ALTER TABLE user_feedback ADD COLUMN closed_at TIMESTAMP")
+      .run();
+  } catch {
+    // ignore
+  }
+  try {
+    await db
+      .prepare("ALTER TABLE user_feedback ADD COLUMN type TEXT")
+      .run();
+  } catch {
+    // ignore
+  }
 }
 
 export async function ensureFeedbackReplyTable(db: D1Database) {
@@ -99,6 +117,20 @@ export async function ensureFeedbackReplyTable(db: D1Database) {
   await db
     .prepare(
       "CREATE INDEX IF NOT EXISTS idx_feedback_replies_admin ON user_feedback_replies (admin_id, created_at DESC)"
+    )
+    .run();
+}
+
+// 自动关闭超时未再次处理的工单：
+// 规则：距离最近一次管理员回复时间（如无回复则使用创建时间）超过 22 小时，且状态不是 closed，则标记为 closed
+export async function autoCloseOverdueFeedback(db: D1Database) {
+  await db
+    .prepare(
+      `UPDATE user_feedback
+       SET status = 'closed',
+           closed_at = CURRENT_TIMESTAMP
+       WHERE status != 'closed'
+         AND COALESCE(latest_reply_at, created_at) <= datetime('now', '-22 hours')`
     )
     .run();
 }

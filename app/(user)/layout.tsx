@@ -26,6 +26,10 @@ export default function UserLayout({ children }: { children: ReactNode }) {
   const [deviceSubTab, setDeviceSubTab] = useState<"order" | "warranty" | null>(
     null
   );
+  const [isFeedbackMenuOpen, setIsFeedbackMenuOpen] = useState(false);
+  const [feedbackSubTab, setFeedbackSubTab] = useState<"new" | "history" | null>(
+    null
+  );
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const messages = getUserMessages(language);
 
@@ -137,6 +141,34 @@ export default function UserLayout({ children }: { children: ReactNode }) {
         setDeviceSubTab("order");
       }
       setIsDeviceMenuOpen(true);
+    };
+
+    syncFromLocation();
+
+    window.addEventListener("hashchange", syncFromLocation);
+    return () => {
+      window.removeEventListener("hashchange", syncFromLocation);
+    };
+  }, [pathname]);
+
+  // 意见反馈子菜单：根据当前地址栏 hash 同步“提交反馈 / 历史工单”选中态，并在反馈页默认展开子菜单
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncFromLocation = () => {
+      if (pathname !== "/feedback") {
+        setFeedbackSubTab(null);
+        return;
+      }
+
+      const hash = window.location.hash;
+      if (hash === "#feedback-history-section") {
+        setFeedbackSubTab("history");
+      } else {
+        // 默认选中“提交反馈”
+        setFeedbackSubTab("new");
+      }
+      setIsFeedbackMenuOpen(true);
     };
 
     syncFromLocation();
@@ -272,14 +304,76 @@ export default function UserLayout({ children }: { children: ReactNode }) {
             >
               {messages.layout.navProfile}
             </Link>
-            <Link
-              href="/feedback"
-              className={`user-layout__nav-link ${
-                isActive("/feedback") ? "user-layout__nav-link--active" : ""
-              }`}
-            >
-              {messages.layout.navFeedback}
-            </Link>
+            <div className="user-layout__nav-group">
+              <button
+                type="button"
+                className={`user-layout__nav-link user-layout__nav-link--button ${
+                  isActive("/feedback") ? "user-layout__nav-link--active" : ""
+                }`}
+                onClick={() => {
+                  const next = !isFeedbackMenuOpen;
+                  setIsFeedbackMenuOpen(next);
+                  if (next) {
+                    setFeedbackSubTab("new");
+                    if (pathname !== "/feedback") {
+                      window.location.href = "/feedback#feedback-new-section";
+                    } else if (typeof window !== "undefined") {
+                      const el = document.getElementById("feedback-new-section");
+                      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }
+                }}
+              >
+                <span>{messages.layout.navFeedback}</span>
+                <span className="user-layout__nav-group-arrow">
+                  {isFeedbackMenuOpen ? "▾" : "▸"}
+                </span>
+              </button>
+              {isFeedbackMenuOpen && (
+                <div className="user-layout__nav-sub">
+                  <Link
+                    href="/feedback#feedback-new-section"
+                    className={`user-layout__nav-sub-link ${
+                      feedbackSubTab === "new"
+                        ? "user-layout__nav-sub-link--active"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      setFeedbackSubTab("new");
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(
+                          new CustomEvent("user-feedback-section-changed", {
+                            detail: { section: "new" },
+                          })
+                        );
+                      }
+                    }}
+                  >
+                    {language === "zh-CN" ? "提交反馈" : "New feedback"}
+                  </Link>
+                  <Link
+                    href="/feedback#feedback-history-section"
+                    className={`user-layout__nav-sub-link ${
+                      feedbackSubTab === "history"
+                        ? "user-layout__nav-sub-link--active"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      setFeedbackSubTab("history");
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(
+                          new CustomEvent("user-feedback-section-changed", {
+                            detail: { section: "history" },
+                          })
+                        );
+                      }
+                    }}
+                  >
+                    {language === "zh-CN" ? "历史工单" : "History"}
+                  </Link>
+                </div>
+              )}
+            </div>
             <div className="user-layout__nav-group">
               <button
                 type="button"

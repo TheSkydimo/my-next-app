@@ -25,12 +25,14 @@ CREATE TABLE IF NOT EXISTS email_verification_codes (
 CREATE TABLE IF NOT EXISTS user_feedback (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
+  type TEXT,
   content TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'unread',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   read_at TIMESTAMP,
   latest_reply_at TIMESTAMP,
   latest_reply_admin_id INTEGER,
+  closed_at TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

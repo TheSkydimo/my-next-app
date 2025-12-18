@@ -2,11 +2,13 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import {
   ensureFeedbackReplyTable,
   ensureFeedbackTable,
+  autoCloseOverdueFeedback,
 } from "../../_utils/feedback";
 
 type FeedbackRowWithUser = {
   id: number;
   user_email: string;
+  type: string | null;
   content: string;
   status: string;
   created_at: string;
@@ -14,6 +16,7 @@ type FeedbackRowWithUser = {
   latest_reply_at: string | null;
   latest_reply_admin_email: string | null;
   latest_reply_content: string | null;
+  closed_at: string | null;
 };
 
 async function assertAdmin(db: D1Database, adminEmail: string | null) {
@@ -46,6 +49,10 @@ export async function GET(request: Request) {
   if (authError) return authError;
 
   await ensureFeedbackTable(db);
+  await ensureFeedbackReplyTable(db);
+
+  // 在管理员查看列表前，自动关闭超时 22 小时的工单
+  await autoCloseOverdueFeedback(db);
 
   const whereParts: string[] = [];
   const bindValues: unknown[] = [];
@@ -60,6 +67,7 @@ export async function GET(request: Request) {
   const sql = `SELECT
       f.id,
       u.email AS user_email,
+      f.type,
       f.content,
       f.status,
       f.created_at,
@@ -72,7 +80,8 @@ export async function GET(request: Request) {
         WHERE r.feedback_id = f.id
         ORDER BY r.created_at DESC
         LIMIT 1
-      ) AS latest_reply_content
+      ) AS latest_reply_content,
+      f.closed_at
     FROM user_feedback f
     JOIN users u ON f.user_id = u.id
     LEFT JOIN users a ON f.latest_reply_admin_id = a.id
@@ -89,6 +98,7 @@ export async function GET(request: Request) {
     results?.map((row) => ({
       id: row.id,
       userEmail: row.user_email,
+      type: row.type,
       content: row.content,
       status: row.status,
       createdAt: row.created_at,
@@ -96,6 +106,7 @@ export async function GET(request: Request) {
       latestReplyAt: row.latest_reply_at,
       latestReplyAdminEmail: row.latest_reply_admin_email,
       latestReplyContent: row.latest_reply_content,
+      closedAt: row.closed_at,
     })) ?? [];
 
   const countQuery = await db
@@ -114,7 +125,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const body = (await request.json()) as {
     adminEmail?: string;
-    action?: "mark-read" | "mark-all-read" | "reply";
+    action?: "mark-read" | "mark-all-read" | "reply" | "close";
     ids?: number[];
     feedbackId?: number;
     content?: string;
@@ -158,6 +169,20 @@ export async function POST(request: Request) {
 
     await ensureFeedbackReplyTable(db);
 
+    // 如果工单已经关闭，禁止继续回复
+    const statusQuery = await db
+      .prepare("SELECT status FROM user_feedback WHERE id = ?")
+      .bind(feedbackId)
+      .all<{ status: string }>();
+
+    const feedbackStatus = statusQuery.results?.[0]?.status;
+    if (!feedbackStatus) {
+      return new Response("反馈不存在", { status: 404 });
+    }
+    if (feedbackStatus === "closed") {
+      return new Response("工单已关闭，无法继续回复", { status: 400 });
+    }
+
     const adminQuery = await db
       .prepare("SELECT id FROM users WHERE email = ? AND is_admin = 1")
       .bind(adminEmail)
@@ -185,6 +210,40 @@ export async function POST(request: Request) {
          WHERE id = ?`
       )
       .bind(nowIso, nowIso, adminRow.id, feedbackId)
+      .run();
+
+    return Response.json({ ok: true });
+  }
+
+  if (action === "close") {
+    const feedbackId = body.feedbackId;
+
+    if (typeof feedbackId !== "number") {
+      return new Response("缺少反馈 ID", { status: 400 });
+    }
+
+    const statusQuery = await db
+      .prepare("SELECT status FROM user_feedback WHERE id = ?")
+      .bind(feedbackId)
+      .all<{ status: string }>();
+
+    const feedbackStatus = statusQuery.results?.[0]?.status;
+    if (!feedbackStatus) {
+      return new Response("反馈不存在", { status: 404 });
+    }
+    if (feedbackStatus === "closed") {
+      return Response.json({ ok: true });
+    }
+
+    await db
+      .prepare(
+        `UPDATE user_feedback
+         SET status = 'closed',
+             closed_at = ?,
+             read_at = COALESCE(read_at, ?)
+         WHERE id = ?`
+      )
+      .bind(nowIso, nowIso, feedbackId)
       .run();
 
     return Response.json({ ok: true });
