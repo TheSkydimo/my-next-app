@@ -187,13 +187,24 @@ export default function LoginPage() {
 
     const data = (await res.json()) as {
       ok: boolean;
-      user: { username: string; email: string };
+      user: {
+        id: number;
+        username: string;
+        email: string;
+        avatarUrl: string | null;
+        isAdmin: boolean;
+      };
     };
 
-    // 简单登录状态：保存在 localStorage
+    // 登录成功：保存完整用户信息到 localStorage，避免进入后台后再次请求加载
     if (typeof window !== "undefined") {
       window.localStorage.setItem("loggedInUserEmail", data.user.email);
       window.localStorage.setItem("loggedInUserName", data.user.username);
+      if (data.user.avatarUrl) {
+        window.localStorage.setItem("loggedInUserAvatar", data.user.avatarUrl);
+      } else {
+        window.localStorage.removeItem("loggedInUserAvatar");
+      }
     }
 
     // 登录成功后跳转首页

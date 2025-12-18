@@ -5,11 +5,15 @@ import Link from "next/link";
 import type { AppLanguage } from "../client-prefs";
 import { getInitialLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
+import { useOptionalUser } from "../contexts/UserContext";
 
 export default function Home() {
+  // 使用 UserContext 获取预加载的用户信息
+  const userContext = useOptionalUser();
+  const displayName = userContext?.profile?.username ?? userContext?.profile?.email ?? null;
+  const userEmail = userContext?.profile?.email ?? null;
+
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -31,15 +35,6 @@ export default function Home() {
         handler as EventListener
       );
     };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const nickname = window.localStorage.getItem("loggedInUserName");
-      const email = window.localStorage.getItem("loggedInUserEmail");
-      setDisplayName(nickname || email);
-      setUserEmail(email);
-    }
   }, []);
 
   const messages = getUserMessages(language);

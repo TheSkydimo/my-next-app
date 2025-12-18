@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
+import { useUser } from "../../contexts/UserContext";
 
 type Device = {
   id: number;
@@ -362,8 +363,11 @@ function OrderThumbnailList({
 }
 
 export default function UserDevicesPage() {
+  // 使用 UserContext 获取预加载的用户信息
+  const userContext = useUser();
+  const userEmail = userContext.profile?.email ?? null;
+
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -529,16 +533,6 @@ export default function UserDevicesPage() {
       );
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const email = window.localStorage.getItem("loggedInUserEmail");
-      if (email) {
-        setUserEmail(email);
-      }
-    }
-  }, []);
-
 
   useEffect(() => {
     const loadDevices = async (email: string, pageNumber: number) => {

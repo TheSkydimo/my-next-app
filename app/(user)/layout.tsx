@@ -14,12 +14,33 @@ import {
 } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import FeedbackBubble from "../components/FeedbackBubble";
+import { UserProvider, useOptionalUser } from "../contexts/UserContext";
 
+/**
+ * 用户端布局组件（外层包装）
+ * 使用 UserProvider 提供全局用户状态
+ */
 export default function UserLayout({ children }: { children: ReactNode }) {
+  return (
+    <UserProvider>
+      <UserLayoutInner>{children}</UserLayoutInner>
+    </UserProvider>
+  );
+}
+
+/**
+ * 用户端布局内部组件
+ * 使用 UserContext 获取已预加载的用户信息
+ */
+function UserLayoutInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [hasUser, setHasUser] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const userContext = useOptionalUser();
+
+  // 从 UserContext 获取用户信息，避免重复请求
+  const hasUser = !!userContext?.profile;
+  const avatarUrl = userContext?.profile?.avatarUrl ?? null;
+  const displayName = userContext?.profile?.username ?? userContext?.profile?.email ?? null;
+
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [searchValue, setSearchValue] = useState("");
@@ -33,47 +54,6 @@ export default function UserLayout({ children }: { children: ReactNode }) {
   );
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const messages = getUserMessages(language);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const email = window.localStorage.getItem("loggedInUserEmail");
-      const nickname = window.localStorage.getItem("loggedInUserName");
-      const storedAvatar = window.localStorage.getItem("loggedInUserAvatar");
-
-      setHasUser(!!email);
-      setDisplayName(nickname || email);
-      setAvatarUrl(storedAvatar || null);
-
-      // 尝试从后端刷新一次头像和昵称（忽略错误，不打断页面）
-      if (email) {
-        fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
-          .then(async (res) => {
-            if (!res.ok) return;
-            const data = (await res.json()) as {
-              username: string;
-              email: string;
-              avatarUrl: string | null;
-            };
-            setDisplayName(data.username || data.email);
-            setAvatarUrl(data.avatarUrl ?? null);
-
-            window.localStorage.setItem(
-              "loggedInUserName",
-              data.username || ""
-            );
-            if (data.avatarUrl) {
-              window.localStorage.setItem(
-                "loggedInUserAvatar",
-                data.avatarUrl
-              );
-            } else {
-              window.localStorage.removeItem("loggedInUserAvatar");
-            }
-          })
-          .catch(() => {});
-      }
-    }
-  }, []);
 
   // 初始化主题 / 语言，并处理 Ctrl + K 聚焦搜索框
   useEffect(() => {
@@ -95,32 +75,6 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", keyHandler);
     return () => {
       window.removeEventListener("keydown", keyHandler);
-    };
-  }, []);
-
-  // 监听来自资料页的头像更新事件，实时同步右上角头像
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handler = (event: Event) => {
-      const custom = event as CustomEvent<{
-        avatarUrl: string | null;
-        displayName?: string | null;
-      }>;
-      const detail = custom.detail;
-      if (!detail) return;
-      setAvatarUrl(detail.avatarUrl);
-      if (detail.displayName) {
-        setDisplayName(detail.displayName);
-      }
-    };
-
-    window.addEventListener("user-avatar-updated", handler as EventListener);
-    return () => {
-      window.removeEventListener(
-        "user-avatar-updated",
-        handler as EventListener
-      );
     };
   }, []);
 
@@ -181,9 +135,9 @@ export default function UserLayout({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const logout = () => {
+    // 使用 UserContext 清除用户状态
+    userContext?.clearUser();
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem("loggedInUserEmail");
-      window.localStorage.removeItem("loggedInUserName");
       window.location.href = "/login";
     }
   };

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
+import { useUser } from "../../contexts/UserContext";
 
 type Profile = {
   username: string;
@@ -52,7 +53,10 @@ function PasswordField({
 }
 
 export default function UserProfilePage() {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  // 使用 UserContext 获取预加载的用户信息，避免重复请求
+  const userContext = useUser();
+  const userEmail = userContext.profile?.email ?? null;
+  
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -103,58 +107,23 @@ export default function UserProfilePage() {
 
   const messages = getUserMessages(language);
 
+  // 使用 UserContext 中的预加载数据初始化 profile 状态
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const email = window.localStorage.getItem("loggedInUserEmail");
-      if (email) {
-        setUserEmail(email);
-      }
+    if (userContext.profile && !profile) {
+      const { username, email, avatarUrl } = userContext.profile;
+      setProfile({ username, email, avatarUrl });
+      setUsernameInput(username);
+      setAvatarUrlInput(avatarUrl ?? "");
     }
-  }, []);
+  }, [userContext.profile, profile]);
 
-  const loadProfile = useCallback(
-    async (email: string) => {
-      setLoading(true);
-      setError("");
-      setOkMsg("");
-      try {
-        const res = await fetch(
-          `/api/user/profile?email=${encodeURIComponent(email)}`
-        );
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || messages.profile.errorProfileLoadFailed);
-        }
-        const data = (await res.json()) as {
-          username: string;
-          email: string;
-          avatarUrl: string | null;
-        };
-        setProfile({
-          username: data.username,
-          email: data.email,
-          avatarUrl: data.avatarUrl,
-        });
-        setUsernameInput(data.username);
-        setAvatarUrlInput(data.avatarUrl ?? "");
-      } catch (e) {
-        setError(
-          e instanceof Error
-            ? e.message
-            : messages.profile.errorProfileLoadFailed
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [messages.profile.errorProfileLoadFailed]
-  );
-
+  // 当 UserContext 的 loading 状态变化时，同步到本地 loading 状态
   useEffect(() => {
-    if (userEmail) {
-      loadProfile(userEmail);
+    // 只在 context 初始化过程中同步 loading 状态
+    if (!userContext.initialized) {
+      setLoading(userContext.loading);
     }
-  }, [userEmail, loadProfile]);
+  }, [userContext.loading, userContext.initialized]);
 
   const updateUsername = async () => {
     if (!userEmail || !usernameInput) return;
@@ -180,9 +149,8 @@ export default function UserProfilePage() {
           : { username: usernameInput, email: userEmail, avatarUrl: null }
       );
 
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("loggedInUserName", usernameInput);
-      }
+      // 同步更新到 UserContext，触发全局状态更新
+      userContext.updateProfile({ username: usernameInput });
     } catch (e) {
       setError(
         e instanceof Error
@@ -210,29 +178,15 @@ export default function UserProfilePage() {
         throw new Error(text || messages.profile.errorAvatarUpdateFailed);
       }
       setOkMsg(messages.profile.successAvatarUpdated);
+      const newAvatarUrl = avatarUrlInput.trim() || null;
       setProfile((p) =>
         p
-          ? { ...p, avatarUrl: avatarUrlInput.trim() || null }
-          : { username: usernameInput || "", email: userEmail, avatarUrl: avatarUrlInput.trim() || null }
+          ? { ...p, avatarUrl: newAvatarUrl }
+          : { username: usernameInput || "", email: userEmail, avatarUrl: newAvatarUrl }
       );
 
-      if (typeof window !== "undefined") {
-        if (avatarUrlInput.trim()) {
-          window.localStorage.setItem("loggedInUserAvatar", avatarUrlInput.trim());
-        } else {
-          window.localStorage.removeItem("loggedInUserAvatar");
-        }
-
-        // 通知布局更新右上角头像
-        window.dispatchEvent(
-          new CustomEvent("user-avatar-updated", {
-            detail: {
-              avatarUrl: avatarUrlInput.trim() || null,
-              displayName: profile?.username ?? usernameInput ?? null,
-            },
-          })
-        );
-      }
+      // 同步更新到 UserContext，触发全局状态更新（包括 localStorage 和事件通知）
+      userContext.updateProfile({ avatarUrl: newAvatarUrl });
     } catch (e) {
       setError(
         e instanceof Error

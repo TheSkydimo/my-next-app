@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { AppLanguage, AppTheme } from "../../client-prefs";
 import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
+import { useUser } from "../../contexts/UserContext";
 
 type FeedbackItem = {
   id: number;
@@ -26,9 +27,12 @@ type TicketMessage = {
 };
 
 export default function UserFeedbackPage() {
+  // 使用 UserContext 获取预加载的用户信息
+  const userContext = useUser();
+  const userEmail = userContext.profile?.email ?? null;
+
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [theme, setTheme] = useState<AppTheme>("dark");
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -208,12 +212,6 @@ export default function UserFeedbackPage() {
         handler as EventListener
       );
     };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const email = window.localStorage.getItem("loggedInUserEmail");
-    setUserEmail(email);
   }, []);
 
   const messages = getUserMessages(language);
