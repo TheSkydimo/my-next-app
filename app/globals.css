@@ -186,7 +186,7 @@ input {
 }
 
 /* 原生 button 基础样式（兼容未使用 .btn 类的按钮，排除导航和工具栏按钮） */
-button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]) {
+button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]) {
 	padding: 8px 10px;
 	border-radius: 4px;
 	border: 1px solid #1d4ed8;
@@ -196,18 +196,18 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	color: #ffffff;
 }
 
-button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):hover {
+button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):hover {
 	background: #1e40af;
 	border-color: #1e40af;
 }
 
-:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]) {
+:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]) {
 	background: #2563eb;
 	border-color: #2563eb;
 	color: #ffffff;
 }
 
-:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):hover {
+:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):hover {
 	background: #1d4ed8;
 	border-color: #1d4ed8;
 }
@@ -803,8 +803,9 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 
 .user-layout__nav-link {
 	position: relative;
-	display: inline-flex;
+	display: flex;
 	align-items: center;
+	width: 100%;
 	gap: 6px;
 	padding: 8px 10px;
 	border-radius: 9999px;
@@ -877,7 +878,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 
 .user-layout__nav-group-arrow {
 	margin-left: auto;
-	font-size: 12px;
+	font-size: 16px;
 	opacity: 0.9;
 }
 
@@ -885,7 +886,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-	margin-left: 18px;
+	margin-left: 40px;
 }
 
 .user-layout__nav-sub-link {
@@ -927,7 +928,9 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 }
 
 :root[data-theme="light"] .user-layout__nav-sub-link--active {
-	color: #f9fafb;
+	background: linear-gradient(135deg, #2563eb, #4f46e5);
+	color: #ffffff;
+	font-weight: 500;
 }
 
 .user-layout__main {
@@ -3185,14 +3188,17 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 }
 
 :root[data-theme="light"] .user-layout__nav-link--active {
-	color: #f9fafb;
-	box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+	background: linear-gradient(135deg, #2563eb, #4f46e5);
+	color: #ffffff;
+	font-weight: 600;
+	box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
 }
 
 /* 浅色主题下激活状态悬浮 */
 :root[data-theme="light"] .user-layout__nav-link--active:hover {
-	color: #f9fafb;
-	box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+	background: linear-gradient(135deg, #1d4ed8, #4338ca);
+	color: #ffffff;
+	box-shadow: 0 8px 20px rgba(37, 99, 235, 0.45);
 }
 
 :root[data-theme="light"] .user-page-section__title {
