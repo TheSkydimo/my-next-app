@@ -36,7 +36,7 @@ export default function UserFeedbackPage() {
   const [history, setHistory] = useState<FeedbackItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [viewTab, setViewTab] = useState<"new" | "history">("new");
-  const [feedbackType, setFeedbackType] = useState<string>("bug");
+  const [feedbackType, setFeedbackType] = useState<string>("other");
   const [historyOpenByType, setHistoryOpenByType] = useState<
     Record<string, boolean>
   >({});
@@ -786,7 +786,7 @@ export default function UserFeedbackPage() {
           : "Thank you for your feedback. We'll look into it soon."
       );
       setContent("");
-      setFeedbackType("bug");
+      setFeedbackType("other");
       // 静默刷新工单列表
       if (userEmail) {
         void loadHistory(userEmail, true);
@@ -1288,38 +1288,44 @@ export default function UserFeedbackPage() {
             })()
           ) : (
             <>
-              <div style={{ marginTop: 12 }}>
-                <label
+              {/* 反馈类型选择 - 直接在输入框上方显示为可点击标签 */}
+              <div style={{ marginTop: 12, marginBottom: 8 }}>
+                <div
                   style={{
-                    display: "block",
-                    fontSize: 13,
-                    marginBottom: 4,
-                    color: colors.text,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
                   }}
                 >
-                  {language === "zh-CN" ? "反馈类型" : "Feedback type"}
-                </label>
-                <select
-                  value={feedbackType}
-                  onChange={(e) => setFeedbackType(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "6px 8px",
-                    borderRadius: 8,
-                    border: `1px solid ${colors.inputBorder}`,
-                    backgroundColor: colors.inputBg,
-                    color: colors.text,
-                    fontSize: 13,
-                  }}
-                >
-                  {typeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {language === "zh-CN" ? opt.labelZh : opt.labelEn}
-                    </option>
-                  ))}
-                </select>
+                  {typeOptions.map((opt) => {
+                    const isSelected = feedbackType === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setFeedbackType(opt.value)}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 9999,
+                          border: isSelected
+                            ? "1px solid rgba(96,165,250,0.8)"
+                            : `1px solid ${colors.inputBorder}`,
+                          backgroundColor: isSelected
+                            ? "rgba(59,130,246,0.15)"
+                            : colors.inputBg,
+                          color: isSelected ? "#60a5fa" : colors.text,
+                          fontSize: 13,
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {language === "zh-CN" ? opt.labelZh : opt.labelEn}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div style={{ marginTop: 12 }}>
+              <div>
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
@@ -1379,7 +1385,7 @@ export default function UserFeedbackPage() {
                     setContent("");
                     setError("");
                     setOkMsg("");
-                    setFeedbackType("bug");
+                    setFeedbackType("other");
                   }}
                   disabled={submitting}
                   style={{

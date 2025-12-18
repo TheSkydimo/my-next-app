@@ -34,10 +34,12 @@ function OrderThumbnailList({
   items,
   language,
   onDelete,
+  onPreview,
 }: {
   items: OrderSnapshot[];
   language: AppLanguage;
   onDelete?: (order: OrderSnapshot) => void;
+  onPreview?: (imageUrl: string) => void;
 }) {
   if (!items || items.length === 0) return null;
 
@@ -188,7 +190,20 @@ function OrderThumbnailList({
                   borderRight: "1px solid #d1d5db",
                 }}
               >
-                <a href={o.imageUrl} target="_blank" rel="noreferrer">
+                <button
+                  type="button"
+                  onClick={() => onPreview?.(o.imageUrl)}
+                  style={{
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    cursor: "zoom-in",
+                    display: "block",
+                    width: "100%",
+                    height: "100%",
+                  }}
+                  aria-label="预览订单截图"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={o.imageUrl}
@@ -201,7 +216,7 @@ function OrderThumbnailList({
                       objectFit: "cover",
                     }}
                   />
-                </a>
+                </button>
               </div>
 
               {/* 店铺 */}
@@ -368,6 +383,8 @@ export default function UserDevicesPage() {
   // 默认只展开第一个子菜单（订单信息），质保信息默认折叠
   const [isOrderSectionOpen, setIsOrderSectionOpen] = useState(true);
   const [isWarrantySectionOpen, setIsWarrantySectionOpen] = useState(false);
+  // 图片预览弹窗
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const messages = getUserMessages(language);
 
@@ -866,6 +883,7 @@ export default function UserDevicesPage() {
                     items={orders[NO_DEVICE_ID]}
                     language={language}
                     onDelete={handleDeleteOrder}
+                    onPreview={setPreviewUrl}
                   />
                 </div>
               </div>
@@ -1192,6 +1210,64 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
             </div>
           </div>
         </section>
+      )}
+
+      {/* 图片预览弹窗 */}
+      {previewUrl && (
+        <div
+          onClick={() => setPreviewUrl(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setPreviewUrl(null);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            background: "rgba(0, 0, 0, 0.8)",
+            cursor: "zoom-out",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setPreviewUrl(null)}
+            style={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              background: "rgba(255, 255, 255, 0.9)",
+              border: "none",
+              borderRadius: "50%",
+              width: 40,
+              height: 40,
+              fontSize: 24,
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              color: "#374151",
+            }}
+            aria-label={language === "zh-CN" ? "关闭预览" : "Close preview"}
+          >
+            ×
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="preview"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              objectFit: "contain",
+              borderRadius: 8,
+              boxShadow: "0 4px 32px rgba(0, 0, 0, 0.5)",
+              cursor: "default",
+            }}
+          />
+        </div>
       )}
     </div>
   );
