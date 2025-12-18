@@ -20,12 +20,34 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [adminRole, setAdminRole] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [searchValue, setSearchValue] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const messages = getAdminMessages(language);
+
+  type FeedbackItem = {
+    id: number;
+    userEmail: string;
+    content: string;
+    status: string;
+    createdAt: string;
+    readAt: string | null;
+    latestReplyAt: string | null;
+    latestReplyAdminEmail: string | null;
+    latestReplyContent: string | null;
+  };
+
+  const [feedbackBadge, setFeedbackBadge] = useState(0);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
+  const [replyTargetId, setReplyTargetId] = useState<number | null>(null);
+  const [replyContent, setReplyContent] = useState("");
+  const [replySubmitting, setReplySubmitting] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -34,7 +56,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       const storedAvatar = window.localStorage.getItem("adminAvatarUrl");
       const storedRole = window.localStorage.getItem("adminRole");
 
-      setIsAuthed(isAdmin === "true" && !!email);
+      const authed = isAdmin === "true" && !!email;
+      setIsAuthed(authed);
+      setAdminEmail(email || null);
       setAvatarUrl(storedAvatar || null);
       setAdminRole(storedRole || null);
 
@@ -118,34 +142,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   };
 
-  const isPublicRoute =
-    pathname === "/admin/login" || pathname === "/admin/forgot-password";
-
-  // 登录页、找回密码页不做管理员登录校验，直接渲染内容
-  if (isPublicRoute) {
-    return <>{children}</>;
-  }
-
-  // 初始加载阶段，避免闪烁，什么都不渲染
-  if (isAuthed === null) {
-    return null;
-  }
-
-  // 未登录管理员时，不展示内部内容和菜单
-  if (!isAuthed) {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <h1>{messages.layout.unauthTitle}</h1>
-          <p>{messages.layout.unauthDesc}</p>
-          <p style={{ marginTop: 12 }}>
-            <Link href="/admin/login">{messages.layout.unauthLoginLink}</Link>
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   // 已登录管理员，展示侧边栏 + 子页面内容
   const isActive = (href: string) => pathname === href;
   const isSuperAdmin = adminRole === "super_admin";
@@ -199,6 +195,149 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       window.alert(
         `${messages.layout.searchNotFound}${messages.layout.searchNotFoundHint}`
       );
+    }
+  };
+
+  const refreshUnreadFeedback = async (email: string | null) => {
+    if (!email) return;
+    try {
+      const params = new URLSearchParams({
+        adminEmail: email,
+        status: "unread",
+      });
+      const res = await fetch(`/api/admin/feedback?${params.toString()}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as { unreadCount?: number };
+      setFeedbackBadge(
+        typeof data.unreadCount === "number" ? data.unreadCount : 0
+      );
+    } catch {
+      // 未读角标失败不影响其它功能
+    }
+  };
+
+  useEffect(() => {
+    if (!adminEmail) return;
+    refreshUnreadFeedback(adminEmail);
+  }, [adminEmail]);
+
+  const isPublicRoute =
+    pathname === "/admin/login" || pathname === "/admin/forgot-password";
+
+  // 登录页、找回密码页不做管理员登录校验，直接渲染内容
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
+
+  // 初始加载阶段，避免闪烁，什么都不渲染
+  if (isAuthed === null) {
+    return null;
+  }
+
+  // 未登录管理员时，不展示内部内容和菜单
+  if (!isAuthed) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <h1>{messages.layout.unauthTitle}</h1>
+          <p>{messages.layout.unauthDesc}</p>
+          <p style={{ marginTop: 12 }}>
+            <Link href="/admin/login">{messages.layout.unauthLoginLink}</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const loadFeedbackList = async () => {
+    if (!adminEmail) return;
+    setFeedbackLoading(true);
+    setFeedbackError("");
+    try {
+      const params = new URLSearchParams({
+        adminEmail,
+        status: "all",
+      });
+      const res = await fetch(`/api/admin/feedback?${params.toString()}`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "获取用户反馈失败");
+      }
+      const data = (await res.json()) as {
+        items?: FeedbackItem[];
+        unreadCount?: number;
+      };
+      setFeedbackItems(data.items ?? []);
+      setFeedbackBadge(
+        typeof data.unreadCount === "number" ? data.unreadCount : 0
+      );
+
+      // 打开列表时，将全部未读标记为已读，清空角标
+      if (data.unreadCount && data.unreadCount > 0) {
+        await fetch("/api/admin/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            adminEmail,
+            action: "mark-all-read",
+          }),
+        }).catch(() => {
+          // 标记已读失败可以忽略，不影响列表展示
+        });
+        setFeedbackBadge(0);
+      }
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "获取用户反馈失败，请稍后重试。";
+      setFeedbackError(message);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  const handleSubmitReply = async () => {
+    if (!adminEmail || replyTargetId == null) return;
+    const text = replyContent.trim();
+    if (!text) {
+      setFeedbackError(
+        language === "zh-CN"
+          ? "请先填写回复内容"
+          : "Please enter a reply message."
+      );
+      return;
+    }
+
+    setReplySubmitting(true);
+    setFeedbackError("");
+    try {
+      const res = await fetch("/api/admin/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminEmail,
+          action: "reply",
+          feedbackId: replyTargetId,
+          content: text,
+        }),
+      });
+      if (!res.ok) {
+        const textRes = await res.text();
+        throw new Error(textRes || "回复失败，请稍后重试。");
+      }
+
+      setReplyContent("");
+      setReplyTargetId(null);
+      await loadFeedbackList();
+    } catch (e) {
+      setFeedbackError(
+        e instanceof Error
+          ? e.message
+          : language === "zh-CN"
+            ? "回复失败，请稍后重试。"
+            : "Failed to send reply. Please try again later."
+      );
+    } finally {
+      setReplySubmitting(false);
     }
   };
 
@@ -328,13 +467,176 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </div>
 
                 <div className="admin-topbar__actions">
-                  <button
-                    type="button"
-                    className="admin-topbar__icon-btn"
-                    aria-label="通知"
-                  >
-                    🔔
-                  </button>
+                  <div className="admin-topbar__feedback-wrapper">
+                    <button
+                      type="button"
+                      className="admin-topbar__icon-btn"
+                      aria-label={
+                        language === "zh-CN" ? "用户反馈通知" : "User feedback"
+                      }
+                      onClick={async () => {
+                        const nextOpen = !feedbackOpen;
+                        setFeedbackOpen(nextOpen);
+                        if (nextOpen) {
+                          await loadFeedbackList();
+                        }
+                      }}
+                    >
+                      🔔
+                      {feedbackBadge > 0 && (
+                        <span className="admin-topbar__badge">
+                          {feedbackBadge > 9 ? "9+" : feedbackBadge}
+                        </span>
+                      )}
+                    </button>
+                    {feedbackOpen && (
+                      <div className="admin-topbar__feedback-panel">
+                        <div className="admin-topbar__feedback-header">
+                          <span>
+                            {language === "zh-CN" ? "用户反馈" : "User feedback"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setFeedbackOpen(false)}
+                            className="admin-topbar__feedback-close"
+                            aria-label={
+                              language === "zh-CN" ? "关闭反馈列表" : "Close"
+                            }
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div className="admin-topbar__feedback-body">
+                          {feedbackLoading && (
+                            <p className="admin-topbar__feedback-meta">
+                              {messages.common.loading}
+                            </p>
+                          )}
+                          {feedbackError && !feedbackLoading && (
+                            <p
+                              className="admin-topbar__feedback-meta"
+                              style={{ color: "#f87171" }}
+                            >
+                              {feedbackError}
+                            </p>
+                          )}
+                          {!feedbackLoading &&
+                            !feedbackError &&
+                            feedbackItems.length === 0 && (
+                              <p className="admin-topbar__feedback-meta">
+                                {language === "zh-CN"
+                                  ? "目前还没有新的用户反馈。"
+                                  : "No feedback yet."}
+                              </p>
+                            )}
+                          {!feedbackLoading &&
+                            !feedbackError &&
+                            feedbackItems.length > 0 && (
+                              <ul className="admin-topbar__feedback-list">
+                                {feedbackItems.map((fb) => (
+                                  <li
+                                    key={fb.id}
+                                    className="admin-topbar__feedback-item"
+                                  >
+                                    <div className="admin-topbar__feedback-email">
+                                      {fb.userEmail}
+                                    </div>
+                                    <div className="admin-topbar__feedback-content">
+                                      {fb.content}
+                                    </div>
+                                    <div className="admin-topbar__feedback-time">
+                                      {new Date(
+                                        fb.createdAt
+                                      ).toLocaleString()}
+                                    </div>
+                                    <div className="admin-topbar__feedback-meta">
+                                      {fb.latestReplyAdminEmail ? (
+                                        <span>
+                                          {language === "zh-CN"
+                                            ? "已回复："
+                                            : "Replied by "}
+                                          {fb.latestReplyAdminEmail}
+                                        </span>
+                                      ) : (
+                                        <span>
+                                          {language === "zh-CN"
+                                            ? "尚未回复"
+                                            : "Not replied yet"}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {fb.latestReplyContent && (
+                                      <div className="admin-topbar__feedback-meta">
+                                        {language === "zh-CN"
+                                          ? `回复内容：${fb.latestReplyContent}`
+                                          : `Reply: ${fb.latestReplyContent}`}
+                                      </div>
+                                    )}
+                                    <div className="admin-topbar__feedback-reply-row">
+                                      {replyTargetId === fb.id ? (
+                                        <div className="admin-topbar__feedback-reply-box">
+                                          <textarea
+                                            value={replyContent}
+                                            onChange={(e) =>
+                                              setReplyContent(e.target.value)
+                                            }
+                                            placeholder={
+                                              language === "zh-CN"
+                                                ? "输入回复内容，用户将在下次登录时查看。"
+                                                : "Enter your reply. The user will see it next time they log in."
+                                            }
+                                          />
+                                          <div className="admin-topbar__feedback-reply-actions">
+                                            <button
+                                              type="button"
+                                              onClick={handleSubmitReply}
+                                              disabled={replySubmitting}
+                                            >
+                                              {replySubmitting
+                                                ? language === "zh-CN"
+                                                  ? "发送中..."
+                                                  : "Sending..."
+                                                : language === "zh-CN"
+                                                  ? "发送回复"
+                                                  : "Send"}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setReplyTargetId(null);
+                                                setReplyContent("");
+                                              }}
+                                              disabled={replySubmitting}
+                                            >
+                                              {language === "zh-CN"
+                                                ? "取消"
+                                                : "Cancel"}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className="admin-topbar__feedback-reply-btn"
+                                          onClick={() => {
+                                            setReplyTargetId(fb.id);
+                                            setReplyContent("");
+                                          }}
+                                        >
+                                          {language === "zh-CN"
+                                            ? "回复"
+                                            : "Reply"}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <button
                     type="button"
                     className="admin-topbar__icon-btn admin-topbar__icon-btn--translate"

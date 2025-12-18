@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
@@ -122,36 +122,43 @@ export default function AdminProfilePage() {
     }
   }, []);
 
-  const loadProfile = async (email: string) => {
-    setLoading(true);
-    setError("");
-    setOkMsg("");
-    try {
-      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`);
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || messages.profile.errorProfileLoadFailed);
+  const loadProfile = useCallback(
+    async (email: string) => {
+      setLoading(true);
+      setError("");
+      setOkMsg("");
+      try {
+        const res = await fetch(
+          `/api/user/profile?email=${encodeURIComponent(email)}`
+        );
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || messages.profile.errorProfileLoadFailed);
+        }
+        const data = (await res.json()) as {
+          username: string;
+          email: string;
+          avatarUrl: string | null;
+        };
+        setProfile({
+          username: data.username,
+          email: data.email,
+          avatarUrl: data.avatarUrl,
+        });
+        setUsernameInput(data.username);
+        setAvatarUrlInput(data.avatarUrl ?? "");
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : messages.profile.errorProfileLoadFailed
+        );
+      } finally {
+        setLoading(false);
       }
-      const data = (await res.json()) as {
-        username: string;
-        email: string;
-        avatarUrl: string | null;
-      };
-      setProfile({
-        username: data.username,
-        email: data.email,
-        avatarUrl: data.avatarUrl,
-      });
-      setUsernameInput(data.username);
-      setAvatarUrlInput(data.avatarUrl ?? "");
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : messages.profile.errorProfileLoadFailed
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [messages.profile.errorProfileLoadFailed]
+  );
 
   useEffect(() => {
     if (!adminEmail) return;
@@ -197,7 +204,7 @@ export default function AdminProfilePage() {
     };
 
     loadOrders(adminEmail);
-  }, [adminEmail]);
+  }, [adminEmail, loadProfile]);
 
   const updateUsername = async () => {
     if (!adminEmail || !usernameInput) return;

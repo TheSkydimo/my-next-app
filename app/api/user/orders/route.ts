@@ -144,36 +144,12 @@ type ParsedOrderInfo = {
 };
 
 /**
- * 从 OCR 文本中解析订单号 / 创建时间 / 付款时间。
- * 文本示例：
- *   创建时间：2025-10-17 16:28:56
- *   付款时间：2025-10-17 16:29:01
- *   订单号: 3000134318690798656
- */
-function parseOrderInfoFromText(text: string): ParsedOrderInfo {
-  const createdMatch =
-    text.match(/创建时间[:：]\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/);
-  const paidMatch =
-    text.match(/付款时间[:：]\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/);
-  const orderNoMatch = text.match(/订单号[:：]?\s*([0-9]{10,})/);
-
-  return {
-    orderNo: orderNoMatch?.[1] ?? null,
-    orderCreatedTime: createdMatch?.[1] ?? null,
-    orderPaidTime: paidMatch?.[1] ?? null,
-    platform: null,
-    shopName: null,
-    deviceCount: null,
-  };
-}
-
-/**
  * 兼容从大模型返回的字符串中解析 JSON。
  * - 处理 ```json ... ``` 代码块包裹
  * - 抓取首个 `{ ... }` 结构
  * - 解析失败时返回 null，而不是抛异常
  */
-function parseJsonFromAi(content: string): any | null {
+function parseJsonFromAi(content: string): unknown | null {
   try {
     let text = content.trim();
 
@@ -187,7 +163,7 @@ function parseJsonFromAi(content: string): any | null {
       text = match[0];
     }
 
-    return JSON.parse(text);
+    return JSON.parse(text) as unknown;
   } catch {
     return null;
   }
@@ -276,7 +252,12 @@ async function extractOrderInfoFromImage(
       return null;
     }
 
-    const data = (await res.json()) as any;
+    type MoleContentPart = { type?: string; text?: string };
+    type MoleChatCompletionResponse = {
+      choices?: { message?: { content?: string | MoleContentPart[] } }[];
+    };
+
+    const data = (await res.json()) as MoleChatCompletionResponse;
     const rawContent: unknown = data?.choices?.[0]?.message?.content;
 
     // MoleAPI 可能返回字符串，也可能返回 content 片段数组，做两种情况的兼容
@@ -286,7 +267,9 @@ async function extractOrderInfoFromImage(
     } else if (Array.isArray(rawContent)) {
       const parts = rawContent
         .filter((p) => p && typeof p === "object" && "type" in p)
-        .map((p: any) => (p.type === "text" ? String(p.text ?? "") : ""))
+        .map((p: MoleContentPart) =>
+          p.type === "text" ? String(p.text ?? "") : ""
+        )
         .join("\n")
         .trim();
       contentText = parts || null;
@@ -296,14 +279,16 @@ async function extractOrderInfoFromImage(
       return null;
     }
 
-    const parsed = parseJsonFromAi(contentText) as {
-      platform?: string | null;
-      shop_name?: string | null;
-      order_id?: string | null;
-      order_created_at?: string | null;
-      paid_at?: string | null;
-      device_count?: number | string | null;
-    };
+    const parsed = parseJsonFromAi(contentText) as
+      | {
+          platform?: string | null;
+          shop_name?: string | null;
+          order_id?: string | null;
+          order_created_at?: string | null;
+          paid_at?: string | null;
+          device_count?: number | string | null;
+        }
+      | null;
 
     if (!parsed) {
       return null;

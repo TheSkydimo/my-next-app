@@ -191,7 +191,14 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     const routes: { href: string; keywords: string[] }[] = [
       { href: "/", keywords: ["首页", "home", "index"] },
       { href: "/profile", keywords: ["信息", "资料", "profile", "account"] },
-      { href: "/devices", keywords: ["设备", "device", "devices"] },
+      {
+        href: "/devices",
+        keywords: ["设备", "device", "devices"],
+      },
+      {
+        href: "/feedback",
+        keywords: ["反馈", "意见", "问题", "feedback", "support"],
+      },
     ];
 
     const matched = routes.find((r) =>
@@ -264,6 +271,14 @@ export default function UserLayout({ children }: { children: ReactNode }) {
               }`}
             >
               {messages.layout.navProfile}
+            </Link>
+            <Link
+              href="/feedback"
+              className={`user-layout__nav-link ${
+                isActive("/feedback") ? "user-layout__nav-link--active" : ""
+              }`}
+            >
+              {messages.layout.navFeedback}
             </Link>
             <div className="user-layout__nav-group">
               <button

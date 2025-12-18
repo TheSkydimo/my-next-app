@@ -27,11 +27,17 @@ type AdminOrderItem = {
   orderPaidTime?: string | null;
 };
 
+type SegmentParams = {
+  [key: string]: string | string[] | undefined;
+};
+
+type AdminUserDetailPageProps = {
+  params?: Promise<SegmentParams>;
+};
+
 export default function AdminUserDetailPage({
   params,
-}: {
-  params: { email: string };
-}) {
+}: AdminUserDetailPageProps) {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [user, setUser] = useState<UserDetail | null>(null);
@@ -39,9 +45,9 @@ export default function AdminUserDetailPage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string>("");
 
   const messages = getAdminMessages(language);
-  const userEmail = decodeURIComponent(params.email);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -64,6 +70,34 @@ export default function AdminUserDetailPage({
       );
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveParams = async () => {
+      if (!params) return;
+      const raw = await params;
+      const rawEmailValue = raw.email;
+      const emailValue = Array.isArray(rawEmailValue)
+        ? rawEmailValue[0] ?? ""
+        : rawEmailValue ?? "";
+
+      if (!emailValue || cancelled) {
+        return;
+      }
+
+      const decoded = decodeURIComponent(emailValue);
+      if (!cancelled) {
+        setUserEmail(decoded);
+      }
+    };
+
+    void resolveParams();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {

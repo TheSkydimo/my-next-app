@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
@@ -189,9 +190,11 @@ function OrderThumbnailList({
                 }}
               >
                 <a href={o.imageUrl} target="_blank" rel="noreferrer">
-                  <img
+                  <Image
                     src={o.imageUrl}
                     alt="order"
+                    width={80}
+                    height={56}
                     style={{
                       width: "100%",
                       height: "100%",
@@ -365,6 +368,8 @@ export default function UserDevicesPage() {
   // 默认只展开第一个子菜单（订单信息），质保信息默认折叠
   const [isOrderSectionOpen, setIsOrderSectionOpen] = useState(true);
   const [isWarrantySectionOpen, setIsWarrantySectionOpen] = useState(false);
+
+  const messages = getUserMessages(language);
 
   // 根据地址栏 hash（#order-section / #warranty-section）控制右侧折叠菜单的展开状态，
   // 保证从其它页面跳转到设备信息页时自动展示正确的区域。
@@ -564,7 +569,7 @@ export default function UserDevicesPage() {
     if (userEmail) {
       loadDevices(userEmail, page);
     }
-  }, [userEmail, page]);
+  }, [userEmail, page, messages.devices.fetchFailed]);
 
   // 加载当前用户所有订单截图（按设备分组）
   useEffect(() => {
@@ -592,8 +597,6 @@ export default function UserDevicesPage() {
       loadOrders(userEmail);
     }
   }, [userEmail]);
-
-  const messages = getUserMessages(language);
 
   const handleDeleteOrder = async (order: OrderSnapshot) => {
     if (!userEmail) return;

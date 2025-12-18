@@ -107,7 +107,7 @@ export default function AdminUsersPage() {
         setLoading(false);
       }
     },
-    [adminEmail, page]
+    [adminEmail, page, messages.users.fetchFailed]
   );
 
   useEffect(() => {
