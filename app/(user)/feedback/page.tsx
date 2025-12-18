@@ -881,9 +881,38 @@ export default function UserFeedbackPage() {
     );
   }
 
+  // 根据当前视图动态获取标题和描述
+  const getPageTitle = () => {
+    if (viewTab === "history") {
+      return language === "zh-CN" ? "历史工单" : "Ticket History";
+    }
+    // viewTab === "new"
+    if (activeTicket) {
+      return language === "zh-CN" ? "当前工单" : "Current Ticket";
+    }
+    return language === "zh-CN" ? "新建反馈" : "New Feedback";
+  };
+
+  const getPageSubtitle = () => {
+    if (viewTab === "history") {
+      return language === "zh-CN"
+        ? "查看已关闭的历史反馈工单记录。"
+        : "View your closed feedback ticket history.";
+    }
+    // viewTab === "new"
+    if (activeTicket) {
+      return language === "zh-CN"
+        ? "继续与我们沟通，查看回复或补充信息。"
+        : "Continue the conversation, view replies or add more details.";
+    }
+    return language === "zh-CN"
+      ? "请选择反馈类型并描述您的问题或建议。"
+      : "Please select a feedback type and describe your issue or suggestion.";
+  };
+
   return (
     <div style={{ maxWidth: 640, margin: "10px auto" }}>
-      <h1>{language === "zh-CN" ? "意见反馈" : "Feedback"}</h1>
+      <h1>{getPageTitle()}</h1>
       <p
         style={{
           marginTop: 8,
@@ -891,9 +920,7 @@ export default function UserFeedbackPage() {
           color: "#9ca3af",
         }}
       >
-        {language === "zh-CN"
-          ? "如果在使用过程中遇到问题，或者有任何建议，欢迎在这里告诉我们。"
-          : "If you encounter any problems or have suggestions, feel free to let us know here."}
+        {getPageSubtitle()}
       </p>
 
       {/* 根据当前子菜单只展示对应内容 */}
@@ -1002,9 +1029,6 @@ export default function UserFeedbackPage() {
           id="feedback-new-section"
           style={{ marginTop: 20 }}
         >
-          <h2 style={{ fontSize: 16, color: colors.text }}>
-            {language === "zh-CN" ? "提交新的反馈" : "Send new feedback"}
-          </h2>
           {okMsg && (
             <p style={{ marginTop: 8, color: "#4ade80", fontSize: 13 }}>
               {okMsg}

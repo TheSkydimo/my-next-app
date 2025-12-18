@@ -385,6 +385,8 @@ export default function UserDevicesPage() {
   const [isWarrantySectionOpen, setIsWarrantySectionOpen] = useState(false);
   // 图片预览弹窗
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // 上传订单截图弹窗
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const messages = getUserMessages(language);
 
@@ -686,11 +688,36 @@ export default function UserDevicesPage() {
     );
   }
 
+  // 根据当前展开的区块动态获取标题和描述
+  const getPageTitle = () => {
+    if (isOrderSectionOpen) {
+      return language === "zh-CN" ? "订单信息管理" : "Order Management";
+    }
+    if (isWarrantySectionOpen) {
+      return language === "zh-CN" ? "质保信息查询" : "Warranty Information";
+    }
+    return messages.devices.title;
+  };
+
+  const getPageSubtitle = () => {
+    if (isOrderSectionOpen) {
+      return language === "zh-CN"
+        ? "上传订单截图，绑定设备并激活质保服务。"
+        : "Upload order screenshots to bind devices and activate warranty.";
+    }
+    if (isWarrantySectionOpen) {
+      return language === "zh-CN"
+        ? "查看已绑定订单的质保到期时间。"
+        : "View warranty expiration dates for bound orders.";
+    }
+    return messages.devices.subtitle;
+  };
+
   return (
     <div style={{ maxWidth: 640, margin: "10px auto" }}>
-      <h1>{messages.devices.title}</h1>
+      <h1>{getPageTitle()}</h1>
       <p style={{ marginTop: 8, fontSize: 14, color: "#9ca3af" }}>
-        {messages.devices.subtitle}
+        {getPageSubtitle()}
       </p>
 
       {loading && (
@@ -715,161 +742,66 @@ export default function UserDevicesPage() {
       >
         {isOrderSectionOpen && (
           <>
-            {/* 未绑定设备的订单截图上传入口 */}
+            {/* 上传订单截图触发按钮 */}
             <div className="user-page-card">
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: 8,
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "20px 0",
                 }}
               >
-                <div
+                <p
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap",
+                    fontSize: 14,
+                    color: "#9ca3af",
+                    margin: 0,
+                    textAlign: "center",
                   }}
                 >
-                  <input
-                    id="global-order-file"
-                    type="file"
-                    accept="image/*"
-                    style={{
-                      position: "absolute",
-                      width: 1,
-                      height: 1,
-                      padding: 0,
-                      margin: -1,
-                      overflow: "hidden",
-                      clip: "rect(0, 0, 0, 0)",
-                      whiteSpace: "nowrap",
-                      border: 0,
-                    }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] ?? null;
-                      setGlobalOrderFile(file);
-                    }}
-                  />
-                  <label
-                    htmlFor="global-order-file"
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: 9999,
-                      background:
-                        "linear-gradient(90deg, rgba(59,130,246,0.9), rgba(37,99,235,0.9))",
-                      color: "#fff",
-                      fontSize: 13,
-                      cursor: "pointer",
-                      border: "none",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
+                  {language === "zh-CN"
+                    ? "上传订单截图以绑定设备信息"
+                    : "Upload order screenshots to bind device information"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="upload-modal-trigger-btn"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "12px 24px",
+                    borderRadius: 12,
+                    background:
+                      "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(37,99,235,0.95))",
+                    color: "#fff",
+                    fontSize: 15,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    border: "none",
+                    boxShadow: "0 4px 14px rgba(59,130,246,0.4)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
-                    {language === "zh-CN"
-                      ? "选择截图文件"
-                      : "Choose screenshot file"}
-                  </label>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#9ca3af",
-                    }}
-                  >
-                    {globalOrderFile
-                      ? globalOrderFile.name
-                      : language === "zh-CN"
-                        ? "未选择文件"
-                        : "No file selected"}
-                  </span>
-                </div>
-                <textarea
-                  placeholder={messages.devices.orderNotePlaceholder}
-                  value={globalOrderNote}
-                  onChange={(e) => setGlobalOrderNote(e.target.value)}
-                  style={{ minHeight: 60, resize: "vertical" }}
-                />
-                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!userEmail) return;
-                      if (!globalOrderFile) {
-                        setError(
-                          language === "zh-CN"
-                            ? "请选择要上传的截图文件"
-                            : "Please choose a file to upload"
-                        );
-                        setOkMsg("");
-                        return;
-                      }
-                      setLoading(true);
-                      setError("");
-                      setOkMsg("");
-                      try {
-                        const formData = new FormData();
-                        formData.append("email", userEmail);
-                        formData.append("file", globalOrderFile);
-                        if (globalOrderNote.trim()) {
-                          formData.append("note", globalOrderNote.trim());
-                        }
-                        const res = await fetch("/api/user/orders", {
-                          method: "POST",
-                          body: formData,
-                        });
-                        if (!res.ok) {
-                          const text = await res.text();
-                          throw new Error(
-                            text ||
-                              (language === "zh-CN"
-                                ? "上传订单截图失败"
-                                : "Failed to upload order screenshot")
-                          );
-                        }
-                        const data = (await res.json()) as OrderSnapshot;
-                        setOrders((prev) => {
-                          const key = data.deviceId || NO_DEVICE_ID;
-                          const list = prev[key] ?? [];
-                          return {
-                            ...prev,
-                            [key]: [data, ...list],
-                          };
-                        });
-                        setOkMsg(
-                          language === "zh-CN"
-                            ? "订单截图上传成功"
-                            : "Order screenshot uploaded"
-                        );
-                        setGlobalOrderFile(null);
-                        setGlobalOrderNote("");
-                      } catch (e) {
-                        setError(
-                          e instanceof Error
-                            ? e.message
-                            : language === "zh-CN"
-                              ? "上传订单截图失败"
-                              : "Failed to upload order screenshot"
-                        );
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                  >
-                    {language === "zh-CN" ? "提交" : "Submit"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGlobalOrderFile(null);
-                      setGlobalOrderNote("");
-                    }}
-                    style={{ opacity: 0.8 }}
-                  >
-                    {language === "zh-CN" ? "清空" : "Reset"}
-                  </button>
-                </div>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  {language === "zh-CN" ? "上传订单截图" : "Upload Order Screenshot"}
+                </button>
               </div>
             </div>
 
@@ -1267,6 +1199,422 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
               cursor: "default",
             }}
           />
+        </div>
+      )}
+
+      {/* 上传订单截图弹窗 */}
+      {isUploadModalOpen && (
+        <div
+          className="upload-modal-overlay"
+          onClick={() => setIsUploadModalOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setIsUploadModalOpen(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9998,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
+            animation: "fadeIn 0.2s ease-out",
+          }}
+        >
+          <div
+            className="upload-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              width: "90%",
+              maxWidth: 480,
+              background: "linear-gradient(145deg, #1a1a2e 0%, #16213e 100%)",
+              borderRadius: 16,
+              border: "1px solid rgba(59, 130, 246, 0.3)",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(59, 130, 246, 0.15)",
+              animation: "slideUp 0.3s ease-out",
+              overflow: "hidden",
+            }}
+          >
+            {/* 弹窗头部 */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "20px 24px",
+                borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                background: "rgba(59, 130, 246, 0.1)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <div>
+                  <h3
+                    style={{
+                      margin: 0,
+                      fontSize: 18,
+                      fontWeight: 600,
+                      color: "#f1f5f9",
+                    }}
+                  >
+                    {language === "zh-CN" ? "上传订单截图" : "Upload Order Screenshot"}
+                  </h3>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 13,
+                      color: "#94a3b8",
+                    }}
+                  >
+                    {language === "zh-CN"
+                      ? "请上传清晰的订单截图"
+                      : "Please upload a clear order screenshot"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsUploadModalOpen(false)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: "none",
+                  background: "rgba(255, 255, 255, 0.1)",
+                  color: "#94a3b8",
+                  fontSize: 18,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                }}
+                aria-label={language === "zh-CN" ? "关闭" : "Close"}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* 弹窗内容 */}
+            <div style={{ padding: 24 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 16,
+                }}
+              >
+                {/* 文件选择区域 */}
+                <div
+                  style={{
+                    border: "2px dashed rgba(59, 130, 246, 0.4)",
+                    borderRadius: 12,
+                    padding: 24,
+                    textAlign: "center",
+                    background: "rgba(59, 130, 246, 0.05)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <input
+                    id="modal-order-file"
+                    type="file"
+                    accept="image/*"
+                    style={{
+                      position: "absolute",
+                      width: 1,
+                      height: 1,
+                      padding: 0,
+                      margin: -1,
+                      overflow: "hidden",
+                      clip: "rect(0, 0, 0, 0)",
+                      whiteSpace: "nowrap",
+                      border: 0,
+                    }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setGlobalOrderFile(file);
+                    }}
+                  />
+                  <label
+                    htmlFor="modal-order-file"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 12,
+                        background: globalOrderFile
+                          ? "linear-gradient(135deg, #22c55e, #16a34a)"
+                          : "rgba(59, 130, 246, 0.2)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      {globalOrderFile ? (
+                        <svg
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : (
+                        <svg
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: 14,
+                          fontWeight: 500,
+                          color: globalOrderFile ? "#22c55e" : "#e2e8f0",
+                        }}
+                      >
+                        {globalOrderFile
+                          ? globalOrderFile.name
+                          : language === "zh-CN"
+                            ? "点击选择截图文件"
+                            : "Click to select screenshot"}
+                      </p>
+                      <p
+                        style={{
+                          margin: "4px 0 0",
+                          fontSize: 12,
+                          color: "#64748b",
+                        }}
+                      >
+                        {language === "zh-CN"
+                          ? "支持 JPG、PNG、GIF 格式"
+                          : "Supports JPG, PNG, GIF formats"}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* 备注输入 */}
+                <div>
+                  <label
+                    htmlFor="modal-order-note"
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: "#94a3b8",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {language === "zh-CN" ? "备注（可选）" : "Note (optional)"}
+                  </label>
+                  <textarea
+                    id="modal-order-note"
+                    placeholder={messages.devices.orderNotePlaceholder}
+                    value={globalOrderNote}
+                    onChange={(e) => setGlobalOrderNote(e.target.value)}
+                    style={{
+                      width: "100%",
+                      minHeight: 80,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      background: "rgba(0, 0, 0, 0.2)",
+                      color: "#e2e8f0",
+                      fontSize: 14,
+                      resize: "vertical",
+                      outline: "none",
+                      transition: "border-color 0.2s ease",
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 弹窗底部按钮 */}
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                padding: "16px 24px 24px",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setGlobalOrderFile(null);
+                  setGlobalOrderNote("");
+                  setIsUploadModalOpen(false);
+                }}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  background: "transparent",
+                  color: "#94a3b8",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {language === "zh-CN" ? "取消" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={async () => {
+                  if (!userEmail) return;
+                  if (!globalOrderFile) {
+                    setError(
+                      language === "zh-CN"
+                        ? "请选择要上传的截图文件"
+                        : "Please choose a file to upload"
+                    );
+                    setOkMsg("");
+                    return;
+                  }
+                  setLoading(true);
+                  setError("");
+                  setOkMsg("");
+                  try {
+                    const formData = new FormData();
+                    formData.append("email", userEmail);
+                    formData.append("file", globalOrderFile);
+                    if (globalOrderNote.trim()) {
+                      formData.append("note", globalOrderNote.trim());
+                    }
+                    const res = await fetch("/api/user/orders", {
+                      method: "POST",
+                      body: formData,
+                    });
+                    if (!res.ok) {
+                      const text = await res.text();
+                      throw new Error(
+                        text ||
+                          (language === "zh-CN"
+                            ? "上传订单截图失败"
+                            : "Failed to upload order screenshot")
+                      );
+                    }
+                    const data = (await res.json()) as OrderSnapshot;
+                    setOrders((prev) => {
+                      const key = data.deviceId || NO_DEVICE_ID;
+                      const list = prev[key] ?? [];
+                      return {
+                        ...prev,
+                        [key]: [data, ...list],
+                      };
+                    });
+                    setOkMsg(
+                      language === "zh-CN"
+                        ? "订单截图上传成功"
+                        : "Order screenshot uploaded"
+                    );
+                    setGlobalOrderFile(null);
+                    setGlobalOrderNote("");
+                    setIsUploadModalOpen(false);
+                  } catch (e) {
+                    setError(
+                      e instanceof Error
+                        ? e.message
+                        : language === "zh-CN"
+                          ? "上传订单截图失败"
+                          : "Failed to upload order screenshot"
+                    );
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                style={{
+                  padding: "10px 24px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: loading
+                    ? "rgba(59, 130, 246, 0.5)"
+                    : "linear-gradient(135deg, #3b82f6, #2563eb)",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                {loading && (
+                  <svg
+                    className="animate-spin"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="12" cy="12" r="10" opacity="0.25" />
+                    <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75" />
+                  </svg>
+                )}
+                {language === "zh-CN" ? "提交" : "Submit"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
