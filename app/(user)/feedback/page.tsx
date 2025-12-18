@@ -454,13 +454,34 @@ export default function UserFeedbackPage() {
     };
   }, [userEmail, viewTab]);
 
-  // 当有进行中工单时，加载该工单的完整对话
+  // 当有进行中工单时，加载该工单的完整对话，并启动轮询以实时获取新消息
   useEffect(() => {
     if (!userEmail || !activeTicket) {
       setActiveMessages(null);
       return;
     }
+
+    // 首次加载
     void loadActiveMessages(userEmail, activeTicket.id);
+
+    // 轮询刷新对话消息（每 5 秒）
+    const pollMessages = () => {
+      void loadActiveMessages(userEmail, activeTicket.id);
+    };
+    const timer = window.setInterval(pollMessages, 5000);
+
+    // 当标签页重新获得可见性时，立即刷新一次
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        pollMessages();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [userEmail, activeTicket?.id]);
 
   const handleSubmit = async () => {

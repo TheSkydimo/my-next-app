@@ -244,10 +244,73 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   };
 
+  // 定期轮询刷新未读反馈角标（每 10 秒）
   useEffect(() => {
     if (!adminEmail) return;
+
+    // 首次加载
     refreshUnreadFeedback(adminEmail);
+
+    // 轮询刷新未读数量
+    const timer = window.setInterval(() => {
+      refreshUnreadFeedback(adminEmail);
+    }, 10000);
+
+    // 当标签页重新获得可见性时，立即刷新一次
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshUnreadFeedback(adminEmail);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [adminEmail]);
+
+  // 当反馈面板打开时，轮询刷新工单列表（每 5 秒）
+  useEffect(() => {
+    if (!adminEmail || !feedbackOpen) return;
+
+    // 轮询刷新工单列表
+    const pollFeedback = async () => {
+      try {
+        const params = new URLSearchParams({
+          adminEmail,
+          status: "all",
+        });
+        const res = await fetch(`/api/admin/feedback?${params.toString()}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          items?: FeedbackItem[];
+          unreadCount?: number;
+        };
+        setFeedbackItems(data.items ?? []);
+        setFeedbackBadge(
+          typeof data.unreadCount === "number" ? data.unreadCount : 0
+        );
+      } catch {
+        // 轮询失败不影响其它功能
+      }
+    };
+
+    const timer = window.setInterval(pollFeedback, 5000);
+
+    // 当标签页重新获得可见性时，立即刷新一次
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void pollFeedback();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [adminEmail, feedbackOpen]);
 
   const isPublicRoute =
     pathname === "/admin/login" || pathname === "/admin/forgot-password";
