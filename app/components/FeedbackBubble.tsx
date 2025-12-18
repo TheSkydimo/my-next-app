@@ -45,6 +45,7 @@ export default function FeedbackBubble() {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [theme, setTheme] = useState<AppTheme>("dark");
   const panelRef = useRef<HTMLDivElement>(null);
+  const isSendingRef = useRef(false); // 防止重复发送
 
   const msg = messages[language];
   const isLight = theme === "light";
@@ -104,8 +105,10 @@ export default function FeedbackBubble() {
   }, [isOpen]);
 
   const handleSend = async () => {
-    if (!content.trim()) return;
+    // 防止重复发送
+    if (!content.trim() || isSendingRef.current) return;
 
+    isSendingRef.current = true;
     setSending(true);
     setStatus("idle");
     setErrorMsg("");
@@ -132,7 +135,6 @@ export default function FeedbackBubble() {
 
       setStatus("success");
       setContent("");
-      // 保留用户邮箱，不清空
 
       // 3秒后自动关闭成功提示
       setTimeout(() => {
@@ -143,6 +145,7 @@ export default function FeedbackBubble() {
       setStatus("error");
       setErrorMsg(err instanceof Error ? err.message : msg.errorMessage);
     } finally {
+      isSendingRef.current = false;
       setSending(false);
     }
   };
