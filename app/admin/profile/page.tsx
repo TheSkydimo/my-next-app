@@ -230,8 +230,13 @@ export default function AdminProfilePage() {
         const text = await res.text();
         throw new Error(text || messages.profile.errorAvatarUpdateFailed);
       }
+      const data = (await res.json().catch(() => null)) as
+        | { avatarUrl?: string | null }
+        | null;
+
       setOkMsg(messages.profile.successAvatarUpdated);
-      const newAvatarUrl = avatarUrlInput.trim() || null;
+      const newAvatarUrl =
+        typeof data?.avatarUrl === "string" ? data.avatarUrl : null;
       setProfile((p) =>
         p
           ? { ...p, avatarUrl: newAvatarUrl }
@@ -498,22 +503,52 @@ export default function AdminProfilePage() {
                     type="file"
                     accept="image/*"
                     onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
+                      void (async () => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
 
-                      if (file.size > 300 * 1024) {
-                        setError(messages.profile.errorAvatarTooLarge);
-                        return;
-                      }
-
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const result = reader.result;
-                        if (typeof result === "string") {
-                          setAvatarUrlInput(result);
+                        if (file.size > 300 * 1024) {
+                          setError(messages.profile.errorAvatarTooLarge);
+                          return;
                         }
-                      };
-                      reader.readAsDataURL(file);
+
+                        if (!adminEmail) return;
+
+                        setError("");
+                        setOkMsg("");
+
+                        try {
+                          const formData = new FormData();
+                          formData.append("email", adminEmail);
+                          formData.append("file", file);
+
+                          const res = await fetch("/api/avatar/upload", {
+                            method: "POST",
+                            body: formData,
+                          });
+
+                          if (!res.ok) {
+                            const text = await res.text();
+                            throw new Error(
+                              text || messages.profile.errorAvatarUpdateFailed
+                            );
+                          }
+
+                          const data = (await res.json()) as {
+                            dbUrl: string;
+                            publicUrl: string;
+                          };
+
+                          // dbUrl 用于写入数据库（r2://...）；publicUrl 用于展示
+                          setAvatarUrlInput(data.dbUrl);
+                        } catch (err) {
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : messages.profile.errorAvatarUpdateFailed
+                          );
+                        }
+                      })();
                     }}
                   />
                   <input

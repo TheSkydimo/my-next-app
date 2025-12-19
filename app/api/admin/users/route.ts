@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 
 type UserRow = {
   id: number;
@@ -103,7 +104,7 @@ export async function GET(request: Request) {
       username: u.username,
       email: u.email,
       isAdmin: !!u.is_admin,
-      avatarUrl: u.avatar_url,
+      avatarUrl: convertDbAvatarUrlToPublicUrl(u.avatar_url),
       isVip:
         !!u.vip_expires_at &&
         !Number.isNaN(new Date(u.vip_expires_at).getTime()) &&

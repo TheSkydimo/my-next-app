@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { sha256 } from "../../_utils/auth";
+import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 
 type AdminRow = {
   id: number;
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
       id: admin.id,
       username: admin.username,
       email: admin.email,
-      avatarUrl: admin.avatar_url,
+      avatarUrl: convertDbAvatarUrlToPublicUrl(admin.avatar_url),
       isSuperAdmin,
       role,
     },
