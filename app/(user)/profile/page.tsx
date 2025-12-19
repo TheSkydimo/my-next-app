@@ -13,45 +13,6 @@ type Profile = {
   avatarUrl: string | null;
 };
 
-function PasswordField({
-  value,
-  onChange,
-  placeholder,
-  showLabel,
-  hideLabel,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  showLabel: string;
-  hideLabel: string;
-}) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <input
-        type={visible ? "text" : "password"}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{ flex: 1 }}
-      />
-      <button
-        type="button"
-        onClick={() => setVisible((v) => !v)}
-        style={{
-          minWidth: 64,
-          background: "#e5e7eb",
-          borderColor: "#d1d5db",
-          color: "#111827",
-        }}
-      >
-        {visible ? hideLabel : showLabel}
-      </button>
-    </div>
-  );
-}
-
 export default function UserProfilePage() {
   // 使用 UserContext 获取预加载的用户信息，避免重复请求
   const userContext = useUser();
@@ -69,20 +30,12 @@ export default function UserProfilePage() {
 
   const [avatarUrlInput, setAvatarUrlInput] = useState("");
 
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-
   const [newEmail, setNewEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [sendingCode, setSendingCode] = useState(false);
   const [showUsernameDialog, setShowUsernameDialog] = useState(false);
   const [showAvatarDialog, setShowAvatarDialog] = useState(false);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
-  const [emailOldPassword, setEmailOldPassword] = useState("");
-  const [emailNewPassword, setEmailNewPassword] = useState("");
-  const [emailConfirmNewPassword, setEmailConfirmNewPassword] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -202,48 +155,6 @@ export default function UserProfilePage() {
     }
   };
 
-  const updatePassword = async () => {
-    if (!userEmail) return;
-    setError("");
-    setOkMsg("");
-
-    if (!oldPassword || !newPassword || !confirmNewPassword) {
-      setError(messages.profile.errorPasswordFieldsRequired);
-      return;
-    }
-
-    if (newPassword !== confirmNewPassword) {
-      setError(messages.profile.errorPasswordNotMatch);
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/user/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: userEmail,
-          oldPassword,
-          newPassword,
-        }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || messages.profile.errorPasswordUpdateFailed);
-      }
-      setOkMsg(messages.profile.successPasswordUpdated);
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmNewPassword("");
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : messages.profile.errorPasswordUpdateFailed
-      );
-    }
-  };
-
   const sendChangeEmailCode = async () => {
     if (!newEmail) {
       setError(messages.profile.errorNewEmailRequired);
@@ -284,16 +195,6 @@ export default function UserProfilePage() {
       return;
     }
 
-    if (!emailOldPassword || !emailNewPassword || !emailConfirmNewPassword) {
-      setError(messages.profile.errorUpdateEmailPasswordFieldsRequired);
-      return;
-    }
-
-    if (emailNewPassword !== emailConfirmNewPassword) {
-      setError(messages.profile.errorUpdateEmailPasswordNotMatch);
-      return;
-    }
-
     setError("");
     setOkMsg("");
     try {
@@ -302,8 +203,6 @@ export default function UserProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
-          oldPassword: emailOldPassword,
-          newPassword: emailNewPassword,
           newEmail,
           emailCode,
         }),
@@ -313,13 +212,16 @@ export default function UserProfilePage() {
         throw new Error(text || messages.profile.errorUpdateEmailFailed);
       }
       setOkMsg(messages.profile.successEmailUpdated);
-      setEmailOldPassword("");
-      setEmailNewPassword("");
-      setEmailConfirmNewPassword("");
       setNewEmail("");
       setEmailCode("");
 
       if (typeof window !== "undefined") {
+        // 最佳努力清理服务端 Session Cookie
+        try {
+          await fetch("/api/logout", { method: "POST" });
+        } catch {
+          // ignore
+        }
         // 修改邮箱后强制退出登录，要求使用新邮箱重新登录
         window.localStorage.removeItem("loggedInUserEmail");
         window.localStorage.removeItem("loggedInUserName");
@@ -588,92 +490,6 @@ export default function UserProfilePage() {
                 }}
               >
                 <h2 style={{ fontSize: 16 }}>
-                  {messages.profile.passwordSectionTitle}
-                </h2>
-                <button
-                  type="button"
-                  className="user-profile-button user-profile-button--tertiary user-profile-inline-link"
-                  onClick={() => {
-                    setError("");
-                    setOkMsg("");
-                    setShowPasswordDialog(true);
-                  }}
-                >
-                  {messages.profile.passwordSectionEdit}
-                </button>
-              </div>
-            </section>
-          )}
-
-          {showPasswordDialog && (
-            <div className="dialog-overlay">
-              <div className="dialog-card">
-                <h3 className="dialog-card__title">
-                  {messages.profile.passwordDialogTitle}
-                </h3>
-                <div className="dialog-card__body">
-                  <PasswordField
-                    placeholder={messages.profile.passwordOldPlaceholder}
-                    value={oldPassword}
-                    onChange={setOldPassword}
-                    showLabel={messages.profile.showPassword}
-                    hideLabel={messages.profile.hidePassword}
-                  />
-                  <PasswordField
-                    placeholder={messages.profile.passwordNewPlaceholder}
-                    value={newPassword}
-                    onChange={setNewPassword}
-                    showLabel={messages.profile.showPassword}
-                    hideLabel={messages.profile.hidePassword}
-                  />
-                  <PasswordField
-                    placeholder={messages.profile.passwordConfirmPlaceholder}
-                    value={confirmNewPassword}
-                    onChange={setConfirmNewPassword}
-                    showLabel={messages.profile.showPassword}
-                    hideLabel={messages.profile.hidePassword}
-                  />
-                </div>
-                <div className="dialog-card__actions">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPasswordDialog(false);
-                      setOldPassword("");
-                      setNewPassword("");
-                      setConfirmNewPassword("");
-                    }}
-                    className="dialog-card__cancel"
-                  >
-                    {messages.profile.passwordDialogCancel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await updatePassword();
-                      setShowPasswordDialog(false);
-                    }}
-                    className="dialog-card__primary"
-                  >
-                    {messages.profile.passwordDialogConfirm}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {editing && (
-            <section style={{ marginTop: 32 }}>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                  gap: 8,
-                }}
-              >
-                <h2 style={{ fontSize: 16 }}>
                   {messages.profile.emailSectionTitle}
                 </h2>
                 <button
@@ -746,29 +562,6 @@ export default function UserProfilePage() {
                         : messages.profile.emailSendCode}
                     </button>
                   </div>
-                  <PasswordField
-                    placeholder={messages.profile.emailOldPasswordPlaceholder}
-                    value={emailOldPassword}
-                    onChange={setEmailOldPassword}
-                    showLabel={messages.profile.showPassword}
-                    hideLabel={messages.profile.hidePassword}
-                  />
-                  <PasswordField
-                    placeholder={messages.profile.emailNewPasswordPlaceholder}
-                    value={emailNewPassword}
-                    onChange={setEmailNewPassword}
-                    showLabel={messages.profile.showPassword}
-                    hideLabel={messages.profile.hidePassword}
-                  />
-                  <PasswordField
-                    placeholder={
-                      messages.profile.emailConfirmNewPasswordPlaceholder
-                    }
-                    value={emailConfirmNewPassword}
-                    onChange={setEmailConfirmNewPassword}
-                    showLabel={messages.profile.showPassword}
-                    hideLabel={messages.profile.hidePassword}
-                  />
                 </div>
                 <div className="dialog-card__actions">
                   <button
@@ -777,9 +570,6 @@ export default function UserProfilePage() {
                       setShowEmailDialog(false);
                       setNewEmail("");
                       setEmailCode("");
-                      setEmailOldPassword("");
-                      setEmailNewPassword("");
-                      setEmailConfirmNewPassword("");
                     }}
                     className="dialog-card__cancel"
                   >

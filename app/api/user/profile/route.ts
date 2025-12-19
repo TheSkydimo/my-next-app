@@ -130,11 +130,6 @@ export async function POST(request: Request) {
     return new Response("服务器内部错误", { status: 500 });
   }
 
-  // 如需修改邮箱，必须同时修改密码
-  if (newEmail && !newPassword) {
-    return new Response("修改邮箱时必须同时设置新密码", { status: 400 });
-  }
-
   // 如需修改密码，必须校验旧密码
   if (newPassword) {
     if (!oldPassword) {

@@ -194,7 +194,7 @@ const zhCN: UserMessages = {
     passwordDialogCancel: "取消",
     passwordDialogConfirm: "确认修改",
     emailDialogTitle: "确认修改邮箱",
-    emailDialogDesc: "修改邮箱时会同时更新登录密码，请先验证新邮箱并设置新密码。",
+    emailDialogDesc: "修改邮箱需要验证新邮箱验证码。修改完成后请使用新邮箱重新登录。",
     emailNewPlaceholder: "新邮箱",
     emailCodePlaceholder: "邮箱验证码",
     emailSendCode: "获取验证码",
@@ -312,7 +312,7 @@ const enUS: UserMessages = {
     passwordDialogConfirm: "Confirm",
     emailDialogTitle: "Confirm email change",
     emailDialogDesc:
-      "When changing your email, your login password will be updated as well. Verify the new email and set a new password.",
+      "To change your email, verify the code sent to the new email. After changing, please log in again with the new email.",
     emailNewPlaceholder: "New email",
     emailCodePlaceholder: "Verification code",
     emailSendCode: "Send code",
