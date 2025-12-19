@@ -164,10 +164,8 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [primary, setPrimary] = useState<PrimaryColorKey>("green");
-  const [align, setAlign] = useState<AlignMode>("center");
   const [lang, setLang] = useState<Lang>("zh-CN");
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
-  const [alignMenuOpen, setAlignMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
 
   const t = TEXTS[lang];
@@ -185,14 +183,6 @@ export default function RegisterPage() {
     setColorMenuOpen(false);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("authPrimary", key);
-    }
-  };
-
-  const changeAlign = (mode: AlignMode) => {
-    setAlign(mode);
-    setAlignMenuOpen(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("authAlign", mode);
     }
   };
 
@@ -218,11 +208,6 @@ export default function RegisterPage() {
     const storedPrimary = window.localStorage.getItem("authPrimary") as PrimaryColorKey | null;
     if (storedPrimary && PRIMARY_COLORS.some((c) => c.key === storedPrimary)) {
       setPrimary(storedPrimary);
-    }
-
-    const storedAlign = window.localStorage.getItem("authAlign") as AlignMode | null;
-    if (storedAlign === "left" || storedAlign === "center" || storedAlign === "right") {
-      setAlign(storedAlign);
     }
   }, []);
 
@@ -366,7 +351,7 @@ export default function RegisterPage() {
 
   return (
     <div
-      className={`auth-page auth-page--split auth-page--${theme} auth-page--primary-${primary} auth-page--align-${align}`}
+      className={`auth-page auth-page--split auth-page--vben auth-page--${theme} auth-page--primary-${primary} auth-page--align-right`}
     >
       <div className="auth-page__split-shell">
         <div className="auth-toolbar" aria-label={lang === "zh-CN" ? "注册页工具栏" : "Register toolbar"}>
@@ -398,52 +383,6 @@ export default function RegisterPage() {
                       />
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
-
-            <div className="auth-toolbar__icon-wrapper">
-              <button
-                type="button"
-                className={`auth-toolbar__icon-button auth-toolbar__icon-button--layout auth-toolbar__icon-button--layout-${align}`}
-                onClick={() => setAlignMenuOpen((v) => !v)}
-                aria-haspopup="true"
-                aria-expanded={alignMenuOpen}
-                aria-label={t.changeAlign}
-              >
-                <span className="auth-toolbar__layout-bar auth-toolbar__layout-bar--left" />
-                <span className="auth-toolbar__layout-bar auth-toolbar__layout-bar--center" />
-                <span className="auth-toolbar__layout-bar auth-toolbar__layout-bar--right" />
-              </button>
-              {alignMenuOpen && (
-                <div className="auth-toolbar__dropdown">
-                  <button
-                    type="button"
-                    className={`auth-toolbar__dropdown-item${
-                      align === "left" ? " auth-toolbar__dropdown-item--active" : ""
-                    }`}
-                    onClick={() => changeAlign("left")}
-                  >
-                    {t.alignLeft}
-                  </button>
-                  <button
-                    type="button"
-                    className={`auth-toolbar__dropdown-item${
-                      align === "center" ? " auth-toolbar__dropdown-item--active" : ""
-                    }`}
-                    onClick={() => changeAlign("center")}
-                  >
-                    {t.alignCenter}
-                  </button>
-                  <button
-                    type="button"
-                    className={`auth-toolbar__dropdown-item${
-                      align === "right" ? " auth-toolbar__dropdown-item--active" : ""
-                    }`}
-                    onClick={() => changeAlign("right")}
-                  >
-                    {t.alignRight}
-                  </button>
                 </div>
               )}
             </div>

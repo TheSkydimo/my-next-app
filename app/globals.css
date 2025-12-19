@@ -1519,6 +1519,187 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	justify-content: center;
 }
 
+/* ========== Auth: Vben-like auth variant (login/register/forgot) ========== */
+
+.auth-page--vben {
+	padding: 0;
+}
+
+.auth-page--vben.auth-page--split {
+	/* fill viewport; no vertical centering gap */
+	align-items: stretch;
+	justify-content: stretch;
+}
+
+.auth-page--vben::before {
+	/* lighter, layered background similar to Vben */
+	background:
+		radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.22), transparent 55%),
+		radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.18), transparent 55%),
+		radial-gradient(circle at 15% 100%, rgba(34, 197, 94, 0.14), transparent 55%),
+		#000000;
+	filter: blur(34px);
+	opacity: 0.9;
+}
+
+.auth-page--vben.auth-page--light::before {
+	background:
+		radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.18), transparent 58%),
+		radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.14), transparent 58%),
+		radial-gradient(circle at 15% 100%, rgba(34, 197, 94, 0.12), transparent 60%),
+		linear-gradient(180deg, #f9fafb, #eff6ff);
+	filter: blur(34px);
+	opacity: 0.95;
+}
+
+.auth-page--vben .auth-page__split-shell {
+	/* full-screen split layout (avoid centered “block shell”) */
+	max-width: none;
+	width: 100%;
+	min-height: 100vh;
+	margin: 0;
+	border-radius: 0;
+	padding-top: 0; /* no top gap */
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	overflow: hidden;
+}
+
+.auth-page--vben .auth-toolbar {
+	/* float above content; do not occupy layout space */
+	position: fixed;
+	top: 16px;
+	right: 16px;
+}
+
+.auth-page--vben .auth-page__visual {
+	background: transparent;
+	padding: 48px 42px 48px 42px;
+}
+
+.auth-page--vben .auth-page__visual::before {
+	display: none;
+}
+
+.auth-page--vben .auth-page__subtitle {
+	max-width: 420px;
+	color: rgba(203, 213, 245, 0.9);
+}
+
+.auth-page--vben.auth-page--light .auth-page__subtitle {
+	color: rgba(55, 65, 81, 0.9);
+}
+
+.auth-page--vben .auth-page__panel {
+	background: transparent;
+	padding: 48px 42px 48px 42px;
+}
+
+/* vben 模式下始终保持左右结构（即使用户切到“居中”） */
+.auth-page--vben.auth-page--align-center .auth-page__visual {
+	display: flex;
+}
+
+.auth-page--vben.auth-page--align-center .auth-page__panel {
+	flex: 1;
+}
+
+/* vben 模式：无论 align 是什么，左右顺序固定（避免右侧操作影响左侧） */
+.auth-page--vben .auth-page__visual {
+	order: 1;
+	display: flex;
+}
+
+.auth-page--vben .auth-page__panel {
+	order: 2;
+}
+
+/* light theme: split backgrounds like Vben */
+.auth-page--vben.auth-page--light .auth-page__visual {
+	background:
+		radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.16), transparent 60%),
+		radial-gradient(circle at 80% 100%, rgba(236, 72, 153, 0.12), transparent 60%),
+		linear-gradient(180deg, rgba(239, 246, 255, 0.85), rgba(255, 255, 255, 0.85));
+}
+
+.auth-page--vben.auth-page--light .auth-page__panel {
+	background: rgba(248, 250, 252, 0.92);
+}
+
+/* dark theme: subtle separation */
+.auth-page--vben:not(.auth-page--light) .auth-page__visual {
+	background:
+		radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.18), transparent 58%),
+		radial-gradient(circle at 80% 100%, rgba(34, 197, 94, 0.12), transparent 60%),
+		transparent;
+}
+
+.auth-page--vben:not(.auth-page--light) .auth-page__panel {
+	background: rgba(0, 0, 0, 0.35);
+}
+
+/* clearer divider between visual and panel */
+.auth-page--vben.auth-page--align-right .auth-page__panel {
+	border-left: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.auth-page--vben.auth-page--align-left .auth-page__panel {
+	border-right: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.auth-page--vben.auth-page--light.auth-page--align-right .auth-page__panel {
+	border-left-color: rgba(148, 163, 184, 0.35);
+}
+
+.auth-page--vben.auth-page--light.auth-page--align-left .auth-page__panel {
+	border-right-color: rgba(148, 163, 184, 0.35);
+}
+
+.auth-page--vben .auth-card {
+	/* no card shell: remove “blocky” look */
+	max-width: 420px;
+	border-radius: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	backdrop-filter: none;
+	padding: 0;
+}
+
+.auth-page--vben .auth-card__header p {
+	color: rgba(148, 163, 184, 0.95);
+}
+
+.auth-page--vben.auth-page--light .auth-card__header p {
+	color: rgba(75, 85, 99, 0.9);
+}
+
+.auth-page--vben .auth-card h1 {
+	text-shadow: none;
+}
+
+.auth-page--vben .auth-card__form {
+	margin-top: 16px;
+}
+
+
+@media (max-width: 960px) {
+	.auth-page--vben .auth-page__split-shell {
+		width: 100%;
+		min-height: 100vh;
+		padding-top: 0;
+	}
+
+	.auth-page--vben .auth-page__visual {
+		display: none;
+	}
+
+	.auth-page--vben .auth-page__panel {
+		padding: 26px 18px 22px;
+	}
+}
+
 .auth-page__visual {
 	flex: 1.2;
 	position: relative;

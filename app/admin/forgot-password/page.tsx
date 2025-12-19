@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { TurnstileWidget } from "../../components/TurnstileWidget";
 import type { AppLanguage, AppTheme } from "../../client-prefs";
 import {
   applyLanguage,
@@ -24,14 +25,12 @@ const TEXTS: Record<
     sendingCodeButton: string;
     passwordPlaceholder: string;
     confirmPasswordPlaceholder: string;
-    captchaPlaceholder: string;
-    captchaTitle: string;
     submitButton: string;
     errorEmailRequired: string;
     errorAllRequired: string;
     errorPasswordMismatch: string;
-    errorCaptchaRequired: string;
-    errorCaptchaIncorrect: string;
+    errorTurnstileRequired: string;
+    errorTurnstileLoadFailed: string;
     errorSendCode: string;
     successCodeSent: string;
     errorResetFailed: string;
@@ -50,14 +49,12 @@ const TEXTS: Record<
     sendingCodeButton: "发送中...",
     passwordPlaceholder: "新密码",
     confirmPasswordPlaceholder: "确认新密码",
-    captchaPlaceholder: "验证码",
-    captchaTitle: "点击更换验证码",
     submitButton: "重置管理员密码",
     errorEmailRequired: "请先填写管理员邮箱",
     errorAllRequired: "请完整填写所有字段（包括邮箱验证码）",
     errorPasswordMismatch: "两次输入的密码不一致",
-    errorCaptchaRequired: "请输入图形验证码",
-    errorCaptchaIncorrect: "图形验证码错误",
+    errorTurnstileRequired: "请完成人机验证后再获取验证码",
+    errorTurnstileLoadFailed: "人机验证加载失败，请刷新页面重试",
     errorSendCode: "发送邮箱验证码失败",
     successCodeSent: "验证码已发送到管理员邮箱，请注意查收",
     errorResetFailed: "重置管理员密码失败",
@@ -75,14 +72,12 @@ const TEXTS: Record<
     sendingCodeButton: "Sending...",
     passwordPlaceholder: "New password",
     confirmPasswordPlaceholder: "Confirm new password",
-    captchaPlaceholder: "Captcha",
-    captchaTitle: "Click to refresh captcha",
     submitButton: "Reset admin password",
     errorEmailRequired: "Please enter the admin email first",
     errorAllRequired: "Please fill in all fields (including email code).",
     errorPasswordMismatch: "The two passwords do not match",
-    errorCaptchaRequired: "Please enter the captcha",
-    errorCaptchaIncorrect: "Captcha is incorrect",
+    errorTurnstileRequired: "Please complete verification before sending code",
+    errorTurnstileLoadFailed: "Verification failed to load. Please refresh.",
     errorSendCode: "Failed to send email code",
     successCodeSent: "Verification code has been sent to the admin email",
     errorResetFailed: "Failed to reset admin password",
@@ -92,24 +87,15 @@ const TEXTS: Record<
   },
 };
 
-function generateCaptcha(length = 5): string {
-  const chars =
-    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    const idx = Math.floor(Math.random() * chars.length);
-    result += chars[idx];
-  }
-  return result;
-}
-
 export default function AdminForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [emailCode, setEmailCode] = useState("");
-  const [captcha, setCaptcha] = useState("");
-  const [captchaInput, setCaptchaInput] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
+  const [turnstileRenderKey, setTurnstileRenderKey] = useState(0);
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
@@ -122,8 +108,6 @@ export default function AdminForgotPasswordPage() {
   const t = TEXTS[lang];
 
   useEffect(() => {
-    setCaptcha(generateCaptcha());
-
     const initialTheme = getInitialTheme();
     setTheme(initialTheme);
     applyTheme(initialTheme);
@@ -132,6 +116,22 @@ export default function AdminForgotPasswordPage() {
       typeof window === "undefined" ? "zh-CN" : getInitialLanguage();
     setLang(initialLang === "en-US" ? "en" : "zh-CN");
     applyLanguage(initialLang);
+  }, []);
+
+  // Turnstile site key: 通过运行时 API 获取，避免依赖构建期 NEXT_PUBLIC 注入
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/public-config", { method: "GET" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { turnstileSiteKey?: string };
+        if (typeof data.turnstileSiteKey === "string") {
+          setTurnstileSiteKey(data.turnstileSiteKey);
+        }
+      } catch {
+        // ignore
+      }
+    })();
   }, []);
 
   const toggleTheme = () => {
@@ -151,11 +151,6 @@ export default function AdminForgotPasswordPage() {
     });
   };
 
-  const refreshCaptcha = () => {
-    setCaptcha(generateCaptcha());
-    setCaptchaInput("");
-  };
-
   const sendEmailCode = async () => {
     setError("");
     setCodeMsg("");
@@ -165,12 +160,22 @@ export default function AdminForgotPasswordPage() {
       return;
     }
 
+    if (turnstileLoadFailed || !turnstileSiteKey) {
+      setError(t.errorTurnstileLoadFailed);
+      return;
+    }
+
+    if (!turnstileToken) {
+      setError(t.errorTurnstileRequired);
+      return;
+    }
+
     setSendingCode(true);
     try {
       const res = await fetch("/api/email/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose: "admin-forgot" }),
+        body: JSON.stringify({ email, purpose: "admin-forgot", turnstileToken }),
       });
 
       if (!res.ok) {
@@ -180,6 +185,8 @@ export default function AdminForgotPasswordPage() {
       }
 
       setCodeMsg(t.successCodeSent);
+      setTurnstileToken("");
+      setTurnstileRenderKey((v) => v + 1);
     } catch {
       setError(t.errorSendCode);
     } finally {
@@ -202,17 +209,6 @@ export default function AdminForgotPasswordPage() {
       return;
     }
 
-    if (!captchaInput) {
-      setError(t.errorCaptchaRequired);
-      return;
-    }
-
-    if (captchaInput.trim().toLowerCase() !== captcha.toLowerCase()) {
-      setError(t.errorCaptchaIncorrect);
-      refreshCaptcha();
-      return;
-    }
-
     const res = await fetch("/api/admin/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -222,7 +218,6 @@ export default function AdminForgotPasswordPage() {
     if (!res.ok) {
       const text = await res.text();
       setError(text || t.errorResetFailed);
-      refreshCaptcha();
       return;
     }
 
@@ -264,6 +259,22 @@ export default function AdminForgotPasswordPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+
+          <div className="auth-card__field-row">
+            <div className="auth-card__field-grow">
+              <TurnstileWidget
+                key={turnstileRenderKey}
+                siteKey={turnstileSiteKey}
+                onToken={(token) => {
+                  setTurnstileToken(token);
+                  setTurnstileLoadFailed(false);
+                }}
+                onError={() => setTurnstileLoadFailed(true)}
+                onExpire={() => setTurnstileToken("")}
+                theme={theme === "dark" ? "dark" : "light"}
+              />
+            </div>
+          </div>
 
           <div className="auth-card__field-row">
             <input
@@ -314,22 +325,6 @@ export default function AdminForgotPasswordPage() {
             >
               {showConfirmPassword ? t.hidePassword : t.showPassword}
             </button>
-          </div>
-
-          <div className="auth-card__field-row">
-            <input
-              placeholder={t.captchaPlaceholder}
-              value={captchaInput}
-              onChange={(e) => setCaptchaInput(e.target.value)}
-              className="auth-card__field-grow"
-            />
-            <div
-              onClick={refreshCaptcha}
-              className="auth-card__captcha"
-              title={t.captchaTitle}
-            >
-              {captcha}
-            </div>
           </div>
 
           <button type="submit" className="auth-card__submit-button">
