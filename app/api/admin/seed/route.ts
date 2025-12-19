@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { sha256 } from "../../_utils/auth";
+import { ensureUsersTable } from "../../_utils/usersTable";
 
 // 简单的初始化脚本：
 // 1. 为 users 表增加 is_admin 字段（如果不存在）
@@ -33,6 +34,7 @@ export async function POST() {
   if (notAllowed) return notAllowed;
 
   const db = env.my_user_db as D1Database;
+  await ensureUsersTable(db);
 
   // 1. 确保 is_admin 字段存在
   try {

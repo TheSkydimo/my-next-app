@@ -95,6 +95,7 @@ export default function AdminForgotPasswordPage() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
+  const [turnstileRequired, setTurnstileRequired] = useState(true);
   const [turnstileRenderKey, setTurnstileRenderKey] = useState(0);
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
@@ -124,9 +125,17 @@ export default function AdminForgotPasswordPage() {
       try {
         const res = await fetch("/api/public-config", { method: "GET" });
         if (!res.ok) return;
-        const data = (await res.json()) as { turnstileSiteKey?: string };
+        const data = (await res.json()) as {
+          turnstileSiteKey?: string;
+          turnstileRequired?: boolean;
+        };
         if (typeof data.turnstileSiteKey === "string") {
           setTurnstileSiteKey(data.turnstileSiteKey);
+          setTurnstileRequired(
+            typeof data.turnstileRequired === "boolean"
+              ? data.turnstileRequired
+              : !!data.turnstileSiteKey
+          );
         }
       } catch {
         // ignore
@@ -160,12 +169,12 @@ export default function AdminForgotPasswordPage() {
       return;
     }
 
-    if (turnstileLoadFailed || !turnstileSiteKey) {
+    if (turnstileRequired && (turnstileLoadFailed || !turnstileSiteKey)) {
       setError(t.errorTurnstileLoadFailed);
       return;
     }
 
-    if (!turnstileToken) {
+    if (turnstileRequired && !turnstileToken) {
       setError(t.errorTurnstileRequired);
       return;
     }
@@ -175,7 +184,11 @@ export default function AdminForgotPasswordPage() {
       const res = await fetch("/api/email/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose: "admin-forgot", turnstileToken }),
+        body: JSON.stringify({
+          email,
+          purpose: "admin-forgot",
+          ...(turnstileRequired && turnstileToken ? { turnstileToken } : {}),
+        }),
       });
 
       if (!res.ok) {
@@ -184,9 +197,21 @@ export default function AdminForgotPasswordPage() {
         return;
       }
 
-      setCodeMsg(t.successCodeSent);
-      setTurnstileToken("");
-      setTurnstileRenderKey((v) => v + 1);
+      const data = (await res.json().catch(() => null)) as
+        | { devCode?: string }
+        | null;
+
+      if (data?.devCode) {
+        const code = String(data.devCode);
+        setCodeMsg(`${t.successCodeSent}（DEV: ${code}）`);
+      } else {
+        setCodeMsg(t.successCodeSent);
+      }
+
+      if (turnstileRequired) {
+        setTurnstileToken("");
+        setTurnstileRenderKey((v) => v + 1);
+      }
     } catch {
       setError(t.errorSendCode);
     } finally {
@@ -262,17 +287,19 @@ export default function AdminForgotPasswordPage() {
 
           <div className="auth-card__field-row">
             <div className="auth-card__field-grow">
-              <TurnstileWidget
-                key={turnstileRenderKey}
-                siteKey={turnstileSiteKey}
-                onToken={(token) => {
-                  setTurnstileToken(token);
-                  setTurnstileLoadFailed(false);
-                }}
-                onError={() => setTurnstileLoadFailed(true)}
-                onExpire={() => setTurnstileToken("")}
-                theme={theme === "dark" ? "dark" : "light"}
-              />
+              {turnstileRequired && (
+                <TurnstileWidget
+                  key={turnstileRenderKey}
+                  siteKey={turnstileSiteKey}
+                  onToken={(token) => {
+                    setTurnstileToken(token);
+                    setTurnstileLoadFailed(false);
+                  }}
+                  onError={() => setTurnstileLoadFailed(true)}
+                  onExpire={() => setTurnstileToken("")}
+                  theme={theme === "dark" ? "dark" : "light"}
+                />
+              )}
             </div>
           </div>
 

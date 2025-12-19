@@ -2,37 +2,8 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isValidEmail, sha256 } from "../_utils/auth";
 import { verifyAndUseEmailCode } from "../_utils/emailCode";
 import { generateNumericUsername } from "../_utils/user";
-
-type TurnstileVerifyResponse = {
-  success: boolean;
-  "error-codes"?: string[];
-};
-
-async function verifyTurnstileToken(opts: {
-  secret: string;
-  token: string;
-  remoteip?: string | null;
-}): Promise<boolean> {
-  const form = new URLSearchParams();
-  form.set("secret", opts.secret);
-  form.set("response", opts.token);
-  if (opts.remoteip) form.set("remoteip", opts.remoteip);
-
-  const res = await fetch(
-    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: form.toString(),
-    }
-  );
-
-  const data = (await res.json().catch(() => null)) as
-    | TurnstileVerifyResponse
-    | null;
-
-  return !!data?.success;
-}
+import { isDevBypassTurnstileEnabled } from "../_utils/runtimeEnv";
+import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../_utils/turnstile";
 
 export async function POST(request: Request) {
   const { username, email, password, emailCode, turnstileToken } =
@@ -63,29 +34,29 @@ export async function POST(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
-  const secret = String(
-    (env as unknown as { TURNSTILE_SECRET_KEY?: string }).TURNSTILE_SECRET_KEY ??
-      ""
-  );
-  if (!secret) {
-    return new Response("Turnstile 未配置（缺少 TURNSTILE_SECRET_KEY）", {
-      status: 500,
+  const bypassTurnstile = isDevBypassTurnstileEnabled(env);
+  if (!bypassTurnstile) {
+    const secret = getTurnstileSecretFromEnv(env);
+    if (!secret) {
+      return new Response("Turnstile 未配置（缺少 TURNSTILE_SECRET_KEY）", {
+        status: 500,
+      });
+    }
+
+    if (!turnstileToken) {
+      return new Response("请完成人机验证", { status: 400 });
+    }
+
+    const remoteip = request.headers.get("CF-Connecting-IP");
+    const okTurnstile = await verifyTurnstileToken({
+      secret,
+      token: turnstileToken,
+      remoteip,
     });
-  }
 
-  if (!turnstileToken) {
-    return new Response("请完成人机验证", { status: 400 });
-  }
-
-  const remoteip = request.headers.get("CF-Connecting-IP");
-  const okTurnstile = await verifyTurnstileToken({
-    secret,
-    token: turnstileToken,
-    remoteip,
-  });
-
-  if (!okTurnstile) {
-    return new Response("人机验证失败，请重试", { status: 400 });
+    if (!okTurnstile) {
+      return new Response("人机验证失败，请重试", { status: 400 });
+    }
   }
 
   const okCode = await verifyAndUseEmailCode({

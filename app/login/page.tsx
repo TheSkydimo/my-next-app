@@ -106,10 +106,12 @@ export default function LoginPage() {
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
+  const [devEmailCode, setDevEmailCode] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
+  const [turnstileRequired, setTurnstileRequired] = useState(true);
   const [lastSentToken, setLastSentToken] = useState("");
   const [error, setError] = useState("");
   const [theme, setTheme] = useState<AppTheme>("dark");
@@ -159,9 +161,17 @@ export default function LoginPage() {
       try {
         const res = await fetch("/api/public-config", { method: "GET" });
         if (!res.ok) return;
-        const data = (await res.json()) as { turnstileSiteKey?: string };
+        const data = (await res.json()) as {
+          turnstileSiteKey?: string;
+          turnstileRequired?: boolean;
+        };
         if (typeof data.turnstileSiteKey === "string") {
           setTurnstileSiteKey(data.turnstileSiteKey);
+          setTurnstileRequired(
+            typeof data.turnstileRequired === "boolean"
+              ? data.turnstileRequired
+              : !!data.turnstileSiteKey
+          );
         }
       } catch {
         // ignore
@@ -194,15 +204,16 @@ export default function LoginPage() {
     applyLanguage(appLang);
   };
 
-  const sendLoginEmailCode = useCallback(async (token: string) => {
+  const sendLoginEmailCode = useCallback(async (token?: string) => {
     setError("");
+    setDevEmailCode("");
 
     if (!email) {
       setError(t.errorEmailRequired);
       return;
     }
 
-    if (turnstileLoadFailed || !turnstileSiteKey) {
+    if (turnstileRequired && (turnstileLoadFailed || !turnstileSiteKey)) {
       setError(t.errorTurnstileLoadFailed);
       return;
     }
@@ -211,13 +222,25 @@ export default function LoginPage() {
       const res = await fetch("/api/email/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose: "user-login", turnstileToken: token }),
+        body: JSON.stringify({
+          email,
+          purpose: "user-login",
+          ...(token ? { turnstileToken: token } : {}),
+        }),
       });
 
       if (!res.ok) {
         const text = await res.text();
         setError(text || t.errorSendCode);
+        if (!turnstileRequired) setStep("email");
         return;
+      }
+
+      const data = (await res.json().catch(() => null)) as
+        | { devCode?: string }
+        | null;
+      if (data?.devCode) {
+        setDevEmailCode(String(data.devCode));
       }
 
       // 不展示任何提示文案（按需求“无需提示”）
@@ -225,8 +248,9 @@ export default function LoginPage() {
     } catch (error) {
       console.error(error);
       setError(t.errorSendCode);
+      if (!turnstileRequired) setStep("email");
     }
-  }, [email, t.errorEmailRequired, t.errorSendCode, t.errorTurnstileLoadFailed, turnstileLoadFailed, turnstileSiteKey]);
+  }, [email, t.errorEmailRequired, t.errorSendCode, t.errorTurnstileLoadFailed, turnstileLoadFailed, turnstileRequired, turnstileSiteKey]);
 
   // Turnstile 成功后自动发送验证码（仅在 turnstile 步骤）
   useEffect(() => {
@@ -242,6 +266,7 @@ export default function LoginPage() {
     setStep("email");
     setEmail("");
     setEmailCode("");
+    setDevEmailCode("");
     setTurnstileToken("");
     setLastSentToken("");
     setTurnstileLoadFailed(false);
@@ -251,14 +276,22 @@ export default function LoginPage() {
   const startVerification = () => {
     setError("");
     setEmailCode("");
+    setDevEmailCode("");
 
     if (!email) {
       setError(t.errorEmailRequired);
       return;
     }
 
-    if (!turnstileSiteKey) {
+    if (turnstileRequired && !turnstileSiteKey) {
       setError(t.errorTurnstileLoadFailed);
+      return;
+    }
+
+    if (!turnstileRequired) {
+      // 本地测试：跳过 Turnstile，直接发送验证码
+      void sendLoginEmailCode();
+      setStep("code");
       return;
     }
 
@@ -517,6 +550,12 @@ export default function LoginPage() {
                       required
                     />
                   </label>
+
+                  {devEmailCode && (
+                    <div className="auth-plain__hint" style={{ marginTop: 6 }}>
+                      DEV Code: <strong>{devEmailCode}</strong>
+                    </div>
+                  )}
 
                   <button type="submit" className="auth-card__submit-button">
                     {t.submitButton}

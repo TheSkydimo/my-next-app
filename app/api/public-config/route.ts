@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { isDevBypassTurnstileEnabled } from "../_utils/runtimeEnv";
 
 export async function GET() {
   const { env } = await getCloudflareContext();
@@ -7,9 +8,13 @@ export async function GET() {
       .NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
   );
 
+  const bypassTurnstile = isDevBypassTurnstileEnabled(env);
+  const turnstileRequired = !bypassTurnstile && !!siteKey;
+
   return Response.json(
     {
       turnstileSiteKey: siteKey,
+      turnstileRequired,
     },
     {
       headers: {

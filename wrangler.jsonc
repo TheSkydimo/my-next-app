@@ -71,7 +71,15 @@
 				"SMTP_PASS": "fbn2WqHG1CnhGfyK",
 				"SMTP_ENCRYPTION": "ssl",
 				"SMTP_FROM": "noreply@skydimo.com",
-				"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a"
+				"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a",
+
+				/**
+				 * Local testing helpers (NEVER enable in production):
+				 * - DEV_BYPASS_TURNSTILE: skip Turnstile verification
+				 * - DEV_RETURN_EMAIL_CODE: return the email code in API response
+				 */
+				"DEV_BYPASS_TURNSTILE": "1",
+				"DEV_RETURN_EMAIL_CODE": "1"
 			}
 		}
 	}

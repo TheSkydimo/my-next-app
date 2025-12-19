@@ -4,6 +4,11 @@ import { isValidEmail } from "../../_utils/auth";
 import type { EmailCodePurpose } from "../../_utils/emailCode";
 import { ensureEmailCodeTable } from "../../_utils/emailCode";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
+import {
+  getRuntimeEnvVar,
+  isDevBypassTurnstileEnabled,
+  shouldReturnEmailCodeInResponse,
+} from "../../_utils/runtimeEnv";
 
 function generateCode(length = 6): string {
   let code = "";
@@ -31,25 +36,30 @@ export async function POST(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
+  const bypassTurnstile = isDevBypassTurnstileEnabled(env);
+  const returnCodeInResponse = shouldReturnEmailCodeInResponse(env);
+
   // 发送验证码：部分用途强制 Turnstile（防刷）
   if (purpose === "user-login" || purpose === "user-forgot" || purpose === "admin-forgot") {
-    const secret = getTurnstileSecretFromEnv(env);
-    if (!secret) {
-      return new Response("Turnstile 未配置（缺少 TURNSTILE_SECRET_KEY）", {
-        status: 500,
+    if (!bypassTurnstile) {
+      const secret = getTurnstileSecretFromEnv(env);
+      if (!secret) {
+        return new Response("Turnstile 未配置（缺少 TURNSTILE_SECRET_KEY）", {
+          status: 500,
+        });
+      }
+      if (!turnstileToken) {
+        return new Response("请完成人机验证", { status: 400 });
+      }
+      const remoteip = request.headers.get("CF-Connecting-IP");
+      const okTurnstile = await verifyTurnstileToken({
+        secret,
+        token: turnstileToken,
+        remoteip,
       });
-    }
-    if (!turnstileToken) {
-      return new Response("请完成人机验证", { status: 400 });
-    }
-    const remoteip = request.headers.get("CF-Connecting-IP");
-    const okTurnstile = await verifyTurnstileToken({
-      secret,
-      token: turnstileToken,
-      remoteip,
-    });
-    if (!okTurnstile) {
-      return new Response("人机验证失败，请重试", { status: 400 });
+      if (!okTurnstile) {
+        return new Response("人机验证失败，请重试", { status: 400 });
+      }
     }
   }
 
@@ -91,19 +101,21 @@ export async function POST(request: Request) {
     .bind(email, code, purpose)
     .run();
 
-  // 优先从 Cloudflare env 读取，其次回退到本地的 process.env（方便本地开发）
-  const getVar = (key: string): string | undefined => {
-    const envRecord = env as unknown as Record<string, string | undefined>;
-    return envRecord?.[key] ?? process.env[key];
-  };
+  // 本地开发：允许直接返回验证码，便于手动测试（仍写入数据库）
+  if (returnCodeInResponse) {
+    console.log(
+      `[DEV] email code generated: email=${email}, purpose=${purpose}, code=${code}`
+    );
+    return Response.json({ ok: true, devCode: code });
+  }
 
-  const APP_NAME = getVar("APP_NAME");
-  const SMTP_HOST = getVar("SMTP_HOST");
-  const SMTP_PORT = getVar("SMTP_PORT");
-  const SMTP_USER = getVar("SMTP_USER");
-  const SMTP_PASS = getVar("SMTP_PASS");
-  const SMTP_ENCRYPTION = getVar("SMTP_ENCRYPTION");
-  const SMTP_FROM = getVar("SMTP_FROM");
+  const APP_NAME = getRuntimeEnvVar(env, "APP_NAME");
+  const SMTP_HOST = getRuntimeEnvVar(env, "SMTP_HOST");
+  const SMTP_PORT = getRuntimeEnvVar(env, "SMTP_PORT");
+  const SMTP_USER = getRuntimeEnvVar(env, "SMTP_USER");
+  const SMTP_PASS = getRuntimeEnvVar(env, "SMTP_PASS");
+  const SMTP_ENCRYPTION = getRuntimeEnvVar(env, "SMTP_ENCRYPTION");
+  const SMTP_FROM = getRuntimeEnvVar(env, "SMTP_FROM");
 
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
     console.error("SMTP 配置缺失");
