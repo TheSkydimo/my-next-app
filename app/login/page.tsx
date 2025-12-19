@@ -14,26 +14,27 @@ import {
 
 type PrimaryColorKey = "blue" | "purple" | "magenta" | "gold" | "green" | "gray";
 type Lang = "zh-CN" | "en";
+type LoginStep = "email" | "turnstile" | "code";
 
 const TEXTS: Record<Lang, {
   heroTitlePrefix: string;
   heroTitleHighlight: string;
   heroSubtitle: string;
-  welcomeTitle: string;
-  welcomeSubtitle: string;
+  stepEmailTitle: string;
+  stepTurnstileTitle: string;
+  stepCodeTitle: string;
   emailLabel: string;
   emailPlaceholder: string;
   emailCodeLabel: string;
   emailCodePlaceholder: string;
-  sendCodeButton: string;
-  sendingCodeButton: string;
-  loginButton: string;
+  continueButton: string;
+  verifyLoading: string;
+  submitButton: string;
+  useDifferentEmail: string;
   loginError: string;
   errorEmailRequired: string;
-  errorTurnstileRequired: string;
   errorTurnstileLoadFailed: string;
   errorSendCode: string;
-  successCodeSent: string;
   errorCodeRequired: string;
   alignLeft: string;
   alignCenter: string;
@@ -43,21 +44,21 @@ const TEXTS: Record<Lang, {
     heroTitlePrefix: "欢迎回来，",
     heroTitleHighlight: "开始你的控制台之旅",
     heroSubtitle: "工程化 · 高性能 · 深色主题，为大型中后台系统而生。",
-    welcomeTitle: "邮箱验证登录",
-    welcomeSubtitle: "无需密码：邮箱 + 人机验证 + 验证码即可登录/注册",
+    stepEmailTitle: "登录 / 注册",
+    stepTurnstileTitle: "人机验证",
+    stepCodeTitle: "输入验证码",
     emailLabel: "邮箱",
     emailPlaceholder: "name@example.com",
     emailCodeLabel: "邮箱验证码",
     emailCodePlaceholder: "请输入 6 位验证码",
-    sendCodeButton: "发送验证码",
-    sendingCodeButton: "发送中...",
-    loginButton: "登录 / 注册",
+    continueButton: "登录",
+    verifyLoading: "验证中 / 发送验证码中...",
+    submitButton: "提交",
+    useDifferentEmail: "使用其他邮箱登录",
     loginError: "登录失败，请检查验证码是否正确",
     errorEmailRequired: "请先填写邮箱",
-    errorTurnstileRequired: "请完成人机验证后再发送验证码",
     errorTurnstileLoadFailed: "人机验证加载失败，请刷新页面重试",
     errorSendCode: "发送邮箱验证码失败",
-    successCodeSent: "验证码已发送到邮箱，请注意查收",
     errorCodeRequired: "请输入邮箱验证码",
     alignLeft: "居左",
     alignCenter: "居中",
@@ -67,21 +68,21 @@ const TEXTS: Record<Lang, {
     heroTitlePrefix: "Welcome back,",
     heroTitleHighlight: "start your dashboard journey",
     heroSubtitle: "Engineered, high‑performance dark theme for large admin systems.",
-    welcomeTitle: "Email sign-in",
-    welcomeSubtitle: "Passwordless: email + verification + code to sign in/sign up",
+    stepEmailTitle: "Sign in / Sign up",
+    stepTurnstileTitle: "Verification",
+    stepCodeTitle: "Enter code",
     emailLabel: "Email",
     emailPlaceholder: "name@example.com",
     emailCodeLabel: "Email code",
     emailCodePlaceholder: "Enter the 6-digit code",
-    sendCodeButton: "Send code",
-    sendingCodeButton: "Sending...",
-    loginButton: "Sign in / Sign up",
+    continueButton: "Continue",
+    verifyLoading: "Verifying / sending code...",
+    submitButton: "Submit",
+    useDifferentEmail: "Sign in with a different email",
     loginError: "Sign-in failed. Please check the code.",
     errorEmailRequired: "Please enter your email first",
-    errorTurnstileRequired: "Please complete verification before sending the code",
     errorTurnstileLoadFailed: "Verification failed to load. Please refresh and try again.",
     errorSendCode: "Failed to send email code",
-    successCodeSent: "Code sent. Please check your inbox.",
     errorCodeRequired: "Please enter the email code",
     alignLeft: "Left",
     alignCenter: "Center",
@@ -99,6 +100,7 @@ const PRIMARY_COLORS: { key: PrimaryColorKey; color: string }[] = [
 ];
 
 export default function LoginPage() {
+  const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [sendingCode, setSendingCode] = useState(false);
@@ -106,6 +108,7 @@ export default function LoginPage() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
+  const [lastSentToken, setLastSentToken] = useState("");
   const [error, setError] = useState("");
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [primary, setPrimary] = useState<PrimaryColorKey>("green");
@@ -174,7 +177,7 @@ export default function LoginPage() {
     applyLanguage(appLang);
   };
 
-  const sendEmailCode = async () => {
+  const sendLoginEmailCode = async (token: string) => {
     setError("");
     setCodeMsg("");
 
@@ -188,17 +191,12 @@ export default function LoginPage() {
       return;
     }
 
-    if (!turnstileToken) {
-      setError(t.errorTurnstileRequired);
-      return;
-    }
-
     setSendingCode(true);
     try {
       const res = await fetch("/api/email/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose: "user-login", turnstileToken }),
+        body: JSON.stringify({ email, purpose: "user-login", turnstileToken: token }),
       });
 
       if (!res.ok) {
@@ -207,7 +205,8 @@ export default function LoginPage() {
         return;
       }
 
-      setCodeMsg(t.successCodeSent);
+      // 不展示任何提示文案（按需求“无需提示”）
+      setStep("code");
     } catch (error) {
       console.error(error);
       setError(t.errorSendCode);
@@ -216,9 +215,57 @@ export default function LoginPage() {
     }
   };
 
-  const submit = async (e: React.FormEvent) => {
+  // Turnstile 成功后自动发送验证码（仅在 turnstile 步骤）
+  useEffect(() => {
+    if (step !== "turnstile") return;
+    if (!turnstileToken) return;
+    if (turnstileToken === lastSentToken) return;
+
+    setLastSentToken(turnstileToken);
+    void sendLoginEmailCode(turnstileToken);
+  }, [lastSentToken, step, turnstileToken]);
+
+  const resetToEmailStep = () => {
+    setStep("email");
+    setEmail("");
+    setEmailCode("");
+    setCodeMsg("");
+    setTurnstileToken("");
+    setLastSentToken("");
+    setTurnstileLoadFailed(false);
+    setSendingCode(false);
+    setError("");
+  };
+
+  const startVerification = () => {
+    setError("");
+    setCodeMsg("");
+    setEmailCode("");
+
+    if (!email) {
+      setError(t.errorEmailRequired);
+      return;
+    }
+
+    if (!turnstileSiteKey) {
+      setError(t.errorTurnstileLoadFailed);
+      return;
+    }
+
+    setTurnstileToken("");
+    setLastSentToken("");
+    setTurnstileLoadFailed(false);
+    setStep("turnstile");
+  };
+
+  const submitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!emailCode) {
+      setError(t.errorCodeRequired);
+      return;
+    }
 
     const res = await fetch("/api/login", {
       method: "POST",
@@ -257,6 +304,24 @@ export default function LoginPage() {
     // 登录成功后跳转首页
     window.location.href = "/";
   };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    if (step === "code") {
+      void submitLogin(e);
+      return;
+    }
+    e.preventDefault();
+    if (step === "email") {
+      startVerification();
+    }
+  };
+
+  const headerTitle =
+    step === "email"
+      ? t.stepEmailTitle
+      : step === "turnstile"
+        ? t.stepTurnstileTitle
+        : t.stepCodeTitle;
 
   return (
     <div
@@ -376,66 +441,87 @@ export default function LoginPage() {
         <section className="auth-page__panel">
           <div className="auth-card auth-card--login">
             <header className="auth-card__header">
-              <h1>{t.welcomeTitle}</h1>
-              <p>{t.welcomeSubtitle}</p>
+              <h1>{headerTitle}</h1>
             </header>
 
-            <form onSubmit={submit} className="auth-card__form">
-              <label className="auth-card__field">
-                <span className="auth-card__label">{t.emailLabel}</span>
-                <input
-                  type="email"
-                  placeholder={t.emailPlaceholder}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </label>
+            <form onSubmit={handleSubmit} className="auth-card__form">
+              {step === "email" && (
+                <>
+                  <label className="auth-card__field">
+                    <span className="auth-card__label">{t.emailLabel}</span>
+                    <input
+                      type="email"
+                      placeholder={t.emailPlaceholder}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </label>
 
-              <div className="auth-card__field">
-                <div className="auth-card__label">Turnstile</div>
-                <div className="auth-card__field-grow">
-                  <TurnstileWidget
-                    siteKey={turnstileSiteKey}
-                    onToken={(token) => {
-                      setTurnstileToken(token);
-                      setTurnstileLoadFailed(false);
-                    }}
-                    onError={() => setTurnstileLoadFailed(true)}
-                    onExpire={() => setTurnstileToken("")}
-                    theme={theme === "dark" ? "dark" : "light"}
-                    size="normal"
-                  />
-                </div>
-              </div>
+                  <button type="submit" className="auth-card__submit-button">
+                    {t.continueButton}
+                  </button>
+                </>
+              )}
 
-              <label className="auth-card__field">
-                <div className="auth-card__field-row auth-card__field-row--label">
-                  <span className="auth-card__label">{t.emailCodeLabel}</span>
+              {step === "turnstile" && (
+                <>
+                  <div className="auth-card__field">
+                    <div className="auth-card__label">Turnstile</div>
+                    <div className="auth-card__field-grow">
+                      <TurnstileWidget
+                        siteKey={turnstileSiteKey}
+                        onToken={(token) => {
+                          setTurnstileToken(token);
+                          setTurnstileLoadFailed(false);
+                        }}
+                        onError={() => setTurnstileLoadFailed(true)}
+                        onExpire={() => setTurnstileToken("")}
+                        theme={theme === "dark" ? "dark" : "light"}
+                        size="normal"
+                      />
+                    </div>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={sendEmailCode}
-                    className="auth-card__ghost-button auth-card__ghost-button--link"
-                    disabled={sendingCode}
+                    className="auth-card__submit-button"
+                    disabled
+                    aria-disabled="true"
                   >
-                    {sendingCode ? t.sendingCodeButton : t.sendCodeButton}
+                    {sendingCode ? t.verifyLoading : t.stepTurnstileTitle}
                   </button>
-                </div>
-                <input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder={t.emailCodePlaceholder}
-                  value={emailCode}
-                  onChange={(e) => setEmailCode(e.target.value)}
-                  className="auth-card__field-grow"
-                  required
-                />
-                {codeMsg && <div className="auth-card__hint">{codeMsg}</div>}
-              </label>
+                </>
+              )}
 
-              <button type="submit" className="auth-card__submit-button">
-                {t.loginButton}
-              </button>
+              {step === "code" && (
+                <>
+                  <label className="auth-card__field">
+                    <span className="auth-card__label">{t.emailCodeLabel}</span>
+                    <input
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder={t.emailCodePlaceholder}
+                      value={emailCode}
+                      onChange={(e) => setEmailCode(e.target.value)}
+                      className="auth-card__field-grow"
+                      required
+                    />
+                  </label>
+
+                  <button type="submit" className="auth-card__submit-button">
+                    {t.submitButton}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="auth-card__ghost-button auth-card__ghost-button--link"
+                    onClick={resetToEmailStep}
+                  >
+                    {t.useDifferentEmail}
+                  </button>
+                </>
+              )}
             </form>
 
             {error && <p className="auth-card__error">{error}</p>}
