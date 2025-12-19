@@ -39,7 +39,8 @@
 		"SMTP_USER": "noreply@skydimo.com",
 		"SMTP_PASS": "fbn2WqHG1CnhGfyK",
 		"SMTP_ENCRYPTION": "ssl",
-		"SMTP_FROM": "noreply@skydimo.com"
+		"SMTP_FROM": "noreply@skydimo.com",
+		"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a"
 	}
 	/**
 	 * Smart Placement

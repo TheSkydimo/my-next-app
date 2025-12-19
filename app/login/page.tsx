@@ -47,7 +47,7 @@ const TEXTS: Record<Lang, {
     stepEmailTitle: "登录 / 注册",
     stepTurnstileTitle: "人机验证",
     stepCodeTitle: "输入验证码",
-    emailLabel: "邮箱",
+    emailLabel: "请输入您的邮箱进行登录或者创建账户",
     emailPlaceholder: "name@example.com",
     emailCodeLabel: "邮箱验证码",
     emailCodePlaceholder: "请输入 6 位验证码",
@@ -71,7 +71,7 @@ const TEXTS: Record<Lang, {
     stepEmailTitle: "Sign in / Sign up",
     stepTurnstileTitle: "Verification",
     stepCodeTitle: "Enter code",
-    emailLabel: "Email",
+    emailLabel: "Please enter your email to login or create an account",
     emailPlaceholder: "name@example.com",
     emailCodeLabel: "Email code",
     emailCodePlaceholder: "Enter the 6-digit code",
@@ -437,18 +437,22 @@ export default function LoginPage() {
         </section>
         <section className="auth-page__panel">
           <div className="auth-plain">
-            <h1 className="auth-plain__title">{headerTitle}</h1>
+            {/* 邮箱 / 验证码页保留必要提示；人机验证页不提示 */}
+            {step !== "turnstile" && (
+              <h1 className="auth-plain__title">{headerTitle}</h1>
+            )}
 
-            <form onSubmit={handleSubmit} className="auth-card__form">
+            <form onSubmit={handleSubmit} className="auth-card__form" aria-label={headerTitle}>
               {step === "email" && (
                 <>
+                  <div className="auth-plain__hint">{t.emailLabel}</div>
                   <label className="auth-card__field">
-                    <span className="auth-card__label">{t.emailLabel}</span>
                     <input
                       type="email"
                       placeholder={t.emailPlaceholder}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      aria-label={t.emailLabel}
                       required
                     />
                   </label>
@@ -462,7 +466,6 @@ export default function LoginPage() {
               {step === "turnstile" && (
                 <>
                   <div className="auth-card__field">
-                    <div className="auth-card__label">Turnstile</div>
                     <div className="auth-card__field-grow">
                       <TurnstileWidget
                         siteKey={turnstileSiteKey}
@@ -477,22 +480,13 @@ export default function LoginPage() {
                       />
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    className="auth-card__submit-button"
-                    disabled
-                    aria-disabled="true"
-                  >
-                    {sendingCode ? t.verifyLoading : t.stepTurnstileTitle}
-                  </button>
                 </>
               )}
 
               {step === "code" && (
                 <>
+                  <div className="auth-plain__hint">{t.emailCodeLabel}</div>
                   <label className="auth-card__field">
-                    <span className="auth-card__label">{t.emailCodeLabel}</span>
                     <input
                       inputMode="numeric"
                       pattern="[0-9]*"
@@ -500,6 +494,7 @@ export default function LoginPage() {
                       value={emailCode}
                       onChange={(e) => setEmailCode(e.target.value)}
                       className="auth-card__field-grow"
+                      aria-label={t.emailCodeLabel}
                       required
                     />
                   </label>
@@ -510,7 +505,7 @@ export default function LoginPage() {
 
                   <button
                     type="button"
-                    className="auth-card__ghost-button auth-card__ghost-button--link"
+                    className="auth-plain__switch-email"
                     onClick={resetToEmailStep}
                   >
                     {t.useDifferentEmail}
