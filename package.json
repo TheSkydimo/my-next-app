@@ -5,11 +5,12 @@
 	"scripts": {
 		"dev": "next dev --turbopack",
 		"build": "next build",
+		"build:opennext": "node -e \"const fs=require('fs'); fs.rmSync('.next',{recursive:true,force:true});\" && next build",
 		"start": "next start",
 		"lint": "next lint",
-		"deploy": "opennextjs-cloudflare build && wrangler deploy --config wrangler.jsonc",
-		"upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+		"deploy": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && wrangler deploy --config wrangler.jsonc",
+		"upload": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload",
+		"preview": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare preview",
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
 	},
 	"dependencies": {
