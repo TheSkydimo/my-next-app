@@ -27,6 +27,7 @@ type UserOrderApiMessages = {
   missingEmail: string;
   missingDeviceImage: string;
   missingOrderId: string;
+  missingOrderNo: string;
   userNotFound: string;
   deleteNotFoundOrNotOwned: string;
   recognizeFailed: string;
@@ -55,13 +56,14 @@ function getUserOrderApiMessages(lang: ApiLanguage): UserOrderApiMessages {
       missingEmail: "Email is required",
       missingDeviceImage: "Screenshot file is required",
       missingOrderId: "Order ID is required",
+      missingOrderNo: "Order number is required",
       userNotFound: "User not found",
       deleteNotFoundOrNotOwned:
         "Order does not exist or does not belong to the current user",
       recognizeFailed:
         "Failed to recognize order information from the screenshot. Please upload a clearer order or invoice image.",
       duplicateOrderNo:
-        "This order number has already been uploaded. Please do not submit duplicate orders.",
+        "This order number has already been used. One order can only be submitted by one user.",
     };
   }
 
@@ -70,11 +72,12 @@ function getUserOrderApiMessages(lang: ApiLanguage): UserOrderApiMessages {
     missingEmail: "邮箱不能为空",
     missingDeviceImage: "缺少图片文件",
     missingOrderId: "缺少订单 ID",
+    missingOrderNo: "缺少订单号",
     userNotFound: "用户不存在",
     deleteNotFoundOrNotOwned: "订单不存在或不属于当前用户",
     recognizeFailed:
       "未能从图片中识别出订单信息，请上传更清晰的订单或发票截图。",
-    duplicateOrderNo: "该订单号已经上传过，请不要重复提交。",
+    duplicateOrderNo: "该订单号已被使用（一个订单只能由一个用户提交）。",
   };
 }
 
@@ -397,14 +400,26 @@ export async function GET(request: Request) {
 }
 
 /**
- * 生成唯一的 R2 对象 Key
- * 格式: orders/{userId}/{timestamp}-{random}.{ext}
+ * 为 R2 对象 Key 做安全化，避免非法字符导致路径穿越/编码问题。
+ * 仅保留字母、数字、下划线、短横线；其它字符一律替换为短横线。
  */
-function generateR2Key(userId: number, mimeType: string): string {
+function sanitizeOrderNoForR2Key(orderNo: string): string {
+  const trimmed = orderNo.trim();
+  // 将空白压缩，避免出现很怪的 key
+  const compact = trimmed.replace(/\s+/g, "-");
+  const safe = compact.replace(/[^a-zA-Z0-9_-]/g, "-");
+  // 兜底：避免全是非法字符导致空 key
+  return safe || "unknown-order";
+}
+
+/**
+ * 生成 R2 对象 Key（按订单号命名，确保同一订单不会被多人共用同一张图片）。
+ * 格式: orders/by-order-no/{orderNo}.{ext}
+ */
+function generateR2KeyByOrderNo(orderNo: string, mimeType: string): string {
   const ext = mimeType.split("/")[1] || "png";
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
-  return `orders/${userId}/${timestamp}-${random}.${ext}`;
+  const safeOrderNo = sanitizeOrderNoForR2Key(orderNo);
+  return `orders/by-order-no/${safeOrderNo}.${ext}`;
 }
 
 // 上传订单截图（图片存储到 R2，数据库只保存 R2 Key）
@@ -462,51 +477,86 @@ export async function POST(request: Request) {
     return new Response(t.recognizeFailed, { status: 400 });
   }
 
-  // 如果识别出了订单号，则不允许同一用户、同一订单号重复上传
-  if (parsed.orderNo) {
-    const dup = await db
-      .prepare(
-        "SELECT id FROM user_orders WHERE user_id = ? AND order_no = ? LIMIT 1"
-      )
-      .bind(user.id, parsed.orderNo)
-      .all<{ id: number }>();
+  // 新规则：必须识别出订单号，并且「一个订单号只能被一个用户提交」
+  const orderNo =
+    typeof parsed.orderNo === "string" && parsed.orderNo.trim()
+      ? parsed.orderNo.trim()
+      : null;
 
-    if (dup.results && dup.results[0]) {
-      return new Response(t.duplicateOrderNo, { status: 400 });
-    }
+  if (!orderNo) {
+    return new Response(t.missingOrderNo, { status: 400 });
+  }
+
+  // 先做一次快速检查（提升 UX）；并发安全由后续“条件上传 + 条件插入”兜底
+  const dupAnyUser = await db
+    .prepare("SELECT id FROM user_orders WHERE order_no = ? LIMIT 1")
+    .bind(orderNo)
+    .all<{ id: number }>();
+
+  if (dupAnyUser.results && dupAnyUser.results[0]) {
+    return new Response(t.duplicateOrderNo, { status: 400 });
   }
 
   // 将图片上传到 R2
   const mimeType = file.type || "image/png";
-  const r2Key = generateR2Key(user.id, mimeType);
+  const r2Key = generateR2KeyByOrderNo(orderNo, mimeType);
   const buffer = await file.arrayBuffer();
 
-  await r2.put(r2Key, buffer, {
-    httpMetadata: {
-      contentType: mimeType,
-    },
-  });
+  // 存储层兜底：如果 key 已存在，则拒绝覆盖，避免多人共用同一个对象 key
+  try {
+    await r2.put(r2Key, buffer, {
+      onlyIf: { etagDoesNotMatch: "*" },
+      httpMetadata: {
+        contentType: mimeType,
+      },
+      customMetadata: {
+        order_no: orderNo,
+        user_id: String(user.id),
+      },
+    });
+  } catch (e) {
+    // 对象已存在/条件不满足：视为订单号已被使用
+    console.error("R2 put failed:", e);
+    return new Response(t.duplicateOrderNo, { status: 400 });
+  }
 
   // 数据库中保存 R2 Key（格式: r2://{key}），便于区分旧的 data URL 格式
   const imageUrl = `r2://${r2Key}`;
 
+  // 并发安全：只在“订单号不存在”时插入（避免两个请求同时通过前置 SELECT）
+  // 若插入失败（0 changes），需要回滚删除刚才上传的对象，避免占用 key
+  const insertSql =
+    "INSERT INTO user_orders (user_id, device_id, image_url, note, order_no, order_created_time, order_paid_time, platform, shop_name, device_count) " +
+    "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? " +
+    "WHERE NOT EXISTS (SELECT 1 FROM user_orders WHERE order_no = ?)";
+
   const insert = await db
-    .prepare(
-      "INSERT INTO user_orders (user_id, device_id, image_url, note, order_no, order_created_time, order_paid_time, platform, shop_name, device_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    )
+    .prepare(insertSql)
     .bind(
       user.id,
       deviceId,
       imageUrl,
       typeof note === "string" ? note : null,
-      parsed?.orderNo ?? null,
+      orderNo,
       parsed?.orderCreatedTime ?? null,
       parsed?.orderPaidTime ?? null,
       parsed?.platform ?? null,
       parsed?.shopName ?? null,
-      parsed?.deviceCount ?? null
+      parsed?.deviceCount ?? null,
+      orderNo
     )
     .run();
+
+  const changes = (insert.meta.changes ?? 0) as number;
+  if (changes === 0) {
+    // 订单号已被占用：删除刚才上传的对象（最佳努力）
+    try {
+      await r2.delete(r2Key);
+    } catch (err) {
+      console.error(`Failed to rollback R2 object: ${r2Key}`, err);
+    }
+    return new Response(t.duplicateOrderNo, { status: 400 });
+  }
 
   const insertedId = insert.meta.last_row_id as number;
 
@@ -516,7 +566,7 @@ export async function POST(request: Request) {
     // 返回给前端的 URL 指向图片读取 API
     imageUrl: `/api/user/orders/image?key=${encodeURIComponent(r2Key)}`,
     note: typeof note === "string" ? note : null,
-    orderNo: parsed?.orderNo ?? null,
+    orderNo,
     orderCreatedTime: parsed?.orderCreatedTime ?? null,
     orderPaidTime: parsed?.orderPaidTime ?? null,
     platform: parsed?.platform ?? null,

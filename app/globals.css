@@ -28,8 +28,11 @@
 
 
 :root[data-theme="light"] .admin-layout__nav-link:hover {
-	background: rgba(0, 0, 0, 0.9);
-	box-shadow: 0 8px 16px rgba(148, 163, 184, 0.4);
+	/* 浅色主题 hover：避免深黑背景导致可读性差，改为更柔和的淡蓝/浅灰 */
+	background: rgba(59, 130, 246, 0.1);
+	color: #1d4ed8;
+	text-shadow: none;
+	box-shadow: 0 8px 16px rgba(148, 163, 184, 0.35);
 }
 
 :root[data-theme="light"] .admin-layout__nav-link--active {
@@ -3428,8 +3431,11 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 
 /* 与管理员端一致的 hover 样式 */
 :root[data-theme="light"] .user-layout__nav-link:hover {
-	background: rgba(0, 0, 0, 0.9);
-	box-shadow: 0 8px 16px rgba(148, 163, 184, 0.4);
+	/* 浅色主题 hover：避免深黑背景导致可读性差，改为更柔和的淡蓝/浅灰 */
+	background: rgba(59, 130, 246, 0.1);
+	color: #1d4ed8;
+	text-shadow: none;
+	box-shadow: 0 8px 16px rgba(148, 163, 184, 0.35);
 }
 
 :root[data-theme="light"] .user-layout__nav-link--active {

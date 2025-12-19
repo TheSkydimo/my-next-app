@@ -50,6 +50,7 @@ export default function AdminUserDetailPage({
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
+  const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
 
   const messages = getAdminMessages(language);
 
@@ -208,19 +209,13 @@ export default function AdminUserDetailPage({
       {loading && <p>{messages.common.loading}</p>}
 
       {user && (
-        <section
-          style={{
-            marginBottom: 24,
-            padding: 16,
-            borderRadius: 12,
-            border: "1px solid #e5e7eb",
-            backgroundColor: "#f9fafb",
-          }}
-        >
-          <h2 style={{ marginBottom: 8, fontSize: 16 }}>
-            {language === "zh-CN" ? "基础信息" : "Basic Info"}
-          </h2>
-          <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.8 }}>
+        <section className="vben-card vben-card--simple" style={{ marginBottom: 16 }}>
+          <div className="vben-card__header">
+            <h2 className="vben-card__title">
+              {language === "zh-CN" ? "基础信息" : "Basic Info"}
+            </h2>
+          </div>
+          <div style={{ fontSize: 14, lineHeight: 1.9 }}>
             <div>
               <strong>
                 {language === "zh-CN" ? "用户名：" : "Username: "}
@@ -243,7 +238,7 @@ export default function AdminUserDetailPage({
               </strong>
               {user.isVip ? messages.users.vipOn : messages.users.vipOff}
               {user.vipExpiresAt && (
-                <span style={{ marginLeft: 8, color: "#6b7280", fontSize: 12 }}>
+                <span style={{ marginLeft: 8, color: "#9ca3af", fontSize: 12 }}>
                   {new Date(user.vipExpiresAt).toLocaleString()}
                 </span>
               )}
@@ -258,12 +253,12 @@ export default function AdminUserDetailPage({
         </section>
       )}
 
-      <section>
-        <h2 style={{ marginBottom: 8, fontSize: 16 }}>
-          {messages.orders.title}
-        </h2>
+      <section className="vben-card vben-card--simple">
+        <div className="vben-card__header">
+          <h2 className="vben-card__title">{messages.orders.title}</h2>
+        </div>
         {orders.length === 0 ? (
-          <p style={{ fontSize: 14, color: "#6b7280" }}>
+          <p style={{ fontSize: 14, color: "#9ca3af" }}>
             {messages.orders.emptyText}
           </p>
         ) : (
@@ -276,19 +271,45 @@ export default function AdminUserDetailPage({
           >
             <thead>
               <tr>
-                <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                <th
+                  style={{
+                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
+                    padding: 10,
+                    textAlign: "center",
+                  }}
+                >
                   {messages.orders.tableIndex}
                 </th>
-                <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                <th
+                  style={{
+                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
+                    padding: 10,
+                  }}
+                >
                   {messages.orders.tableDeviceId}
                 </th>
-                <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                <th
+                  style={{
+                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
+                    padding: 10,
+                  }}
+                >
                   {messages.orders.tableImage}
                 </th>
-                <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                <th
+                  style={{
+                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
+                    padding: 10,
+                  }}
+                >
                   {messages.orders.tableNote}
                 </th>
-                <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
+                <th
+                  style={{
+                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
+                    padding: 10,
+                  }}
+                >
                   {messages.orders.tableCreatedAt}
                 </th>
               </tr>
@@ -298,8 +319,8 @@ export default function AdminUserDetailPage({
                 <tr key={o.id}>
                   <td
                     style={{
-                      borderBottom: "1px solid #f3f4f6",
-                      padding: 8,
+                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
+                      padding: 10,
                       textAlign: "center",
                     }}
                   >
@@ -307,50 +328,84 @@ export default function AdminUserDetailPage({
                   </td>
                   <td
                     style={{
-                      borderBottom: "1px solid #f3f4f6",
-                      padding: 8,
+                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
+                      padding: 10,
                       fontSize: 12,
+                      color: "#cbd5e1",
                     }}
                   >
                     {o.deviceId}
                   </td>
                   <td
                     style={{
-                      borderBottom: "1px solid #f3f4f6",
-                      padding: 8,
+                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
+                      padding: 10,
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => setPreviewUrl(o.imageUrl)}
-                      style={{
-                        padding: 0,
-                        border: "none",
-                        background: "transparent",
-                        cursor: "zoom-in",
-                      }}
-                      aria-label="预览订单截图"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={o.imageUrl}
-                        alt="order"
+                    {brokenImages[o.id] ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                          {language === "zh-CN"
+                            ? "截图无法预览（可能是不支持的格式，如 HEIC）"
+                            : "Preview unavailable (possibly an unsupported format such as HEIC)"}
+                        </div>
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                          <a
+                            href={o.imageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: "#60a5fa", textDecoration: "underline", fontSize: 12 }}
+                          >
+                            {language === "zh-CN" ? "打开截图" : "Open"}
+                          </a>
+                          <a
+                            href={o.imageUrl}
+                            download
+                            style={{ color: "#a78bfa", textDecoration: "underline", fontSize: 12 }}
+                          >
+                            {language === "zh-CN" ? "下载" : "Download"}
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewUrl(o.imageUrl)}
                         style={{
-                          width: 80,
-                          height: 80,
-                          objectFit: "cover",
-                          borderRadius: 6,
-                          border: "1px solid #e5e7eb",
+                          padding: 0,
+                          border: "none",
+                          background: "transparent",
+                          cursor: "zoom-in",
                         }}
-                      />
-                    </button>
+                        aria-label={
+                          language === "zh-CN" ? "预览订单截图" : "Preview order image"
+                        }
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={o.imageUrl}
+                          alt="order"
+                          onError={() =>
+                            setBrokenImages((prev) => ({ ...prev, [o.id]: true }))
+                          }
+                          style={{
+                            width: 84,
+                            height: 84,
+                            objectFit: "cover",
+                            borderRadius: 10,
+                            border: "1px solid rgba(148, 163, 184, 0.25)",
+                            background: "rgba(15, 23, 42, 0.35)",
+                          }}
+                        />
+                      </button>
+                    )}
                   </td>
                   <td
                     style={{
-                      borderBottom: "1px solid #f3f4f6",
-                      padding: 8,
+                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
+                      padding: 10,
                       fontSize: 12,
-                      color: "#4b5563",
+                      color: "#cbd5e1",
                       maxWidth: 200,
                     }}
                   >
@@ -358,10 +413,10 @@ export default function AdminUserDetailPage({
                   </td>
                   <td
                     style={{
-                      borderBottom: "1px solid #f3f4f6",
-                      padding: 8,
+                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
+                      padding: 10,
                       fontSize: 12,
-                      color: "#6b7280",
+                      color: "#9ca3af",
                       lineHeight: 1.5,
                     }}
                   >
