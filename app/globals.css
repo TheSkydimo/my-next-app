@@ -4129,6 +4129,20 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	color: #9ca3af;
 }
 
+/* Vben 内容页的输入控件 placeholder：默认在深色背景下需要更高对比度 */
+.vben-page input::placeholder,
+.vben-page textarea::placeholder {
+	color: rgba(148, 163, 184, 0.95);
+	opacity: 1;
+}
+
+/* 浅色主题下 placeholder 使用更深的灰，避免“看不见” */
+:root[data-theme="light"] .vben-page input::placeholder,
+:root[data-theme="light"] .vben-page textarea::placeholder {
+	color: #6b7280;
+	opacity: 1;
+}
+
 :root[data-theme="light"] .vben-page__title {
 	color: #111827;
 }
