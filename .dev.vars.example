@@ -5,5 +5,9 @@
 NEXT_PUBLIC_TURNSTILE_SITE_KEY="0x4AAAAAACHg5i_pQPpC0Q8a"
 TURNSTILE_SECRET_KEY=""
 
+# Session (Remember login)
+# Generate a long random secret for HMAC signing session tokens.
+SESSION_SECRET=""
+
 # Load .env.development* files when running `wrangler dev`
 NEXTJS_ENV=development

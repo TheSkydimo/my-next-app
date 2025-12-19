@@ -127,7 +127,7 @@ export default function LoginPage() {
     if (typeof window === "undefined") return;
     void (async () => {
       try {
-        const res = await fetch("/api/user/me", { method: "GET" });
+        const res = await fetch("/api/user/me", { method: "GET", credentials: "include" });
         if (res.ok) {
           window.location.href = "/";
         }
@@ -314,6 +314,7 @@ export default function LoginPage() {
       method: "POST",
       body: JSON.stringify({ email, emailCode, remember: rememberMe }),
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
     });
 
     if (!res.ok) {

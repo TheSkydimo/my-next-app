@@ -6,6 +6,8 @@ import { generateNumericUsername } from "../_utils/user";
 import { createSessionToken, getSessionCookieName } from "../_utils/session";
 import { serializeCookie } from "../_utils/cookies";
 import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../_utils/usersTable";
+import { getRuntimeEnvVar } from "../_utils/runtimeEnv";
+import { isSecureRequest } from "../_utils/request";
 
 type UserRow = {
   id: number;
@@ -123,8 +125,7 @@ export async function POST(request: Request) {
   }
 
   // 登录成功：可选下发 Session Cookie（用于“记住登录状态”）
-  const envRecord = env as unknown as Record<string, string | undefined>;
-  const sessionSecret = String(envRecord.SESSION_SECRET ?? "");
+  const sessionSecret = String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "");
 
   const headers: HeadersInit = {};
   if (sessionSecret) {
@@ -136,10 +137,7 @@ export async function POST(request: Request) {
       maxAgeSeconds: rememberMe ? maxAgeSeconds : 60 * 60 * 24 * 30,
     });
 
-    const url = new URL(request.url);
-    const secure =
-      url.protocol === "https:" ||
-      request.headers.get("X-Forwarded-Proto") === "https";
+    const secure = isSecureRequest(request);
 
     headers["Set-Cookie"] = serializeCookie(getSessionCookieName(), token, {
       httpOnly: true,

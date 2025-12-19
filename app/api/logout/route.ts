@@ -1,13 +1,12 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { serializeCookie } from "../_utils/cookies";
 import { getSessionCookieName } from "../_utils/session";
+import { isSecureRequest } from "../_utils/request";
 
 export async function POST(request: Request) {
   // 仅清理 cookie；不依赖 DB
   const { env } = await getCloudflareContext();
-  const url = new URL(request.url);
-  const secure =
-    url.protocol === "https:" || request.headers.get("X-Forwarded-Proto") === "https";
+  const secure = isSecureRequest(request);
 
   const cookie = serializeCookie(getSessionCookieName(), "", {
     path: "/",

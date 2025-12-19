@@ -82,7 +82,7 @@ export function UserProvider({ children }: UserProviderProps) {
    */
   const loadMe = useCallback(async (): Promise<UserProfile | null> => {
     try {
-      const res = await fetch("/api/user/me", { method: "GET" });
+      const res = await fetch("/api/user/me", { method: "GET", credentials: "include" });
       if (!res.ok) return null;
       const data = (await res.json()) as UserProfile;
       if (!data?.email) return null;

@@ -3,6 +3,7 @@ import { getRequestCookie } from "../../_utils/cookies";
 import { getSessionCookieName, verifySessionToken } from "../../_utils/session";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../../_utils/usersTable";
+import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 
 type UserRow = {
   id: number;
@@ -15,8 +16,7 @@ type UserRow = {
 
 export async function GET(request: Request) {
   const { env } = await getCloudflareContext();
-  const envRecord = env as unknown as Record<string, string | undefined>;
-  const sessionSecret = String(envRecord.SESSION_SECRET ?? "");
+  const sessionSecret = String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "");
   if (!sessionSecret) {
     return new Response("Session not configured", { status: 501 });
   }

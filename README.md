@@ -47,6 +47,14 @@ This project uses **Cloudflare Turnstile** on the register page.
 For local preview on the Cloudflare runtime, copy `.dev.vars.example` to `.dev.vars` and fill values.
 For production, set the secret via `wrangler secret put TURNSTILE_SECRET_KEY` (do not commit it).
 
+## Remember login (Session Cookie)
+
+This project uses a **signed httpOnly cookie** (`user_session`) to persist login sessions.
+
+- **Required**: set `SESSION_SECRET` (as a Wrangler secret in production, or in `.dev.vars` for local preview)
+
+If `SESSION_SECRET` is not configured, `/api/login` will still work via email code, but the app **cannot remember login** and you will need to verify again next time.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
