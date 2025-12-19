@@ -66,9 +66,6 @@ export default function Home() {
           <Link href="/login" className="home-card__primary-link">
             {messages.home.loginButton}
           </Link>
-          <Link href="/register" className="home-card__secondary-link">
-            {messages.home.registerButton}
-          </Link>
         </div>
       </div>
     </div>

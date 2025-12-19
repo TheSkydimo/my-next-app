@@ -31,8 +31,8 @@ export async function POST(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
-  // 忘记密码发送验证码：强制 Turnstile（防刷）
-  if (purpose === "user-forgot" || purpose === "admin-forgot") {
+  // 发送验证码：部分用途强制 Turnstile（防刷）
+  if (purpose === "user-login" || purpose === "user-forgot" || purpose === "admin-forgot") {
     const secret = getTurnstileSecretFromEnv(env);
     if (!secret) {
       return new Response("Turnstile 未配置（缺少 TURNSTILE_SECRET_KEY）", {

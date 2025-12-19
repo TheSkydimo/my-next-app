@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
+import { TurnstileWidget } from "../components/TurnstileWidget";
 import {
   applyLanguage,
   applyTheme,
@@ -16,73 +16,73 @@ type PrimaryColorKey = "blue" | "purple" | "magenta" | "gold" | "green" | "gray"
 type Lang = "zh-CN" | "en";
 
 const TEXTS: Record<Lang, {
-  heroBadge: string;
   heroTitlePrefix: string;
   heroTitleHighlight: string;
   heroSubtitle: string;
-  heroTips: string;
   welcomeTitle: string;
   welcomeSubtitle: string;
   emailLabel: string;
   emailPlaceholder: string;
-  passwordLabel: string;
-  passwordPlaceholder: string;
-  showPassword: string;
-  hidePassword: string;
+  emailCodeLabel: string;
+  emailCodePlaceholder: string;
+  sendCodeButton: string;
+  sendingCodeButton: string;
   loginButton: string;
-  noAccount: string;
-  goRegister: string;
-  forgot: string;
-  recover: string;
   loginError: string;
+  errorEmailRequired: string;
+  errorTurnstileRequired: string;
+  errorTurnstileLoadFailed: string;
+  errorSendCode: string;
+  successCodeSent: string;
+  errorCodeRequired: string;
   alignLeft: string;
   alignCenter: string;
   alignRight: string;
 }> = {
   "zh-CN": {
-    heroBadge: "开箱即用 · 中后台管理模板",
     heroTitlePrefix: "欢迎回来，",
     heroTitleHighlight: "开始你的控制台之旅",
     heroSubtitle: "工程化 · 高性能 · 深色主题，为大型中后台系统而生。",
-    heroTips: "支持账号密码、邮箱验证码等多种登录方式",
-    welcomeTitle: "欢迎回来 👋",
-    welcomeSubtitle: "请输入您的账号信息开始管理项目",
+    welcomeTitle: "邮箱验证登录",
+    welcomeSubtitle: "无需密码：邮箱 + 人机验证 + 验证码即可登录/注册",
     emailLabel: "邮箱",
     emailPlaceholder: "name@example.com",
-    passwordLabel: "密码",
-    passwordPlaceholder: "请输入登录密码",
-    showPassword: "显示密码",
-    hidePassword: "隐藏密码",
-    loginButton: "登录",
-    noAccount: "还没有账号？",
-    goRegister: "创建一个新账号",
-    forgot: "忘记密码？",
-    recover: "找回密码",
-    loginError: "邮箱或密码错误",
+    emailCodeLabel: "邮箱验证码",
+    emailCodePlaceholder: "请输入 6 位验证码",
+    sendCodeButton: "发送验证码",
+    sendingCodeButton: "发送中...",
+    loginButton: "登录 / 注册",
+    loginError: "登录失败，请检查验证码是否正确",
+    errorEmailRequired: "请先填写邮箱",
+    errorTurnstileRequired: "请完成人机验证后再发送验证码",
+    errorTurnstileLoadFailed: "人机验证加载失败，请刷新页面重试",
+    errorSendCode: "发送邮箱验证码失败",
+    successCodeSent: "验证码已发送到邮箱，请注意查收",
+    errorCodeRequired: "请输入邮箱验证码",
     alignLeft: "居左",
     alignCenter: "居中",
     alignRight: "居右",
   },
   en: {
-    heroBadge: "Out-of-the-box admin template",
     heroTitlePrefix: "Welcome back,",
     heroTitleHighlight: "start your dashboard journey",
     heroSubtitle: "Engineered, high‑performance dark theme for large admin systems.",
-    heroTips: "Supports password login and email verification login.",
-    welcomeTitle: "Welcome back 👋",
-    welcomeSubtitle: "Enter your account details to start managing projects.",
+    welcomeTitle: "Email sign-in",
+    welcomeSubtitle: "Passwordless: email + verification + code to sign in/sign up",
     emailLabel: "Email",
     emailPlaceholder: "name@example.com",
-    passwordLabel: "Password",
-    passwordPlaceholder: "Enter your password",
-    showPassword: "Show password",
-    hidePassword: "Hide password",
-    loginButton: "Log in",
-    noAccount: "No account yet?",
-    goRegister: "Create one",
-    forgot: "Forgot password?",
-    recover: "Recover password",
-    loginError: "Incorrect email or password",
+    emailCodeLabel: "Email code",
+    emailCodePlaceholder: "Enter the 6-digit code",
+    sendCodeButton: "Send code",
+    sendingCodeButton: "Sending...",
+    loginButton: "Sign in / Sign up",
+    loginError: "Sign-in failed. Please check the code.",
+    errorEmailRequired: "Please enter your email first",
+    errorTurnstileRequired: "Please complete verification before sending the code",
+    errorTurnstileLoadFailed: "Verification failed to load. Please refresh and try again.",
+    errorSendCode: "Failed to send email code",
+    successCodeSent: "Code sent. Please check your inbox.",
+    errorCodeRequired: "Please enter the email code",
     alignLeft: "Left",
     alignCenter: "Center",
     alignRight: "Right",
@@ -100,8 +100,12 @@ const PRIMARY_COLORS: { key: PrimaryColorKey; color: string }[] = [
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [emailCode, setEmailCode] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
+  const [codeMsg, setCodeMsg] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
   const [error, setError] = useState("");
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [primary, setPrimary] = useState<PrimaryColorKey>("green");
@@ -129,6 +133,22 @@ export default function LoginPage() {
     }
   }, []);
 
+  // Turnstile site key: 通过运行时 API 获取，避免依赖构建期 NEXT_PUBLIC 注入
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/public-config", { method: "GET" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { turnstileSiteKey?: string };
+        if (typeof data.turnstileSiteKey === "string") {
+          setTurnstileSiteKey(data.turnstileSiteKey);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
   const toggleTheme = () => {
     setTheme((prev) => {
       const next: AppTheme = prev === "dark" ? "light" : "dark";
@@ -154,18 +174,61 @@ export default function LoginPage() {
     applyLanguage(appLang);
   };
 
+  const sendEmailCode = async () => {
+    setError("");
+    setCodeMsg("");
+
+    if (!email) {
+      setError(t.errorEmailRequired);
+      return;
+    }
+
+    if (turnstileLoadFailed || !turnstileSiteKey) {
+      setError(t.errorTurnstileLoadFailed);
+      return;
+    }
+
+    if (!turnstileToken) {
+      setError(t.errorTurnstileRequired);
+      return;
+    }
+
+    setSendingCode(true);
+    try {
+      const res = await fetch("/api/email/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose: "user-login", turnstileToken }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        setError(text || t.errorSendCode);
+        return;
+      }
+
+      setCodeMsg(t.successCodeSent);
+    } catch (error) {
+      console.error(error);
+      setError(t.errorSendCode);
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     const res = await fetch("/api/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, emailCode }),
       headers: { "Content-Type": "application/json" },
     });
 
     if (!res.ok) {
-      setError(t.loginError);
+      const text = await res.text().catch(() => "");
+      setError(text || t.loginError);
       return;
     }
 
@@ -329,40 +392,51 @@ export default function LoginPage() {
                 />
               </label>
 
+              <div className="auth-card__field">
+                <div className="auth-card__label">Turnstile</div>
+                <div className="auth-card__field-grow">
+                  <TurnstileWidget
+                    siteKey={turnstileSiteKey}
+                    onToken={(token) => {
+                      setTurnstileToken(token);
+                      setTurnstileLoadFailed(false);
+                    }}
+                    onError={() => setTurnstileLoadFailed(true)}
+                    onExpire={() => setTurnstileToken("")}
+                    theme={theme === "dark" ? "dark" : "light"}
+                    size="normal"
+                  />
+                </div>
+              </div>
+
               <label className="auth-card__field">
                 <div className="auth-card__field-row auth-card__field-row--label">
-                  <span className="auth-card__label">{t.passwordLabel}</span>
+                  <span className="auth-card__label">{t.emailCodeLabel}</span>
                   <button
                     type="button"
-                    onClick={() => setShowPassword((v) => !v)}
+                    onClick={sendEmailCode}
                     className="auth-card__ghost-button auth-card__ghost-button--link"
+                    disabled={sendingCode}
                   >
-                    {showPassword ? t.hidePassword : t.showPassword}
+                    {sendingCode ? t.sendingCodeButton : t.sendCodeButton}
                   </button>
                 </div>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder={t.passwordPlaceholder}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder={t.emailCodePlaceholder}
+                  value={emailCode}
+                  onChange={(e) => setEmailCode(e.target.value)}
                   className="auth-card__field-grow"
                   required
                 />
+                {codeMsg && <div className="auth-card__hint">{codeMsg}</div>}
               </label>
 
               <button type="submit" className="auth-card__submit-button">
                 {t.loginButton}
               </button>
             </form>
-
-            <div className="auth-card__links">
-              <p>
-                {t.noAccount} <Link href="/register">{t.goRegister}</Link>
-              </p>
-              <p>
-                {t.forgot} <Link href="/forgot-password">{t.recover}</Link>
-              </p>
-            </div>
 
             {error && <p className="auth-card__error">{error}</p>}
           </div>
