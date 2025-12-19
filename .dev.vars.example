@@ -2,7 +2,7 @@
 # Do NOT commit .dev.vars (it is ignored by .gitignore).
 #
 # Cloudflare Turnstile
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=""
+NEXT_PUBLIC_TURNSTILE_SITE_KEY="0x4AAAAAACHg5i_pQPpC0Q8a"
 TURNSTILE_SECRET_KEY=""
 
 # Load .env.development* files when running `wrangler dev`

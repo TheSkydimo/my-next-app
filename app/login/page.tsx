@@ -325,7 +325,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className={`auth-page auth-page--split auth-page--vben auth-page--${theme} auth-page--primary-${primary} auth-page--align-right`}
+      className={`auth-page auth-page--split auth-page--vben auth-page--canvas auth-page--${theme} auth-page--primary-${primary} auth-page--align-right`}
     >
       <div className="auth-page__split-shell">
         <div className="auth-toolbar">
@@ -411,16 +411,14 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+
         <section className="auth-page__visual">
           <div className="auth-page__visual-inner">
-            {/* 去掉顶部徽标文案，只保留主标题和副标题 */}
             <h1 className="auth-page__title">
               {t.heroTitlePrefix}
               <span className="auth-page__title-highlight">{t.heroTitleHighlight}</span>
             </h1>
-            <p className="auth-page__subtitle">
-              {t.heroSubtitle}
-            </p>
+            <p className="auth-page__subtitle">{t.heroSubtitle}</p>
 
             <div className="auth-page__visual-graphic">
               <div className="auth-page__visual-orbit" />
@@ -437,12 +435,9 @@ export default function LoginPage() {
             </div>
           </div>
         </section>
-
         <section className="auth-page__panel">
-          <div className="auth-card auth-card--login">
-            <header className="auth-card__header">
-              <h1>{headerTitle}</h1>
-            </header>
+          <div className="auth-plain">
+            <h1 className="auth-plain__title">{headerTitle}</h1>
 
             <form onSubmit={handleSubmit} className="auth-card__form">
               {step === "email" && (
