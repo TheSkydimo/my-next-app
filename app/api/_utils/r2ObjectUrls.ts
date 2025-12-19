@@ -18,6 +18,8 @@ export function makeAvatarImageApiUrlFromR2Key(key: string): string {
 
 export function convertDbAvatarUrlToPublicUrl(dbUrl: string | null): string | null {
   if (!dbUrl) return null;
+  // 不再兼容 data:（必须迁移到 R2）
+  if (dbUrl.trim().startsWith("data:")) return null;
   const key = r2KeyFromSchemeUrl(dbUrl);
   if (key) {
     return makeAvatarImageApiUrlFromR2Key(key);

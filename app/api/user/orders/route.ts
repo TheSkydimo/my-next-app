@@ -327,15 +327,14 @@ async function extractOrderInfoFromImage(
 /**
  * 将数据库中的 image_url 转换为前端可用的 URL
  * - r2:// 开头的转为 API 路径
- * - data: 开头的保持不变（兼容旧数据）
  */
 function convertImageUrl(dbUrl: string): string {
   if (dbUrl.startsWith("r2://")) {
     const r2Key = dbUrl.slice(5); // 去掉 "r2://" 前缀
     return `/api/user/orders/image?key=${encodeURIComponent(r2Key)}`;
   }
-  // 兼容旧的 data URL 格式
-  return dbUrl;
+  // 不再兼容 data:（必须迁移到 R2）
+  throw new Error("Legacy data: image_url detected. Please migrate to R2.");
 }
 
 // 获取当前用户的订单截图列表（按设备可选过滤）
@@ -380,6 +379,14 @@ export async function GET(request: Request) {
     ORDER BY created_at DESC`;
 
   const { results } = await db.prepare(sql).bind(...bindValues).all<OrderRow>();
+
+  // 强制只走 R2：如果存在遗留 data:，要求先执行迁移
+  if (results?.some((r) => typeof r.image_url === "string" && r.image_url.startsWith("data:"))) {
+    return new Response(
+      "检测到遗留的 data: 图片数据，请先迁移到 R2（管理员接口：/api/admin/migrations/data-to-r2）",
+      { status: 409 }
+    );
+  }
 
   const items =
     results?.map((row) => ({
