@@ -16,6 +16,18 @@ type UserRow = {
   created_at: string;
 };
 
+async function ensureAvatarUrlColumn(db: D1Database) {
+  // 确保 avatar_url 字段存在（兼容旧库，避免在没有该字段时直接报错）
+  try {
+    await db.prepare("ALTER TABLE users ADD COLUMN avatar_url TEXT").run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: avatar_url")) {
+      throw e;
+    }
+  }
+}
+
 // 获取用户个人信息
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -28,15 +40,11 @@ export async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
-  // 确保 avatar_url 字段存在（兼容旧库，避免在没有该字段时直接报错）
   try {
-    await db.prepare("ALTER TABLE users ADD COLUMN avatar_url TEXT").run();
+    await ensureAvatarUrlColumn(db);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (!msg.includes("duplicate column name: avatar_url")) {
-      console.error("确保 avatar_url 字段存在失败:", e);
-      return new Response("服务器内部错误", { status: 500 });
-    }
+    console.error("确保 avatar_url 字段存在失败:", e);
+    return new Response("服务器内部错误", { status: 500 });
   }
 
   const queryResult = await db
@@ -78,6 +86,10 @@ function normalizeAvatarDbUrl(input: string): string {
   return input;
 }
 
+function isOwnedAvatarR2KeyForUser(userId: number, key: string): boolean {
+  return key.startsWith(`avatars/${userId}/`);
+}
+
 // 更新用户个人信息
 export async function POST(request: Request) {
   const body = (await request.json()) as {
@@ -109,6 +121,14 @@ export async function POST(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;
+
+  // POST 也需要兼容旧库（避免用户只调用更新接口而未触发 GET）
+  try {
+    await ensureAvatarUrlColumn(db);
+  } catch (e) {
+    console.error("确保 avatar_url 字段存在失败:", e);
+    return new Response("服务器内部错误", { status: 500 });
+  }
 
   // 如需修改邮箱，必须同时修改密码
   if (newEmail && !newPassword) {
@@ -172,20 +192,40 @@ export async function POST(request: Request) {
 
   // 头像允许设置为空字符串代表清空，所以只要客户端传了 avatarUrl 字段（即使为空字符串）
   // 就认为需要更新；未传该字段则不更新
+  let userIdForAvatar: number | null = null;
   let prevAvatarUrl: string | null = null;
   let normalizedAvatarDbUrl: string | null = null;
   if (hasAvatarField) {
-    // 先读旧头像，方便后续（最佳努力）删除旧 R2 对象
+    // 先读用户 id 与旧头像，方便后续校验“头像 key 归属”，以及（最佳努力）删除旧 R2 对象
     const prev = await db
-      .prepare("SELECT avatar_url FROM users WHERE email = ?")
+      .prepare("SELECT id, avatar_url FROM users WHERE email = ?")
       .bind(email)
-      .all<{ avatar_url: string | null }>();
-    prevAvatarUrl = prev.results?.[0]?.avatar_url ?? null;
+      .all<{ id: number; avatar_url: string | null }>();
+
+    const prevRow = prev.results?.[0];
+    if (!prevRow) {
+      return new Response("用户不存在", { status: 404 });
+    }
+
+    userIdForAvatar = prevRow.id;
+    prevAvatarUrl = prevRow.avatar_url ?? null;
 
     normalizedAvatarDbUrl =
       typeof avatarUrl === "string" && avatarUrl.trim()
         ? normalizeAvatarDbUrl(avatarUrl.trim())
         : null;
+
+    // 如果用户尝试写入 r2://avatars/...，必须是自己的 avatars/{userId}/...，防止引用/删除到别人的头像对象
+    if (normalizedAvatarDbUrl) {
+      const key = r2KeyFromSchemeUrl(normalizedAvatarDbUrl);
+      if (key && key.startsWith("avatars/")) {
+        if (!isOwnedAvatarR2KeyForUser(userIdForAvatar, key)) {
+          return new Response("非法头像地址：只能使用自己上传的头像", {
+            status: 400,
+          });
+        }
+      }
+    }
 
     fields.push("avatar_url = ?");
     values.push(normalizedAvatarDbUrl);
@@ -219,7 +259,9 @@ export async function POST(request: Request) {
 
     if (
       prevKey &&
-      prevKey.startsWith("avatars/") &&
+      // 只允许删除当前用户目录下的头像，避免误删他人对象
+      userIdForAvatar != null &&
+      isOwnedAvatarR2KeyForUser(userIdForAvatar, prevKey) &&
       // 新头像为空 或者 新 key 与旧 key 不同
       (!nextKey || nextKey !== prevKey)
     ) {
