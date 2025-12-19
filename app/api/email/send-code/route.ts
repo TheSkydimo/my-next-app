@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { isValidEmail } from "../../_utils/auth";
 import type { EmailCodePurpose } from "../../_utils/emailCode";
 import { ensureEmailCodeTable } from "../../_utils/emailCode";
+import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
 
 function generateCode(length = 6): string {
   let code = "";
@@ -13,9 +14,10 @@ function generateCode(length = 6): string {
 }
 
 export async function POST(request: Request) {
-  const { email, purpose } = (await request.json()) as {
+  const { email, purpose, turnstileToken } = (await request.json()) as {
     email: string;
     purpose: EmailCodePurpose;
+    turnstileToken?: string;
   };
 
   if (!email) {
@@ -28,6 +30,28 @@ export async function POST(request: Request) {
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
+
+  // 忘记密码发送验证码：强制 Turnstile（防刷）
+  if (purpose === "user-forgot" || purpose === "admin-forgot") {
+    const secret = getTurnstileSecretFromEnv(env);
+    if (!secret) {
+      return new Response("Turnstile 未配置（缺少 TURNSTILE_SECRET_KEY）", {
+        status: 500,
+      });
+    }
+    if (!turnstileToken) {
+      return new Response("请完成人机验证", { status: 400 });
+    }
+    const remoteip = request.headers.get("CF-Connecting-IP");
+    const okTurnstile = await verifyTurnstileToken({
+      secret,
+      token: turnstileToken,
+      remoteip,
+    });
+    if (!okTurnstile) {
+      return new Response("人机验证失败，请重试", { status: 400 });
+    }
+  }
 
   // 创建验证码表（如果不存在）
   await ensureEmailCodeTable(db);
