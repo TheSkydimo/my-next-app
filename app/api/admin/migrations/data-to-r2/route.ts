@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { assertAdmin, isSuperAdmin } from "../_utils/adminAuth";
+import { assertAdmin, isSuperAdmin } from "../../_utils/adminAuth";
 
 type DataUrlParseResult =
   | { ok: true; mimeType: string; base64: string }
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     .bind(limit)
     .all<{ id: number; avatar_url: string }>();
 
-  let avatarScanned = usersWithData.results?.length ?? 0;
+  const avatarScanned = usersWithData.results?.length ?? 0;
   let avatarMigrated = 0;
   const avatarErrors: Array<{ userId: number; reason: string }> = [];
 
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
     .bind(limit)
     .all<{ id: number; order_no: string | null; image_url: string }>();
 
-  let orderScanned = ordersWithData.results?.length ?? 0;
+  const orderScanned = ordersWithData.results?.length ?? 0;
   let orderMigrated = 0;
   const orderErrors: Array<{ orderId: number; reason: string }> = [];
 
