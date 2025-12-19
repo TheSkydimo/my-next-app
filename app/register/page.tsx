@@ -23,7 +23,6 @@ const TEXTS: Record<
     sendingCodeButton: string;
     passwordPlaceholder: string;
     confirmPasswordPlaceholder: string;
-    turnstileLabel: string;
     submitButton: string;
     errorEmailRequired: string;
     errorAllRequired: string;
@@ -46,7 +45,6 @@ const TEXTS: Record<
     sendingCodeButton: "发送中...",
     passwordPlaceholder: "密码",
     confirmPasswordPlaceholder: "确认密码",
-    turnstileLabel: "人机验证",
     submitButton: "注册",
     errorEmailRequired: "请先填写邮箱",
     errorAllRequired: "请完整填写所有字段（包括邮箱验证码）",
@@ -68,7 +66,6 @@ const TEXTS: Record<
     sendingCodeButton: "Sending...",
     passwordPlaceholder: "Password",
     confirmPasswordPlaceholder: "Confirm password",
-    turnstileLabel: "Human verification",
     submitButton: "Register",
     errorEmailRequired: "Please enter your email first",
     errorAllRequired: "Please fill in all fields (including email code).",
@@ -91,6 +88,7 @@ export default function RegisterPage() {
   const [emailCode, setEmailCode] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
@@ -101,7 +99,6 @@ export default function RegisterPage() {
   const [lang, setLang] = useState<Lang>("zh-CN");
 
   const t = TEXTS[lang];
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
   // 同步全局主题
   useEffect(() => {
@@ -112,6 +109,22 @@ export default function RegisterPage() {
     const initialLang: AppLanguage =
       typeof window === "undefined" ? "zh-CN" : getInitialLanguage();
     setLang(initialLang === "en-US" ? "en" : "zh-CN");
+  }, []);
+
+  // Turnstile site key: 通过运行时 API 获取，避免依赖构建期 NEXT_PUBLIC 注入
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/public-config", { method: "GET" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { turnstileSiteKey?: string };
+        if (typeof data.turnstileSiteKey === "string") {
+          setTurnstileSiteKey(data.turnstileSiteKey);
+        }
+      } catch {
+        // ignore
+      }
+    })();
   }, []);
 
   const sendEmailCode = async () => {
@@ -166,7 +179,7 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!siteKey) {
+    if (!turnstileSiteKey) {
       setError(t.errorTurnstileLoadFailed);
       return;
     }
@@ -266,11 +279,8 @@ export default function RegisterPage() {
 
           <div className="auth-card__field-row">
             <div className="auth-card__field-grow">
-              <div style={{ marginBottom: 6, fontSize: 13, opacity: 0.9 }}>
-                {t.turnstileLabel}
-              </div>
               <TurnstileWidget
-                siteKey={siteKey}
+                siteKey={turnstileSiteKey}
                 onToken={(token) => {
                   setTurnstileToken(token);
                   setTurnstileLoadFailed(false);

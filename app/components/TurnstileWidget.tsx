@@ -38,30 +38,49 @@ export function TurnstileWidget({
   const widgetIdRef = useRef<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
 
+  // 回调用 ref 固定住，避免父组件重渲染导致 Turnstile widget 被销毁/重建（出现“勾不上”）
+  const callbacksRef = useRef<{
+    onToken: (token: string) => void;
+    onError?: () => void;
+    onExpire?: () => void;
+  }>({ onToken, onError, onExpire });
+
+  useEffect(() => {
+    callbacksRef.current = { onToken, onError, onExpire };
+  }, [onError, onExpire, onToken]);
+
   const options = useMemo(() => {
     return {
       sitekey: siteKey,
       theme,
       size,
-      callback: (token: string) => onToken(token),
+      callback: (token: string) => callbacksRef.current.onToken(token),
       "expired-callback": () => {
-        onToken("");
-        onExpire?.();
+        callbacksRef.current.onToken("");
+        callbacksRef.current.onExpire?.();
       },
       "error-callback": () => {
-        onToken("");
-        onError?.();
+        callbacksRef.current.onToken("");
+        callbacksRef.current.onError?.();
       },
     } as const;
-  }, [onError, onExpire, onToken, siteKey, size, theme]);
+  }, [siteKey, size, theme]);
 
   useEffect(() => {
     if (!scriptReady) return;
     if (!containerRef.current) return;
     if (!window.turnstile?.render) return;
     if (widgetIdRef.current) return;
+    if (!siteKey) return;
 
-    widgetIdRef.current = window.turnstile.render(containerRef.current, options);
+    try {
+      widgetIdRef.current = window.turnstile.render(containerRef.current, options);
+    } catch {
+      onToken("");
+      onError?.();
+      widgetIdRef.current = null;
+      return;
+    }
 
     return () => {
       const id = widgetIdRef.current;
@@ -84,11 +103,15 @@ export function TurnstileWidget({
         onLoad={() => setScriptReady(true)}
         onError={() => {
           setScriptReady(false);
-          onToken("");
-          onError?.();
+          callbacksRef.current.onToken("");
+          callbacksRef.current.onError?.();
         }}
       />
+      {!siteKey ? (
+        <div style={{ fontSize: 13, opacity: 0.85 }}>Turnstile site key is missing.</div>
+      ) : (
       <div ref={containerRef} />
+      )}
     </>
   );
 }
