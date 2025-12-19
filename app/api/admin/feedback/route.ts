@@ -4,6 +4,7 @@ import {
   ensureFeedbackTable,
   autoCloseOverdueFeedback,
 } from "../../_utils/feedback";
+import { assertAdmin } from "../_utils/adminAuth";
 
 type FeedbackRowWithUser = {
   id: number;
@@ -18,23 +19,6 @@ type FeedbackRowWithUser = {
   latest_reply_content: string | null;
   closed_at: string | null;
 };
-
-async function assertAdmin(db: D1Database, adminEmail: string | null) {
-  if (!adminEmail) {
-    return new Response("缺少管理员邮箱", { status: 401 });
-  }
-
-  const { results } = await db
-    .prepare("SELECT id FROM users WHERE email = ? AND is_admin = 1")
-    .bind(adminEmail)
-    .all();
-
-  if (!results || results.length === 0) {
-    return new Response("无权访问：不是管理员账号", { status: 403 });
-  }
-
-  return null;
-}
 
 // 管理端获取用户反馈列表，并返回未读数量
 export async function GET(request: Request) {

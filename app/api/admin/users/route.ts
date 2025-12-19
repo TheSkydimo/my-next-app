@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
+import { assertAdmin, isSuperAdmin } from "../_utils/adminAuth";
 
 type UserRow = {
   id: number;
@@ -12,35 +13,6 @@ type UserRow = {
   vip_expires_at: string | null;
   created_at: string;
 };
-
-async function assertAdmin(db: D1Database, adminEmail: string | null) {
-  if (!adminEmail) {
-    return new Response("缺少管理员邮箱", { status: 401 });
-  }
-
-  const { results } = await db
-    .prepare("SELECT id FROM users WHERE email = ? AND is_admin = 1")
-    .bind(adminEmail)
-    .all();
-
-  if (!results || results.length === 0) {
-    return new Response("无权访问：不是管理员账号", { status: 403 });
-  }
-
-  return null;
-}
-
-async function isSuperAdmin(db: D1Database, adminEmail: string): Promise<boolean> {
-  const { results } = await db
-    .prepare(
-      "SELECT is_super_admin FROM users WHERE email = ? AND is_admin = 1"
-    )
-    .bind(adminEmail)
-    .all<{ is_super_admin: number }>();
-
-  const row = results?.[0];
-  return !!row?.is_super_admin;
-}
 
 // 获取用户列表（仅管理员）
 export async function GET(request: Request) {
@@ -87,7 +59,7 @@ export async function GET(request: Request) {
 
   const offset = (page - 1) * pageSize;
 
-  const listQuery = `SELECT id, username, email, is_admin, avatar_url, created_at
+  const listQuery = `SELECT id, username, email, is_admin, avatar_url, vip_expires_at, created_at
     FROM users
     ${whereSql}
     ORDER BY created_at DESC

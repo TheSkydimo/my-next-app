@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { assertAdmin } from "../_utils/adminAuth";
 
 type OrderRowWithUser = {
   id: number;
@@ -11,23 +12,6 @@ type OrderRowWithUser = {
   order_created_time?: string | null;
   order_paid_time?: string | null;
 };
-
-async function assertAdmin(db: D1Database, adminEmail: string | null) {
-  if (!adminEmail) {
-    return new Response("缺少管理员邮箱", { status: 401 });
-  }
-
-  const { results } = await db
-    .prepare("SELECT id FROM users WHERE email = ? AND is_admin = 1")
-    .bind(adminEmail)
-    .all();
-
-  if (!results || results.length === 0) {
-    return new Response("无权访问：不是管理员账号", { status: 403 });
-  }
-
-  return null;
-}
 
 /**
  * 将数据库中的 image_url 转换为前端可用的 URL

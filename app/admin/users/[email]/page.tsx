@@ -104,34 +104,31 @@ export default function AdminUserDetailPage({
   }, [params]);
 
   useEffect(() => {
+    if (!adminEmail || !userEmail) return;
+
+    const controller = new AbortController();
+    let active = true;
+
     const loadData = async (admin: string) => {
       setLoading(true);
       setError("");
+      setUser(null);
+      setOrders([]);
       try {
-        // 获取用户基础信息（复用 /api/admin/users 搜索接口）
-        const userParams = new URLSearchParams({
-          adminEmail: admin,
-          page: "1",
-          pageSize: "1",
-          q: userEmail,
-        });
-        const userRes = await fetch(`/api/admin/users?${userParams.toString()}`);
+        // 获取用户基础信息（精确查询，避免复用列表接口造成 LIMIT/模糊匹配问题）
+        const userRes = await fetch(
+          `/api/admin/users/${encodeURIComponent(userEmail)}?adminEmail=${encodeURIComponent(
+            admin
+          )}`,
+          { signal: controller.signal }
+        );
         if (!userRes.ok) {
           const text = await userRes.text();
           throw new Error(text || messages.users.fetchFailed);
         }
-        const userData = (await userRes.json()) as {
-          users: UserDetail[];
-        };
-        const found = userData.users.find((u) => u.email === userEmail) ?? null;
-        if (!found) {
-          throw new Error(
-            language === "zh-CN"
-              ? "未找到该用户"
-              : "User not found"
-          );
-        }
-        setUser(found);
+        const userData = (await userRes.json()) as { user: UserDetail };
+        if (!active) return;
+        setUser(userData.user);
 
         // 获取该用户的订单截图（通过 /api/admin/orders 接口按邮箱过滤）
         const orderParams = new URLSearchParams({
@@ -139,7 +136,8 @@ export default function AdminUserDetailPage({
           userEmail: userEmail,
         });
         const ordersRes = await fetch(
-          `/api/admin/orders?${orderParams.toString()}`
+          `/api/admin/orders?${orderParams.toString()}`,
+          { signal: controller.signal }
         );
         if (!ordersRes.ok) {
           const text = await ordersRes.text();
@@ -148,20 +146,33 @@ export default function AdminUserDetailPage({
         const ordersData = (await ordersRes.json()) as {
           items: AdminOrderItem[];
         };
+        if (!active) return;
         setOrders(ordersData.items);
       } catch (e) {
-        setError(
-          e instanceof Error ? e.message : messages.common.unknownError
-        );
+        // Ignore aborted requests to prevent stale errors.
+        if ((e as { name?: string } | null)?.name === "AbortError") return;
+        if (!active) return;
+        setError(e instanceof Error ? e.message : messages.common.unknownError);
       } finally {
+        if (!active) return;
         setLoading(false);
       }
     };
 
-    if (adminEmail) {
-      loadData(adminEmail);
-    }
-  }, [adminEmail, language, messages.common.unknownError, messages.orders.fetchFailed, messages.users.fetchFailed, userEmail]);
+    loadData(adminEmail);
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [
+    adminEmail,
+    language,
+    messages.common.unknownError,
+    messages.orders.fetchFailed,
+    messages.users.fetchFailed,
+    userEmail,
+  ]);
 
   if (!adminEmail) {
     return (
