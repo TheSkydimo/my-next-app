@@ -1,2 +1,9 @@
+# Copy to .dev.vars for local preview (Cloudflare runtime).
+# Do NOT commit .dev.vars (it is ignored by .gitignore).
+#
+# Cloudflare Turnstile
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=""
+TURNSTILE_SECRET_KEY=""
+
 # Load .env.development* files when running `wrangler dev`
 NEXTJS_ENV=development

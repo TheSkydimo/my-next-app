@@ -37,6 +37,16 @@ npm run deploy
 # or similar package manager command
 ```
 
+## Cloudflare Turnstile (Register)
+
+This project uses **Cloudflare Turnstile** on the register page.
+
+- **Client (public)**: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+- **Server (secret)**: `TURNSTILE_SECRET_KEY`
+
+For local preview on the Cloudflare runtime, copy `.dev.vars.example` to `.dev.vars` and fill values.
+For production, set the secret via `wrangler secret put TURNSTILE_SECRET_KEY` (do not commit it).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

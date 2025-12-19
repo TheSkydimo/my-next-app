@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { TurnstileWidget } from "../components/TurnstileWidget";
 import {
   applyTheme,
   getInitialLanguage,
@@ -16,21 +17,19 @@ const TEXTS: Record<
   Lang,
   {
     title: string;
-    usernamePlaceholder: string;
     emailPlaceholder: string;
     emailCodePlaceholder: string;
     sendCodeButton: string;
     sendingCodeButton: string;
     passwordPlaceholder: string;
     confirmPasswordPlaceholder: string;
-    captchaPlaceholder: string;
-    captchaTitle: string;
+    turnstileLabel: string;
     submitButton: string;
     errorEmailRequired: string;
     errorAllRequired: string;
     errorPasswordMismatch: string;
-    errorCaptchaRequired: string;
-    errorCaptchaIncorrect: string;
+    errorTurnstileRequired: string;
+    errorTurnstileLoadFailed: string;
     errorSendCode: string;
     successCodeSent: string;
     errorRegisterFailed: string;
@@ -41,21 +40,19 @@ const TEXTS: Record<
 > = {
   "zh-CN": {
     title: "用户注册",
-    usernamePlaceholder: "用户名",
     emailPlaceholder: "邮箱",
     emailCodePlaceholder: "邮箱验证码",
     sendCodeButton: "获取邮箱验证码",
     sendingCodeButton: "发送中...",
     passwordPlaceholder: "密码",
     confirmPasswordPlaceholder: "确认密码",
-    captchaPlaceholder: "验证码",
-    captchaTitle: "点击更换验证码",
+    turnstileLabel: "人机验证",
     submitButton: "注册",
     errorEmailRequired: "请先填写邮箱",
     errorAllRequired: "请完整填写所有字段（包括邮箱验证码）",
     errorPasswordMismatch: "两次输入的密码不一致",
-    errorCaptchaRequired: "请输入图形验证码",
-    errorCaptchaIncorrect: "图形验证码错误",
+    errorTurnstileRequired: "请完成人机验证",
+    errorTurnstileLoadFailed: "人机验证加载失败，请刷新页面重试",
     errorSendCode: "发送邮箱验证码失败",
     successCodeSent: "验证码已发送到邮箱，请注意查收",
     errorRegisterFailed: "注册失败",
@@ -65,21 +62,19 @@ const TEXTS: Record<
   },
   en: {
     title: "Sign up",
-    usernamePlaceholder: "Username",
     emailPlaceholder: "Email",
     emailCodePlaceholder: "Email code",
     sendCodeButton: "Send email code",
     sendingCodeButton: "Sending...",
     passwordPlaceholder: "Password",
     confirmPasswordPlaceholder: "Confirm password",
-    captchaPlaceholder: "Captcha",
-    captchaTitle: "Click to refresh captcha",
+    turnstileLabel: "Human verification",
     submitButton: "Register",
     errorEmailRequired: "Please enter your email first",
     errorAllRequired: "Please fill in all fields (including email code).",
     errorPasswordMismatch: "The two passwords do not match",
-    errorCaptchaRequired: "Please enter the captcha",
-    errorCaptchaIncorrect: "Captcha is incorrect",
+    errorTurnstileRequired: "Please complete the verification",
+    errorTurnstileLoadFailed: "Verification failed to load. Please refresh.",
     errorSendCode: "Failed to send email code",
     successCodeSent: "Verification code has been sent to your email",
     errorRegisterFailed: "Registration failed",
@@ -88,26 +83,14 @@ const TEXTS: Record<
     hidePassword: "Hide",
   },
 };
-// 简单验证码生成（0-9, a-z, A-Z）
-function generateCaptcha(length = 5): string {
-  const chars =
-    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    const idx = Math.floor(Math.random() * chars.length);
-    result += chars[idx];
-  }
-  return result;
-}
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [emailCode, setEmailCode] = useState("");
-  const [captcha, setCaptcha] = useState("");
-  const [captchaInput, setCaptchaInput] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
@@ -118,11 +101,10 @@ export default function RegisterPage() {
   const [lang, setLang] = useState<Lang>("zh-CN");
 
   const t = TEXTS[lang];
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
-  // 初始生成验证码 & 同步全局主题
+  // 同步全局主题
   useEffect(() => {
-    setCaptcha(generateCaptcha());
-
     const initialTheme = getInitialTheme();
     setTheme(initialTheme);
     applyTheme(initialTheme);
@@ -131,11 +113,6 @@ export default function RegisterPage() {
       typeof window === "undefined" ? "zh-CN" : getInitialLanguage();
     setLang(initialLang === "en-US" ? "en" : "zh-CN");
   }, []);
-
-  const refreshCaptcha = () => {
-    setCaptcha(generateCaptcha());
-    setCaptchaInput("");
-  };
 
   const sendEmailCode = async () => {
     setError("");
@@ -174,7 +151,7 @@ export default function RegisterPage() {
     setError("");
     setOk(false);
 
-    if (!username || !email || !password || !confirmPassword || !emailCode) {
+    if (!email || !password || !confirmPassword || !emailCode) {
       setError(t.errorAllRequired);
       return;
     }
@@ -184,27 +161,36 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!captchaInput) {
-      setError(t.errorCaptchaRequired);
+    if (turnstileLoadFailed) {
+      setError(t.errorTurnstileLoadFailed);
       return;
     }
 
-    if (captchaInput.trim().toLowerCase() !== captcha.toLowerCase()) {
-      setError(t.errorCaptchaIncorrect);
-      refreshCaptcha();
+    if (!siteKey) {
+      setError(t.errorTurnstileLoadFailed);
+      return;
+    }
+
+    if (!turnstileToken) {
+      setError(t.errorTurnstileRequired);
       return;
     }
 
     const res = await fetch("/api/register", {
       method: "POST",
-      body: JSON.stringify({ username, email, password, emailCode }),
+      body: JSON.stringify({
+        email,
+        password,
+        emailCode,
+        turnstileToken,
+      }),
       headers: { "Content-Type": "application/json" },
     });
 
     if (!res.ok) {
       const text = await res.text();
       setError(text || t.errorRegisterFailed);
-      refreshCaptcha();
+      setTurnstileToken("");
       return;
     }
 
@@ -221,12 +207,6 @@ export default function RegisterPage() {
         <h1>{t.title}</h1>
 
         <form onSubmit={submit} className="auth-card__form">
-          <input
-            placeholder={t.usernamePlaceholder}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-
           <input
             placeholder={t.emailPlaceholder}
             value={email}
@@ -285,18 +265,20 @@ export default function RegisterPage() {
           </div>
 
           <div className="auth-card__field-row">
-            <input
-              placeholder={t.captchaPlaceholder}
-              value={captchaInput}
-              onChange={(e) => setCaptchaInput(e.target.value)}
-              className="auth-card__field-grow"
-            />
-            <div
-              onClick={refreshCaptcha}
-              className="auth-card__captcha"
-              title={t.captchaTitle}
-            >
-              {captcha}
+            <div className="auth-card__field-grow">
+              <div style={{ marginBottom: 6, fontSize: 13, opacity: 0.9 }}>
+                {t.turnstileLabel}
+              </div>
+              <TurnstileWidget
+                siteKey={siteKey}
+                onToken={(token) => {
+                  setTurnstileToken(token);
+                  setTurnstileLoadFailed(false);
+                }}
+                onError={() => setTurnstileLoadFailed(true)}
+                onExpire={() => setTurnstileToken("")}
+                theme={theme === "dark" ? "dark" : "light"}
+              />
             </div>
           </div>
 
