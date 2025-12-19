@@ -3,6 +3,9 @@ import { sha256, isValidEmail } from "../_utils/auth";
 import { convertDbAvatarUrlToPublicUrl } from "../_utils/r2ObjectUrls";
 import { verifyAndUseEmailCode } from "../_utils/emailCode";
 import { generateNumericUsername } from "../_utils/user";
+import { createSessionToken, getSessionCookieName } from "../_utils/session";
+import { serializeCookie } from "../_utils/cookies";
+import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../_utils/usersTable";
 
 type UserRow = {
   id: number;
@@ -12,35 +15,12 @@ type UserRow = {
   is_admin: number;
 };
 
-async function ensureIsAdminColumn(db: D1Database) {
-  try {
-    await db
-      .prepare("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
-      .run();
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (!msg.includes("duplicate column name: is_admin")) {
-      throw e;
-    }
-  }
-}
-
-async function ensureAvatarUrlColumn(db: D1Database) {
-  try {
-    await db.prepare("ALTER TABLE users ADD COLUMN avatar_url TEXT").run();
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (!msg.includes("duplicate column name: avatar_url")) {
-      throw e;
-    }
-  }
-}
-
 export async function POST(request: Request) {
   // 解析请求体并显式标注类型，避免 request.json() 推断为 unknown
-  const { email, emailCode } = (await request.json()) as {
+  const { email, emailCode, remember } = (await request.json()) as {
     email: string;
     emailCode: string;
+    remember?: boolean;
   };
 
   if (!email) {
@@ -60,8 +40,8 @@ export async function POST(request: Request) {
 
   // 兼容旧库：确保常用字段存在（避免 SELECT 时直接报错）
   try {
-    await ensureIsAdminColumn(db);
-    await ensureAvatarUrlColumn(db);
+    await ensureUsersIsAdminColumn(db);
+    await ensureUsersAvatarUrlColumn(db);
   } catch (e) {
     console.error("确保 users 表字段存在失败:", e);
     return new Response("服务器内部错误", { status: 500 });
@@ -142,7 +122,35 @@ export async function POST(request: Request) {
     return new Response("登录失败，请稍后重试", { status: 500 });
   }
 
-  // 登录成功，返回完整用户信息（下一步可设置 Cookie Session）
+  // 登录成功：可选下发 Session Cookie（用于“记住登录状态”）
+  const envRecord = env as unknown as Record<string, string | undefined>;
+  const sessionSecret = String(envRecord.SESSION_SECRET ?? "");
+
+  const headers: HeadersInit = {};
+  if (sessionSecret) {
+    const rememberMe = remember !== false; // default: true
+    const maxAgeSeconds = rememberMe ? 60 * 60 * 24 * 30 : 0; // 30 days or session cookie
+    const { token } = await createSessionToken({
+      secret: sessionSecret,
+      userId: row.id,
+      maxAgeSeconds: rememberMe ? maxAgeSeconds : 60 * 60 * 24 * 30,
+    });
+
+    const url = new URL(request.url);
+    const secure =
+      url.protocol === "https:" ||
+      request.headers.get("X-Forwarded-Proto") === "https";
+
+    headers["Set-Cookie"] = serializeCookie(getSessionCookieName(), token, {
+      httpOnly: true,
+      secure,
+      sameSite: "Lax",
+      path: "/",
+      // remember=false 时不设置 Max-Age => session cookie（关闭浏览器即失效）
+      ...(rememberMe ? { maxAge: maxAgeSeconds } : {}),
+    });
+  }
+
   return Response.json({
     ok: true,
     user: {
@@ -152,5 +160,5 @@ export async function POST(request: Request) {
       avatarUrl: convertDbAvatarUrlToPublicUrl(row.avatar_url),
       isAdmin: !!row.is_admin,
     },
-  });
+  }, { headers });
 }

@@ -41,6 +41,39 @@
 		"SMTP_ENCRYPTION": "ssl",
 		"SMTP_FROM": "noreply@skydimo.com",
 		"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a"
+	},
+	"env": {
+		"development": {
+			/**
+			 * Local dev environment for `next dev` / OpenNext dev bridge.
+			 * - Avoid Wrangler remote dev session (which requires Cloudflare API access).
+			 * - Use local simulated bindings instead.
+			 */
+			"d1_databases": [
+				{
+					"binding": "my_user_db",
+					"database_name": "my_user_db",
+					"database_id": "694057fb-479a-4672-b68a-8af5eaa7a01f",
+					"remote": false
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "ORDER_IMAGES",
+					"bucket_name": "order-images"
+				}
+			],
+			"vars": {
+				"APP_NAME": "订阅管理",
+				"SMTP_HOST": "smtp.qiye.aliyun.com",
+				"SMTP_PORT": "465",
+				"SMTP_USER": "noreply@skydimo.com",
+				"SMTP_PASS": "fbn2WqHG1CnhGfyK",
+				"SMTP_ENCRYPTION": "ssl",
+				"SMTP_FROM": "noreply@skydimo.com",
+				"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a"
+			}
+		}
 	}
 	/**
 	 * Smart Placement

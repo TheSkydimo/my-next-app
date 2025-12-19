@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { TurnstileWidget } from "../components/TurnstileWidget";
 import {
@@ -31,6 +31,7 @@ const TEXTS: Record<Lang, {
   verifyLoading: string;
   submitButton: string;
   useDifferentEmail: string;
+  rememberMe: string;
   loginError: string;
   errorEmailRequired: string;
   errorTurnstileLoadFailed: string;
@@ -55,6 +56,7 @@ const TEXTS: Record<Lang, {
     verifyLoading: "验证中 / 发送验证码中...",
     submitButton: "提交",
     useDifferentEmail: "使用其他邮箱登录",
+    rememberMe: "记住登录",
     loginError: "登录失败，请检查验证码是否正确",
     errorEmailRequired: "请先填写邮箱",
     errorTurnstileLoadFailed: "人机验证加载失败，请刷新页面重试",
@@ -79,6 +81,7 @@ const TEXTS: Record<Lang, {
     verifyLoading: "Verifying / sending code...",
     submitButton: "Submit",
     useDifferentEmail: "Sign in with a different email",
+    rememberMe: "Remember me",
     loginError: "Sign-in failed. Please check the code.",
     errorEmailRequired: "Please enter your email first",
     errorTurnstileLoadFailed: "Verification failed to load. Please refresh and try again.",
@@ -103,8 +106,7 @@ export default function LoginPage() {
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
-  const [sendingCode, setSendingCode] = useState(false);
-  const [codeMsg, setCodeMsg] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
@@ -117,6 +119,21 @@ export default function LoginPage() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
 
   const t = TEXTS[lang];
+
+  // 如果已经有有效 session（cookie），直接跳过邮箱验证
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    void (async () => {
+      try {
+        const res = await fetch("/api/user/me", { method: "GET" });
+        if (res.ok) {
+          window.location.href = "/";
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -177,9 +194,8 @@ export default function LoginPage() {
     applyLanguage(appLang);
   };
 
-  const sendLoginEmailCode = async (token: string) => {
+  const sendLoginEmailCode = useCallback(async (token: string) => {
     setError("");
-    setCodeMsg("");
 
     if (!email) {
       setError(t.errorEmailRequired);
@@ -191,7 +207,6 @@ export default function LoginPage() {
       return;
     }
 
-    setSendingCode(true);
     try {
       const res = await fetch("/api/email/send-code", {
         method: "POST",
@@ -210,10 +225,8 @@ export default function LoginPage() {
     } catch (error) {
       console.error(error);
       setError(t.errorSendCode);
-    } finally {
-      setSendingCode(false);
     }
-  };
+  }, [email, t.errorEmailRequired, t.errorSendCode, t.errorTurnstileLoadFailed, turnstileLoadFailed, turnstileSiteKey]);
 
   // Turnstile 成功后自动发送验证码（仅在 turnstile 步骤）
   useEffect(() => {
@@ -223,23 +236,20 @@ export default function LoginPage() {
 
     setLastSentToken(turnstileToken);
     void sendLoginEmailCode(turnstileToken);
-  }, [lastSentToken, step, turnstileToken]);
+  }, [lastSentToken, sendLoginEmailCode, step, turnstileToken]);
 
   const resetToEmailStep = () => {
     setStep("email");
     setEmail("");
     setEmailCode("");
-    setCodeMsg("");
     setTurnstileToken("");
     setLastSentToken("");
     setTurnstileLoadFailed(false);
-    setSendingCode(false);
     setError("");
   };
 
   const startVerification = () => {
     setError("");
-    setCodeMsg("");
     setEmailCode("");
 
     if (!email) {
@@ -269,7 +279,7 @@ export default function LoginPage() {
 
     const res = await fetch("/api/login", {
       method: "POST",
-      body: JSON.stringify({ email, emailCode }),
+      body: JSON.stringify({ email, emailCode, remember: rememberMe }),
       headers: { "Content-Type": "application/json" },
     });
 
@@ -455,6 +465,15 @@ export default function LoginPage() {
                       aria-label={t.emailLabel}
                       required
                     />
+                  </label>
+
+                  <label className="auth-plain__remember">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                    />
+                    <span>{t.rememberMe}</span>
                   </label>
 
                   <button type="submit" className="auth-card__submit-button">

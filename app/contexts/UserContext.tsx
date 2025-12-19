@@ -78,6 +78,21 @@ export function UserProvider({ children }: UserProviderProps) {
   const [initialized, setInitialized] = useState(false);
 
   /**
+   * 从后端通过 Session Cookie 获取当前登录用户资料（记住登录状态）
+   */
+  const loadMe = useCallback(async (): Promise<UserProfile | null> => {
+    try {
+      const res = await fetch("/api/user/me", { method: "GET" });
+      if (!res.ok) return null;
+      const data = (await res.json()) as UserProfile;
+      if (!data?.email) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  /**
    * 从后端加载用户资料
    */
   const loadProfile = useCallback(async (email: string): Promise<UserProfile | null> => {
@@ -104,6 +119,20 @@ export function UserProvider({ children }: UserProviderProps) {
       setError(null);
 
       try {
+        // 优先使用 session cookie 恢复登录（避免每次都邮箱验证）
+        const me = await loadMe();
+        if (me) {
+          setProfile(me);
+          window.localStorage.setItem("loggedInUserEmail", me.email);
+          window.localStorage.setItem("loggedInUserName", me.username || "");
+          if (me.avatarUrl) {
+            window.localStorage.setItem("loggedInUserAvatar", me.avatarUrl);
+          } else {
+            window.localStorage.removeItem("loggedInUserAvatar");
+          }
+          return;
+        }
+
         const email = window.localStorage.getItem("loggedInUserEmail");
         const username = window.localStorage.getItem("loggedInUserName");
         const avatarUrl = window.localStorage.getItem("loggedInUserAvatar");
@@ -144,13 +173,27 @@ export function UserProvider({ children }: UserProviderProps) {
     };
 
     initUser();
-  }, [loadProfile]);
+  }, [loadMe, loadProfile]);
 
   /**
    * 刷新用户资料
    */
   const refreshProfile = useCallback(async () => {
     if (typeof window === "undefined") return;
+
+    // 优先 cookie
+    const me = await loadMe();
+    if (me) {
+      setProfile(me);
+      window.localStorage.setItem("loggedInUserEmail", me.email);
+      window.localStorage.setItem("loggedInUserName", me.username || "");
+      if (me.avatarUrl) {
+        window.localStorage.setItem("loggedInUserAvatar", me.avatarUrl);
+      } else {
+        window.localStorage.removeItem("loggedInUserAvatar");
+      }
+      return;
+    }
 
     const email = window.localStorage.getItem("loggedInUserEmail");
     if (!email) return;
@@ -176,7 +219,7 @@ export function UserProvider({ children }: UserProviderProps) {
     } finally {
       setLoading(false);
     }
-  }, [loadProfile]);
+  }, [loadMe, loadProfile]);
 
   /**
    * 局部更新用户资料（用于资料修改后同步）

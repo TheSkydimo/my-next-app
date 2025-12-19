@@ -136,11 +136,17 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
     };
   }, [pathname]);
 
-  const logout = () => {
-    // 使用 UserContext 清除用户状态
-    userContext?.clearUser();
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
+  const logout = async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } catch {
+      // ignore
+    } finally {
+      // 使用 UserContext 清除用户状态
+      userContext?.clearUser();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
     }
   };
 

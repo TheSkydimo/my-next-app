@@ -2390,7 +2390,35 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	color: rgba(29, 78, 216, 1);
 }
 
-.auth-plain input {
+.auth-plain__remember {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	margin: 6px 0 10px;
+	width: 100%;
+	font-size: 12px;
+	color: rgba(148, 163, 184, 0.92);
+	user-select: none;
+	white-space: nowrap;
+}
+
+.auth-plain__remember input {
+	width: 14px;
+	height: 14px;
+	margin: 0;
+	accent-color: #22c55e;
+}
+
+.auth-page--light .auth-plain__remember {
+	color: rgba(75, 85, 99, 0.88);
+}
+
+.auth-plain__remember span {
+	line-height: 1;
+}
+
+.auth-plain input:not([type="checkbox"]) {
 	width: 100%;
 	box-sizing: border-box;
 	background: rgba(15, 23, 42, 0.55);
@@ -2404,7 +2432,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	border-color: rgba(209, 213, 219, 0.9);
 }
 
-.auth-page--light .auth-plain input {
+.auth-page--light .auth-plain input:not([type="checkbox"]) {
 	background: rgba(249, 250, 251, 0.92);
 	color: #111827;
 	border-color: rgba(209, 213, 219, 0.9);
