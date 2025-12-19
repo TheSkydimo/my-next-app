@@ -221,7 +221,7 @@ input {
 }
 
 /* 原生 button 基础样式（兼容未使用 .btn 类的按钮，排除导航和工具栏按钮） */
-button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]) {
+button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]) {
 	padding: 8px 10px;
 	border-radius: 4px;
 	border: 1px solid #1d4ed8;
@@ -231,18 +231,18 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	color: #ffffff;
 }
 
-button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):hover {
+button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]):hover {
 	background: #1e40af;
 	border-color: #1e40af;
 }
 
-:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]) {
+:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]) {
 	background: #2563eb;
 	border-color: #2563eb;
 	color: #ffffff;
 }
 
-:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):hover {
+:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]):hover {
 	background: #1d4ed8;
 	border-color: #1d4ed8;
 }
@@ -2499,7 +2499,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 /* L形外壳：侧边栏 + 顶栏统一深色背景，灰色线分隔 */
 
 .admin-shell {
-	background: #0f172a;
+	background: #000000;
 	backdrop-filter: none;
 	border: none;
 	box-shadow: none;
@@ -2530,24 +2530,24 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 
 /* 顶栏外壳（L形顶部，贴边） */
 .admin-shell--topbar {
-	padding: 12px 20px;
+	padding: 10px 20px;
 	display: flex;
-	justify-content: center;
 	align-items: center;
 	border-radius: 0;
 	margin: 0;
 	/* 底部灰色分隔线 */
 	border-bottom: 1px solid #334155;
+	overflow: visible;
 }
 
-/* 内容区（无外壳，统一深色背景） */
+/* 内容区（无外壳，统一黑色背景） */
 .admin-layout__content {
 	flex: 1;
 	padding: 24px 28px;
 	overflow-y: auto;
 	overflow-x: hidden;
 	color: #e5e7eb;
-	background: #0f172a;
+	background: #000000;
 }
 
 .admin-layout__content h1,
@@ -2621,8 +2621,8 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	border: none;
 	box-shadow: none;
 	backdrop-filter: none;
-	max-width: 1180px;
 	width: 100%;
+	flex: 1;
 }
 
 .admin-topbar__search {
@@ -2655,10 +2655,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 }
 
 .admin-topbar__actions {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
-	gap: 6px;
-	margin-left: 12px;
+	gap: 12px;
+	margin-left: 16px;
 	flex-shrink: 0;
 }
 
@@ -2907,51 +2907,40 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	color: #ffffff;
 }
 
-.admin-topbar__icon-btn {
-	width: 26px;
-	height: 26px;
-	border-radius: 9999px;
-	border: 0;
-	background: rgba(31, 41, 55, 0.96);
+.admin-layout .admin-topbar__icon-btn {
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	border: none;
+	background: #374151;
 	color: #e5e7eb;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 13px;
+	font-size: 14px;
 	cursor: pointer;
 }
 
-.admin-topbar__icon-btn:hover {
-	background: rgba(55, 65, 81, 0.98);
+.admin-layout .admin-topbar__icon-btn:hover {
+	background: #4b5563;
 }
 
-:root[data-theme="light"] .admin-topbar__icon-btn {
-	background: #f3f4f6;
-	border: 1px solid rgba(209, 213, 219, 0.9);
+:root[data-theme="light"] .admin-layout .admin-topbar__icon-btn {
+	background: #e5e7eb;
+	border: 1px solid #d1d5db;
 	color: #374151;
 }
 
-:root[data-theme="light"] .admin-topbar__icon-btn:hover {
-	background: #e5e7eb;
-	border-color: rgba(156, 163, 175, 0.9);
+:root[data-theme="light"] .admin-layout .admin-topbar__icon-btn:hover {
+	background: #d1d5db;
+	border-color: #9ca3af;
 }
 
 /* 顶栏语言按钮内部文字样式 */
-.admin-topbar__lang-label {
+.admin-layout .admin-topbar__lang-label {
 	font-size: 11px;
 	font-weight: 600;
 	letter-spacing: 0.04em;
-}
-
-/* 翻译图标按钮：在浅色主题下给一个浅底，更像“标签” */
-:root[data-theme="light"] .admin-topbar__icon-btn--translate {
-	/* 与其他图标按钮保持一致的深色圆底，只区分内部文字 */
-	background: rgba(31, 41, 55, 0.96);
-	border: 0;
-}
-
-:root[data-theme="light"] .admin-topbar__icon-btn--translate:hover {
-	background: rgba(55, 65, 81, 0.98);
 }
 
 .admin-topbar__icon-img {
@@ -2963,36 +2952,45 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 
 .admin-topbar__avatar-wrapper {
 	position: relative;
+	flex-shrink: 0;
 }
 
 .admin-topbar__avatar-btn {
-	width: 30px;
-	height: 30px;
+	width: 36px;
+	height: 36px;
+	min-width: 36px;
+	min-height: 36px;
 	border-radius: 9999px;
-	border: 0;
-	background: rgba(31, 41, 55, 0.96);
+	border: none !important;
+	background: transparent !important;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	padding: 0;
 	cursor: pointer;
+	overflow: visible;
+	box-shadow: none !important;
 }
 
 .admin-topbar__avatar-img {
-	width: 100%;
-	height: 100%;
+	width: 36px;
+	height: 36px;
+	min-width: 36px;
+	min-height: 36px;
 	border-radius: 9999px;
 	object-fit: cover;
+	background: transparent;
 }
 
 .admin-topbar__avatar-initial {
 	font-size: 13px;
-	color: #e5e7eb;
+	font-weight: 600;
+	color: #ffffff;
 }
 
 :root[data-theme="light"] .admin-topbar__avatar-btn {
-	background: #f3f4f6;
-	border: 1px solid rgba(209, 213, 219, 0.9);
+	background: transparent;
+	border: none;
 }
 
 :root[data-theme="light"] .admin-topbar__avatar-initial {
@@ -3055,21 +3053,31 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not([cl
 	color: #e5e7eb;
 	font-size: 12px;
 	text-align: left;
-	padding: 6px 8px;
+	padding: 8px 10px;
 	border-radius: 8px;
 	cursor: pointer;
+	border-bottom: 1px solid #374151;
+	margin-bottom: 4px;
+	padding-bottom: 10px;
+}
+
+.admin-topbar__user-menu-item:last-child {
+	border-bottom: none;
+	margin-bottom: 0;
+	padding-bottom: 8px;
 }
 
 .admin-topbar__user-menu-item:hover {
-	background: rgba(31, 41, 55, 0.96);
+	background: rgba(55, 65, 81, 0.9);
 }
 
 .admin-topbar__user-menu-item--danger {
-	color: #fecaca;
+	color: #f87171;
 }
 
 :root[data-theme="light"] .admin-topbar__user-menu-item {
 	color: #374151;
+	border-bottom-color: #e5e7eb;
 }
 
 :root[data-theme="light"] .admin-topbar__user-menu-item:hover {
