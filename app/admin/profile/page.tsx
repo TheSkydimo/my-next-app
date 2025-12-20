@@ -26,6 +26,7 @@ export default function AdminProfilePage() {
 
   const [usernameInput, setUsernameInput] = useState("");
   const [avatarUrlInput, setAvatarUrlInput] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const [newEmail, setNewEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
@@ -93,10 +94,7 @@ export default function AdminProfilePage() {
     const loadOrders = async (email: string) => {
       setOrdersLoading(true);
       try {
-        const params = new URLSearchParams({
-          adminEmail: email,
-          userEmail: email,
-        });
+        const params = new URLSearchParams({ userEmail: email });
         const res = await fetch(`/api/admin/orders?${params.toString()}`);
         if (!res.ok) {
           // 管理员订单截图加载失败，不阻塞资料页
@@ -166,17 +164,21 @@ export default function AdminProfilePage() {
     }
   };
 
-  const updateAvatar = async () => {
+  const updateAvatar = async (overrideAvatarUrl?: string | null) => {
     if (!adminEmail) return;
     setError("");
     setOkMsg("");
     try {
+      const finalAvatarUrl =
+        overrideAvatarUrl !== undefined
+          ? overrideAvatarUrl
+          : avatarUrlInput.trim() || null;
       const res = await fetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: adminEmail,
-          avatarUrl: avatarUrlInput.trim() || null,
+          avatarUrl: finalAvatarUrl,
         }),
       });
       if (!res.ok) {
@@ -279,8 +281,7 @@ export default function AdminProfilePage() {
           // ignore
         }
         // 修改邮箱后强制退出管理员登录，要求使用新邮箱重新登录
-        window.localStorage.removeItem("adminEmail");
-        window.localStorage.removeItem("isAdmin");
+        adminContext.clearAdmin();
         setTimeout(() => {
           window.location.href = "/admin/login";
         }, 1200);
@@ -409,7 +410,11 @@ export default function AdminProfilePage() {
                         const file = e.target.files?.[0];
                         if (!file) return;
 
-                        if (file.size > 300 * 1024) {
+                        // 允许重复选择同一张图片也能触发 onChange
+                        e.currentTarget.value = "";
+
+                        // Android 相册/相机图片通常远大于 300KB；统一放宽到 2MB（并与后端限制保持一致）
+                        if (file.size > 2 * 1024 * 1024) {
                           setError(messages.profile.errorAvatarTooLarge);
                           return;
                         }
@@ -418,6 +423,7 @@ export default function AdminProfilePage() {
 
                         setError("");
                         setOkMsg("");
+                        setAvatarUploading(true);
 
                         try {
                           const formData = new FormData();
@@ -449,6 +455,8 @@ export default function AdminProfilePage() {
                               ? err.message
                               : messages.profile.errorAvatarUpdateFailed
                           );
+                        } finally {
+                          setAvatarUploading(false);
                         }
                       })();
                     }}
@@ -477,8 +485,9 @@ export default function AdminProfilePage() {
                       setShowAvatarDialog(false);
                     }}
                   className="dialog-card__primary"
+                    disabled={avatarUploading}
                   >
-                    {messages.profile.avatarDialogSave}
+                    {avatarUploading ? messages.common.loading : messages.profile.avatarDialogSave}
                   </button>
                 </div>
               </div>

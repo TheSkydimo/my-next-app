@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { assertAdmin } from "../_utils/adminAuth";
+import { requireAdminFromRequest } from "../_utils/adminSession";
 
 type OrderRowWithUser = {
   id: number;
@@ -69,15 +69,14 @@ async function ensureOrderTable(db: D1Database) {
 // 管理端查看所有用户的订单截图（可按邮箱 / 设备 ID 过滤，最多返回最近 200 条）
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const adminEmail = searchParams.get("adminEmail");
   const userEmail = searchParams.get("userEmail");
   const deviceId = searchParams.get("deviceId");
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
-  const authError = await assertAdmin(db, adminEmail);
-  if (authError) return authError;
+  const authed = await requireAdminFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   await ensureOrderTable(db);
 

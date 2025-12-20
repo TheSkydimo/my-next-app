@@ -29,6 +29,7 @@ export default function UserProfilePage() {
   const [usernameInput, setUsernameInput] = useState("");
 
   const [avatarUrlInput, setAvatarUrlInput] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const [newEmail, setNewEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
@@ -114,17 +115,21 @@ export default function UserProfilePage() {
     }
   };
 
-  const updateAvatar = async () => {
+  const updateAvatar = async (overrideAvatarUrl?: string | null) => {
     if (!userEmail) return;
     setError("");
     setOkMsg("");
     try {
+      const finalAvatarUrl =
+        overrideAvatarUrl !== undefined
+          ? overrideAvatarUrl
+          : avatarUrlInput.trim() || null;
       const res = await fetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
-          avatarUrl: avatarUrlInput.trim() || null,
+          avatarUrl: finalAvatarUrl,
         }),
       });
       if (!res.ok) {
@@ -363,7 +368,11 @@ export default function UserProfilePage() {
                         const file = e.target.files?.[0];
                         if (!file) return;
 
-                        if (file.size > 300 * 1024) {
+                        // 允许重复选择同一张图片也能触发 onChange
+                        e.currentTarget.value = "";
+
+                        // Android 相册/相机图片通常远大于 300KB；统一放宽到 2MB（并与后端限制保持一致）
+                        if (file.size > 2 * 1024 * 1024) {
                           setError(messages.profile.errorAvatarTooLarge);
                           return;
                         }
@@ -372,6 +381,7 @@ export default function UserProfilePage() {
 
                         setError("");
                         setOkMsg("");
+                        setAvatarUploading(true);
 
                         try {
                           const formData = new FormData();
@@ -403,6 +413,8 @@ export default function UserProfilePage() {
                               ? err.message
                               : messages.profile.errorAvatarUpdateFailed
                           );
+                        } finally {
+                          setAvatarUploading(false);
                         }
                       })();
                     }}
@@ -431,8 +443,9 @@ export default function UserProfilePage() {
                       setShowAvatarDialog(false);
                     }}
                     className="dialog-card__primary"
+                    disabled={avatarUploading}
                   >
-                    {messages.profile.avatarDialogSave}
+                    {avatarUploading ? messages.common.loading : messages.profile.avatarDialogSave}
                   </button>
                 </div>
               </div>

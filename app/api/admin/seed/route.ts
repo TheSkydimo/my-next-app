@@ -102,14 +102,14 @@ export async function POST() {
   // 2. 创建内置超级管理员账号（如果不存在）
   const adminEmail = "zhouzhiou9588@163.com";
   const adminUsername = "admin";
-  const adminPassword = "123456";
 
   const existing = await db
     .prepare("SELECT id FROM users WHERE email = ?")
     .bind(adminEmail)
     .all();
 
-  const password_hash = await sha256(adminPassword);
+  // 不再提供“账号+密码”登录：这里生成不可预测的随机 password_hash 作为占位（兼容旧表结构）
+  const password_hash = await sha256(crypto.randomUUID());
 
   if (!existing.results || existing.results.length === 0) {
     await db
@@ -130,9 +130,8 @@ export async function POST() {
   return Response.json({
     ok: true,
     adminEmail,
-    adminPassword,
     message:
-      "超级管理员初始化完成，如需修改账号信息请在数据库中手动更新 users 表。请务必在生产环境关闭 ALLOW_ADMIN_SEED。",
+      "超级管理员初始化完成。管理端登录已改为邮箱验证码登录（无需密码）。请务必在生产环境关闭 ALLOW_ADMIN_SEED。",
   });
 }
 

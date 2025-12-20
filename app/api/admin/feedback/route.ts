@@ -4,7 +4,7 @@ import {
   ensureFeedbackTable,
   autoCloseOverdueFeedback,
 } from "../../_utils/feedback";
-import { assertAdmin } from "../_utils/adminAuth";
+import { requireAdminFromRequest } from "../_utils/adminSession";
 
 type FeedbackRowWithUser = {
   id: number;
@@ -23,14 +23,13 @@ type FeedbackRowWithUser = {
 // 管理端获取用户反馈列表，并返回未读数量
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const adminEmail = searchParams.get("adminEmail");
   const status = searchParams.get("status"); // unread | all
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
-  const authError = await assertAdmin(db, adminEmail);
-  if (authError) return authError;
+  const authed = await requireAdminFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   await ensureFeedbackTable(db);
   await ensureFeedbackReplyTable(db);
@@ -112,21 +111,19 @@ export async function GET(request: Request) {
 // 管理端标记反馈为已读 / 全部已读
 export async function POST(request: Request) {
   const body = (await request.json()) as {
-    adminEmail?: string;
     action?: "mark-read" | "mark-all-read" | "reply" | "close";
     ids?: number[];
     feedbackId?: number;
     content?: string;
   };
 
-  const adminEmail = body.adminEmail ?? null;
   const action = body.action ?? "mark-read";
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
-  const authError = await assertAdmin(db, adminEmail);
-  if (authError) return authError;
+  const authed = await requireAdminFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   await ensureFeedbackTable(db);
 
@@ -171,21 +168,13 @@ export async function POST(request: Request) {
       return new Response("工单已关闭，无法继续回复", { status: 400 });
     }
 
-    const adminQuery = await db
-      .prepare("SELECT id FROM users WHERE email = ? AND is_admin = 1")
-      .bind(adminEmail)
-      .all<{ id: number }>();
-
-    const adminRow = adminQuery.results?.[0];
-    if (!adminRow) {
-      return new Response("管理员不存在", { status: 404 });
-    }
+    const adminId = authed.admin.id;
 
     await db
       .prepare(
         "INSERT INTO user_feedback_replies (feedback_id, admin_id, content, created_at) VALUES (?, ?, ?, ?)"
       )
-      .bind(feedbackId, adminRow.id, content, nowIso)
+      .bind(feedbackId, adminId, content, nowIso)
       .run();
 
     await db
@@ -197,7 +186,7 @@ export async function POST(request: Request) {
              latest_reply_admin_id = ?
          WHERE id = ?`
       )
-      .bind(nowIso, nowIso, adminRow.id, feedbackId)
+      .bind(nowIso, nowIso, adminId, feedbackId)
       .run();
 
     return Response.json({ ok: true });

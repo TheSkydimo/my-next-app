@@ -126,6 +126,10 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     // 使用 AdminContext 清除管理员状态
     adminContext?.clearAdmin();
     if (typeof window !== "undefined") {
+      // 最佳努力清理服务端 Session Cookie
+      void fetch("/api/logout", { method: "POST" }).catch(() => {
+        // ignore
+      });
       window.location.href = "/admin/login";
     }
   };
@@ -187,13 +191,12 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   };
 
   const refreshUnreadFeedback = async (email: string | null) => {
-    if (!email) return;
+    void email;
     try {
-      const params = new URLSearchParams({
-        adminEmail: email,
-        status: "unread",
+      const params = new URLSearchParams({ status: "unread" });
+      const res = await fetch(`/api/admin/feedback?${params.toString()}`, {
+        credentials: "include",
       });
-      const res = await fetch(`/api/admin/feedback?${params.toString()}`);
       if (!res.ok) return;
       const data = (await res.json()) as { unreadCount?: number };
       setFeedbackBadge(
@@ -238,10 +241,11 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     const pollFeedback = async () => {
       try {
         const params = new URLSearchParams({
-          adminEmail,
           status: "all",
         });
-        const res = await fetch(`/api/admin/feedback?${params.toString()}`);
+        const res = await fetch(`/api/admin/feedback?${params.toString()}`, {
+          credentials: "include",
+        });
         if (!res.ok) return;
         const data = (await res.json()) as {
           items?: FeedbackItem[];
@@ -332,10 +336,11 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     setFeedbackError("");
     try {
       const params = new URLSearchParams({
-        adminEmail,
         status: "all",
       });
-      const res = await fetch(`/api/admin/feedback?${params.toString()}`);
+      const res = await fetch(`/api/admin/feedback?${params.toString()}`, {
+        credentials: "include",
+      });
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || "获取用户反馈失败");
@@ -355,7 +360,6 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            adminEmail,
             action: "mark-all-read",
           }),
         }).catch(() => {
@@ -410,7 +414,6 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          adminEmail,
           action: "reply",
           feedbackId: targetId,
           content: text,
@@ -464,7 +467,6 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          adminEmail,
           action: "close",
           feedbackId,
         }),

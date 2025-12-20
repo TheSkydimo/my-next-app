@@ -71,7 +71,6 @@ export default function AdminUsersPage() {
       setError("");
       try {
         const params = new URLSearchParams({
-          adminEmail,
           role: "user",
           page: String(pageToUse),
           pageSize: "15",
@@ -124,7 +123,6 @@ export default function AdminUsersPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          adminEmail,
           action,
           userEmail: user.email,
         }),
@@ -168,7 +166,6 @@ export default function AdminUsersPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          adminEmail,
           action: "set-vip",
           userEmail: user.email,
           vipExpiresAt,

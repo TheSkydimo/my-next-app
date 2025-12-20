@@ -43,4 +43,20 @@ export async function ensureUsersAvatarUrlColumn(db: D1Database) {
   }
 }
 
+export async function ensureUsersIsSuperAdminColumn(db: D1Database) {
+  await ensureUsersTable(db);
+  try {
+    await db
+      .prepare(
+        "ALTER TABLE users ADD COLUMN is_super_admin INTEGER NOT NULL DEFAULT 0"
+      )
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: is_super_admin")) {
+      throw e;
+    }
+  }
+}
+
 

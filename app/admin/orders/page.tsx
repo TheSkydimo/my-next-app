@@ -59,9 +59,7 @@ export default function AdminOrdersPage() {
       setLoading(true);
       setError("");
       try {
-        const params = new URLSearchParams({
-          adminEmail: email,
-        });
+        const params = new URLSearchParams();
         const res = await fetch(`/api/admin/orders?${params.toString()}`);
         if (!res.ok) {
           const text = await res.text();

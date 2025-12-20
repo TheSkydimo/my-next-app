@@ -1,6 +1,7 @@
 type EmailCodePurpose =
   | "register"
   | "user-login"
+  | "admin-login"
   | "user-forgot"
   | "admin-forgot"
   | "change-email";

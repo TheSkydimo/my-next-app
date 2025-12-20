@@ -28,9 +28,9 @@ export async function POST(request: Request) {
     return new Response("Only image files are allowed", { status: 400 });
   }
 
-  // 与前端保持一致：最大 300KB
-  if (file.size > 300 * 1024) {
-    return new Response("Avatar is too large (max 300KB)", { status: 400 });
+  // 与前端保持一致：最大 2MB（移动端相册/相机图片通常会超过 300KB）
+  if (file.size > 2 * 1024 * 1024) {
+    return new Response("Avatar is too large (max 2MB)", { status: 400 });
   }
 
   const { env } = await getCloudflareContext();

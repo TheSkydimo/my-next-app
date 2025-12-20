@@ -4,6 +4,7 @@ import { isValidEmail } from "../../_utils/auth";
 import type { EmailCodePurpose } from "../../_utils/emailCode";
 import { ensureEmailCodeTable } from "../../_utils/emailCode";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
+import { ensureUsersIsAdminColumn } from "../../_utils/usersTable";
 import {
   getRuntimeEnvVar,
   isDevBypassTurnstileEnabled,
@@ -40,7 +41,12 @@ export async function POST(request: Request) {
   const returnCodeInResponse = shouldReturnEmailCodeInResponse(env);
 
   // 发送验证码：部分用途强制 Turnstile（防刷）
-  if (purpose === "user-login" || purpose === "user-forgot" || purpose === "admin-forgot") {
+  if (
+    purpose === "user-login" ||
+    purpose === "admin-login" ||
+    purpose === "user-forgot" ||
+    purpose === "admin-forgot"
+  ) {
     if (!bypassTurnstile) {
       const secret = getTurnstileSecretFromEnv(env);
       if (!secret) {
@@ -66,8 +72,9 @@ export async function POST(request: Request) {
   // 创建验证码表（如果不存在）
   await ensureEmailCodeTable(db);
 
-  // 如果是管理员找回密码，先确认该邮箱为管理员账号
-  if (purpose === "admin-forgot") {
+  // 如果是管理员相关用途，先确认该邮箱为管理员账号
+  if (purpose === "admin-login" || purpose === "admin-forgot") {
+    await ensureUsersIsAdminColumn(db);
     const { results } = await db
       .prepare("SELECT id FROM users WHERE email = ? AND is_admin = 1")
       .bind(email)

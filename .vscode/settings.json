@@ -1,5 +1,11 @@
 {
 	"files.associations": {
 		"wrangler.json": "jsonc"
+	},
+	"files.exclude": {
+		"**/.open*": true
+	},
+	"search.exclude": {
+		"**/.open*": true
 	}
 }

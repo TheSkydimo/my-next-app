@@ -57,7 +57,6 @@ export default function AdminAdminsPage() {
     setError("");
     try {
       const params = new URLSearchParams({
-        adminEmail,
         role: "admin",
         page: "1",
         pageSize: "15",
@@ -100,7 +99,6 @@ export default function AdminAdminsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          adminEmail,
           action,
           userEmail: item.email,
         }),

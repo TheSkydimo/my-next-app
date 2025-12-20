@@ -71,7 +71,7 @@ interface AdminProviderProps {
 
 /**
  * 管理员状态提供者组件
- * 在管理端应用最外层包裹，自动从 localStorage 读取登录状态并预加载管理员信息
+ * 在管理端应用最外层包裹：基于 httpOnly Session Cookie 拉取管理员信息（不再依赖 localStorage 传参）
  */
 export function AdminProvider({ children }: AdminProviderProps) {
   const [profile, setProfile] = useState<AdminProfile | null>(null);
@@ -83,42 +83,24 @@ export function AdminProvider({ children }: AdminProviderProps) {
   /**
    * 从后端加载管理员资料
    */
-  const loadProfile = useCallback(async (email: string): Promise<AdminProfile | null> => {
+  const loadProfile = useCallback(async (): Promise<AdminProfile | null> => {
     try {
-      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`);
+      const res = await fetch("/api/admin/me", {
+        method: "GET",
+        credentials: "include",
+      });
       if (!res.ok) {
         return null;
       }
-      const data = (await res.json()) as {
-        id?: number;
-        username: string;
-        email: string;
-        avatarUrl: string | null;
-        isAdmin?: boolean;
-      };
-
-      // 从 localStorage 获取角色信息（因为 profile API 不返回角色）
-      const storedRole = typeof window !== "undefined"
-        ? window.localStorage.getItem("adminRole")
-        : null;
-      const role = storedRole || "admin";
-      const isSuperAdmin = role === "super_admin";
-
-      return {
-        id: data.id,
-        username: data.username,
-        email: data.email,
-        avatarUrl: data.avatarUrl,
-        role,
-        isSuperAdmin,
-      };
+      const data = (await res.json()) as { ok: boolean; admin: AdminProfile };
+      return data.admin ?? null;
     } catch {
       return null;
     }
   }, []);
 
   /**
-   * 初始化：从 localStorage 读取登录状态，并预加载管理员信息
+   * 初始化：从服务端拉取管理员信息（基于 httpOnly cookie）
    */
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -128,45 +110,10 @@ export function AdminProvider({ children }: AdminProviderProps) {
       setError(null);
 
       try {
-        const isAdmin = window.localStorage.getItem("isAdmin");
-        const email = window.localStorage.getItem("adminEmail");
-        const storedAvatar = window.localStorage.getItem("adminAvatarUrl");
-        const storedRole = window.localStorage.getItem("adminRole");
-        const storedName = window.localStorage.getItem("adminName");
-
-        const authed = isAdmin === "true" && !!email;
+        const freshProfile = await loadProfile();
+        const authed = !!freshProfile;
         setIsAuthed(authed);
-
-        if (!authed || !email) {
-          // 未登录
-          setProfile(null);
-          return;
-        }
-
-        // 先使用 localStorage 中的缓存数据立即显示
-        const role = storedRole || "admin";
-        const cachedProfile: AdminProfile = {
-          email,
-          username: storedName || email,
-          avatarUrl: storedAvatar || null,
-          role,
-          isSuperAdmin: role === "super_admin",
-        };
-        setProfile(cachedProfile);
-
-        // 然后在后台静默刷新最新数据
-        const freshProfile = await loadProfile(email);
-        if (freshProfile) {
-          setProfile(freshProfile);
-
-          // 同步更新 localStorage 缓存
-          window.localStorage.setItem("adminName", freshProfile.username || "");
-          if (freshProfile.avatarUrl) {
-            window.localStorage.setItem("adminAvatarUrl", freshProfile.avatarUrl);
-          } else {
-            window.localStorage.removeItem("adminAvatarUrl");
-          }
-        }
+        setProfile(freshProfile);
       } catch (e) {
         setError(e instanceof Error ? e.message : "加载管理员信息失败");
       } finally {
@@ -184,24 +131,13 @@ export function AdminProvider({ children }: AdminProviderProps) {
   const refreshProfile = useCallback(async () => {
     if (typeof window === "undefined") return;
 
-    const email = window.localStorage.getItem("adminEmail");
-    if (!email) return;
-
     setLoading(true);
     setError(null);
 
     try {
-      const freshProfile = await loadProfile(email);
+      const freshProfile = await loadProfile();
       if (freshProfile) {
         setProfile(freshProfile);
-
-        // 同步更新 localStorage
-        window.localStorage.setItem("adminName", freshProfile.username || "");
-        if (freshProfile.avatarUrl) {
-          window.localStorage.setItem("adminAvatarUrl", freshProfile.avatarUrl);
-        } else {
-          window.localStorage.removeItem("adminAvatarUrl");
-        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "刷新管理员信息失败");
@@ -217,26 +153,6 @@ export function AdminProvider({ children }: AdminProviderProps) {
     setProfile((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, ...updates };
-
-      // 同步更新 localStorage
-      if (typeof window !== "undefined") {
-        if (updates.username !== undefined) {
-          window.localStorage.setItem("adminName", updates.username || "");
-        }
-        if (updates.avatarUrl !== undefined) {
-          if (updates.avatarUrl) {
-            window.localStorage.setItem("adminAvatarUrl", updates.avatarUrl);
-          } else {
-            window.localStorage.removeItem("adminAvatarUrl");
-          }
-        }
-        if (updates.email !== undefined) {
-          window.localStorage.setItem("adminEmail", updates.email);
-        }
-        if (updates.role !== undefined) {
-          window.localStorage.setItem("adminRole", updates.role);
-        }
-      }
 
       // 触发事件通知其他组件更新
       if (typeof window !== "undefined") {
@@ -262,12 +178,6 @@ export function AdminProvider({ children }: AdminProviderProps) {
     setProfile(null);
     setError(null);
     setIsAuthed(false);
-
-    if (typeof window !== "undefined") {
-      // 清空所有本地缓存
-      window.localStorage.clear();
-      window.sessionStorage.clear();
-    }
   }, []);
 
   const value: AdminContextState = {

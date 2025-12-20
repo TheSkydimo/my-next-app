@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { assertAdmin, isSuperAdmin } from "../../_utils/adminAuth";
+import { requireSuperAdminFromRequest } from "../../_utils/adminSession";
 
 type DataUrlParseResult =
   | { ok: true; mimeType: string; base64: string }
@@ -67,7 +67,6 @@ function randomToken(len = 8): string {
 }
 
 type MigrationBody = {
-  adminEmail?: string;
   limit?: number; // per table
   dryRun?: boolean;
 };
@@ -84,7 +83,6 @@ type MigrationBody = {
  */
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as MigrationBody;
-  const adminEmail = typeof body.adminEmail === "string" ? body.adminEmail : null;
   const limit = Math.max(Math.min(Number(body.limit) || 50, 200), 1);
   const dryRun = !!body.dryRun;
 
@@ -92,13 +90,8 @@ export async function POST(request: Request) {
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;
 
-  const authError = await assertAdmin(db, adminEmail);
-  if (authError) return authError;
-
-  const isSA = adminEmail ? await isSuperAdmin(db, adminEmail) : false;
-  if (!isSA) {
-    return new Response("无权执行迁移：需要超级管理员权限", { status: 403 });
-  }
+  const authed = await requireSuperAdminFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   // ---- migrate users.avatar_url ----
   const usersWithData = await db

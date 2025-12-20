@@ -217,14 +217,6 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
   return (
     <div className="user-layout">
       <FeedbackBubble />
-      {/* 移动端遮罩层 */}
-      {isMobileMenuOpen && (
-        <div
-          className="user-layout__mobile-overlay"
-          onClick={closeMobileMenu}
-          aria-hidden="true"
-        />
-      )}
       <div className="user-layout__body">
         {/* 移动端汉堡菜单按钮 */}
         <button
@@ -239,6 +231,18 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
             <span />
           </span>
         </button>
+        {/*
+          移动端遮罩层（必须放在 .user-layout__body 内）
+          原因：.user-layout__body 有 z-index，会形成 stacking context；如果遮罩层在 body 外，
+          即使 sidebar 自己设置更高 z-index，也会被遮罩层压住，导致移动端“菜单能看到但点不到”。
+        */}
+        {isMobileMenuOpen && (
+          <div
+            className="user-layout__mobile-overlay"
+            onClick={closeMobileMenu}
+            aria-hidden="true"
+          />
+        )}
         <aside className={`user-layout__sidebar ${isMobileMenuOpen ? "user-layout__sidebar--open" : ""}`}>
           {hasUser && (
             <div className="user-layout__profile">

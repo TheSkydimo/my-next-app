@@ -164,6 +164,8 @@ export async function GET(request: Request) {
   const db = env.my_user_db as D1Database;
 
   await ensureFeedbackTable(db);
+  // GET 会联表/子查询 user_feedback_replies；确保表存在，避免新库/空库直接 500
+  await ensureFeedbackReplyTable(db);
 
   const userQuery = await db
     .prepare("SELECT id FROM users WHERE email = ?")

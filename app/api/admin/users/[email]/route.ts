@@ -1,11 +1,14 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { assertAdmin } from "../../_utils/adminAuth";
+import { requireAdminFromRequest } from "../../_utils/adminSession";
+import { convertDbAvatarUrlToPublicUrl } from "../../../_utils/r2ObjectUrls";
+import { ensureUsersAvatarUrlColumn } from "../../../_utils/usersTable";
 
 type UserRow = {
   id: number;
   username: string;
   email: string;
   is_admin: number;
+  avatar_url: string | null;
   vip_expires_at: string | null;
   created_at: string;
 };
@@ -14,9 +17,6 @@ export async function GET(
   request: Request,
   ctx: { params: Promise<{ email?: string }> }
 ) {
-  const { searchParams } = new URL(request.url);
-  const adminEmail = searchParams.get("adminEmail");
-
   const rawEmail = (await ctx.params)?.email ?? "";
   const email = rawEmail ? decodeURIComponent(rawEmail) : "";
   if (!email) {
@@ -26,12 +26,15 @@ export async function GET(
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
-  const authError = await assertAdmin(db, adminEmail);
-  if (authError) return authError;
+  const authed = await requireAdminFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
+
+  // 兼容旧库：确保 avatar_url 字段存在
+  await ensureUsersAvatarUrlColumn(db);
 
   const { results } = await db
     .prepare(
-      "SELECT id, username, email, is_admin, vip_expires_at, created_at FROM users WHERE email = ? LIMIT 1"
+      "SELECT id, username, email, is_admin, avatar_url, vip_expires_at, created_at FROM users WHERE email = ? LIMIT 1"
     )
     .bind(email)
     .all<UserRow>();
@@ -52,6 +55,7 @@ export async function GET(
       username: row.username,
       email: row.email,
       isAdmin: !!row.is_admin,
+      avatarUrl: convertDbAvatarUrlToPublicUrl(row.avatar_url),
       isVip,
       vipExpiresAt: row.vip_expires_at,
       createdAt: row.created_at,

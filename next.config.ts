@@ -6,6 +6,24 @@ import fs from "node:fs/promises";
 const nextConfig: NextConfig = {
   // Required by OpenNext adapters (Cloudflare/AWS) to locate server output under `.next/standalone`.
   output: "standalone",
+  /**
+   * Allow loading `/_next/*` assets from additional origins in dev.
+   *
+   * This prevents warnings like:
+   *   "Cross origin request detected ... In a future major version ... configure allowedDevOrigins"
+   *
+   * Note: This is dev-only behavior; production is not affected.
+   */
+  allowedDevOrigins:
+    process.env.NODE_ENV === "development"
+      ? [
+          "localhost",
+          "127.0.0.1",
+          // Allow LAN access (e.g. mobile testing). You can add your LAN IP here if needed.
+          // Example: "192.168.1.102",
+          // Example wildcard: "*.local-origin.dev",
+        ]
+      : undefined,
 
   /**
    * Workaround (Next.js 15.5.x + OpenNext bundling on Windows):

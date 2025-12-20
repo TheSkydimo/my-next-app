@@ -10,6 +10,7 @@ import { useAdmin } from "../../../contexts/AdminContext";
 type UserDetail = {
   username: string;
   email: string;
+  avatarUrl: string | null;
   isAdmin: boolean;
   isVip: boolean;
   vipExpiresAt: string | null;
@@ -110,7 +111,7 @@ export default function AdminUserDetailPage({
     const controller = new AbortController();
     let active = true;
 
-    const loadData = async (admin: string) => {
+    const loadData = async () => {
       setLoading(true);
       setError("");
       setUser(null);
@@ -118,9 +119,7 @@ export default function AdminUserDetailPage({
       try {
         // 获取用户基础信息（精确查询，避免复用列表接口造成 LIMIT/模糊匹配问题）
         const userRes = await fetch(
-          `/api/admin/users/${encodeURIComponent(userEmail)}?adminEmail=${encodeURIComponent(
-            admin
-          )}`,
+          `/api/admin/users/${encodeURIComponent(userEmail)}`,
           { signal: controller.signal }
         );
         if (!userRes.ok) {
@@ -133,7 +132,6 @@ export default function AdminUserDetailPage({
 
         // 获取该用户的订单截图（通过 /api/admin/orders 接口按邮箱过滤）
         const orderParams = new URLSearchParams({
-          adminEmail: admin,
           userEmail: userEmail,
         });
         const ordersRes = await fetch(
@@ -160,7 +158,7 @@ export default function AdminUserDetailPage({
       }
     };
 
-    loadData(adminEmail);
+    void loadData();
 
     return () => {
       active = false;
@@ -216,6 +214,53 @@ export default function AdminUserDetailPage({
             </h2>
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.9 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 10,
+              }}
+            >
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: "9999px",
+                  overflow: "hidden",
+                  border: "1px solid rgba(148, 163, 184, 0.35)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "rgba(15, 23, 42, 0.35)",
+                  color: "#e2e8f0",
+                  fontWeight: 600,
+                }}
+                title={user.username || user.email}
+              >
+                {user.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.avatarUrl}
+                    alt="avatar"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <span>
+                    {(user.username || user.email || "U")
+                      .trim()
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                  {user.username}
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{user.email}</div>
+              </div>
+            </div>
             <div>
               <strong>
                 {language === "zh-CN" ? "用户名：" : "Username: "}

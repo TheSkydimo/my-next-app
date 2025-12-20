@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
-import { assertAdmin, isSuperAdmin } from "../_utils/adminAuth";
+import { requireAdminFromRequest } from "../_utils/adminSession";
 
 type UserRow = {
   id: number;
@@ -17,7 +17,6 @@ type UserRow = {
 // 获取用户列表（仅管理员）
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const adminEmail = searchParams.get("adminEmail");
   const role = searchParams.get("role"); // admin | user | null
   const pageParam = searchParams.get("page");
   const pageSizeParam = searchParams.get("pageSize");
@@ -28,8 +27,8 @@ export async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
-  const authError = await assertAdmin(db, adminEmail);
-  if (authError) return authError;
+  const authed = await requireAdminFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   const q = searchParams.get("q");
 
@@ -99,7 +98,6 @@ export async function GET(request: Request) {
 }
 
 type AdminActionBody = {
-  adminEmail?: string;
   action?: "remove" | "set-admin" | "unset-admin" | "set-vip";
   userEmail?: string;
   // 会员到期时间字符串（可为空），例如：2025-12-31T23:59:59.999Z
@@ -108,14 +106,15 @@ type AdminActionBody = {
 
 // 管理员操作用户：删除用户 / 设置为管理员
 export async function POST(request: Request) {
-  const { adminEmail, action, userEmail, vipExpiresAt } =
+  const { action, userEmail, vipExpiresAt } =
     (await request.json()) as AdminActionBody;
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
-  const authError = await assertAdmin(db, adminEmail ?? null);
-  if (authError) return authError;
+  const authed = await requireAdminFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
+  const adminEmail = authed.admin.email;
 
   if (!action || !userEmail) {
     return new Response("缺少必要参数", { status: 400 });
@@ -140,7 +139,7 @@ export async function POST(request: Request) {
   }
 
   const isCurrentSuperAdmin =
-    adminEmail != null ? await isSuperAdmin(db, adminEmail) : false;
+    authed.admin.isSuperAdmin;
 
   // 如果是删除操作，且用户当前为有效会员，则不允许删除
   if (action === "remove" && target.vip_expires_at) {
