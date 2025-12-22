@@ -6,6 +6,7 @@ import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 
 type AdminShareItem = {
   id: string;
@@ -149,8 +150,8 @@ export default function AdminScriptSharesPage() {
   const [filterLang, setFilterLang] = useState<"all" | "zh-CN" | "en-US">("all");
   const [items, setItems] = useState<AdminShareItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [okMsg, setOkMsg] = useState("");
+  const [error, setError] = useAutoDismissMessage(2000);
+  const [okMsg, setOkMsg] = useAutoDismissMessage(2000);
 
   const [effectName, setEffectName] = useState("");
   const [publicUsername, setPublicUsername] = useState("");

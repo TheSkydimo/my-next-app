@@ -131,7 +131,7 @@ const zhCN: UserMessages = {
   layout: {
     navHome: "首页",
     navProfile: "信息管理",
-    navDevices: "设备信息管理",
+    navDevices: "订单管理",
     navFeedback: "意见反馈",
     logout: "退出",
     searchPlaceholder: "搜索功能 / Ctrl + K",
@@ -140,7 +140,7 @@ const zhCN: UserMessages = {
     brand: "Skydimo",
   },
   devices: {
-    title: "设备信息管理",
+    title: "订单管理",
     subtitle: "管理并查看与你账号绑定的订单信息。",
     addSectionTitle: "添加订单",
     addSectionDesc:
@@ -256,7 +256,7 @@ const enUS: UserMessages = {
     brand: "Skydimo",
   },
   devices: {
-    title: "Device Management",
+    title: "Order Management",
     subtitle: "Manage and view orders (treated as devices) that are bound to your account.",
     addSectionTitle: "Add Order",
     addSectionDesc:

@@ -5,6 +5,7 @@ import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 
 type Profile = {
   username: string;
@@ -20,8 +21,8 @@ export default function AdminProfilePage() {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [okMsg, setOkMsg] = useState("");
+  const [error, setError] = useAutoDismissMessage(2000);
+  const [okMsg, setOkMsg] = useAutoDismissMessage(2000);
   const [editing, setEditing] = useState(false);
 
   const [usernameInput, setUsernameInput] = useState("");

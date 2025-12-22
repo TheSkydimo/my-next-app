@@ -8,6 +8,7 @@ type ListItem = {
   publicUsername: string;
   lang: AppLanguage;
   isPublic: boolean;
+  coverUrl: string;
   originalFilename: string;
   sizeBytes: number;
   createdAt: string;
@@ -65,6 +66,7 @@ export async function GET(request: Request) {
     publicUsername: r.public_username,
     lang: normalizeAppLanguage(r.lang),
     isPublic: !!r.is_public,
+    coverUrl: `/api/script-shares/${encodeURIComponent(r.id)}/cover`,
     originalFilename: r.original_filename,
     sizeBytes: r.size_bytes,
     createdAt: r.created_at,

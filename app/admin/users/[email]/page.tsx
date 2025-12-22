@@ -6,6 +6,7 @@ import type { AppLanguage } from "../../../client-prefs";
 import { getInitialLanguage } from "../../../client-prefs";
 import { getAdminMessages } from "../../../admin-i18n";
 import { useAdmin } from "../../../contexts/AdminContext";
+import { useAutoDismissMessage } from "../../../hooks/useAutoDismissMessage";
 
 type UserDetail = {
   username: string;
@@ -48,7 +49,7 @@ export default function AdminUserDetailPage({
   const [user, setUser] = useState<UserDetail | null>(null);
   const [orders, setOrders] = useState<AdminOrderItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useAutoDismissMessage(2000);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
   const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});

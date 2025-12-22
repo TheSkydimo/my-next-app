@@ -6,6 +6,7 @@ import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 
 type AdminOrderItem = {
   id: number;
@@ -27,7 +28,7 @@ export default function AdminOrdersPage() {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [orders, setOrders] = useState<AdminOrderItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useAutoDismissMessage(2000);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const messages = getAdminMessages(language);

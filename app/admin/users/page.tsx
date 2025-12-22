@@ -6,6 +6,7 @@ import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 
 type UserItem = {
   id: number;
@@ -33,7 +34,7 @@ export default function AdminUsersPage() {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useAutoDismissMessage(2000);
   const [keyword, setKeyword] = useState("");
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);

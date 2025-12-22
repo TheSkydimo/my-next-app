@@ -6,6 +6,9 @@ export type ScriptShareRow = {
   lang: string;
   is_public: number;
   r2_key: string;
+  cover_r2_key: string | null;
+  cover_mime_type: string | null;
+  cover_updated_at: string | null;
   original_filename: string;
   mime_type: string;
   size_bytes: number;
@@ -25,6 +28,9 @@ export async function ensureScriptSharesTable(db: D1Database) {
         lang TEXT NOT NULL DEFAULT 'zh-CN',
         is_public INTEGER NOT NULL DEFAULT 1,
         r2_key TEXT NOT NULL,
+        cover_r2_key TEXT,
+        cover_mime_type TEXT,
+        cover_updated_at TIMESTAMP,
         original_filename TEXT NOT NULL,
         mime_type TEXT NOT NULL,
         size_bytes INTEGER NOT NULL,
@@ -58,6 +64,27 @@ export async function ensureScriptSharesTable(db: D1Database) {
     if (!msg.includes("duplicate column name: lang")) {
       throw e;
     }
+  }
+
+  try {
+    await db.prepare("ALTER TABLE script_shares ADD COLUMN cover_r2_key TEXT").run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: cover_r2_key")) throw e;
+  }
+
+  try {
+    await db.prepare("ALTER TABLE script_shares ADD COLUMN cover_mime_type TEXT").run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: cover_mime_type")) throw e;
+  }
+
+  try {
+    await db.prepare("ALTER TABLE script_shares ADD COLUMN cover_updated_at TIMESTAMP").run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: cover_updated_at")) throw e;
   }
 
   // Indexes (id is already indexed as PRIMARY KEY)

@@ -64,6 +64,10 @@ CREATE TABLE IF NOT EXISTS script_shares (
   -- 是否公开：1=公开（所有用户可查看/下载），0=私密（仅作者/管理员可查看/下载）
   is_public INTEGER NOT NULL DEFAULT 1,
   r2_key TEXT NOT NULL,
+  -- 封面（由脚本内容生成，存放于 R2；为空则表示尚未生成/需要重新生成）
+  cover_r2_key TEXT,
+  cover_mime_type TEXT,
+  cover_updated_at TIMESTAMP,
   original_filename TEXT NOT NULL,
   mime_type TEXT NOT NULL,
   size_bytes INTEGER NOT NULL,

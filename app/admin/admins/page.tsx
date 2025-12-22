@@ -6,6 +6,7 @@ import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 
 type AdminItem = {
   id: number;
@@ -25,7 +26,7 @@ export default function AdminAdminsPage() {
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useAutoDismissMessage(2000);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

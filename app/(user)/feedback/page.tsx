@@ -5,6 +5,7 @@ import type { AppLanguage, AppTheme } from "../../client-prefs";
 import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
+import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 
 type FeedbackItem = {
   id: number;
@@ -36,8 +37,8 @@ export default function UserFeedbackPage() {
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [okMsg, setOkMsg] = useState("");
+  const [error, setError] = useAutoDismissMessage(2000);
+  const [okMsg, setOkMsg] = useAutoDismissMessage(2000);
   const [history, setHistory] = useState<FeedbackItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [viewTab, setViewTab] = useState<"new" | "history">("new");
@@ -52,7 +53,7 @@ export default function UserFeedbackPage() {
     null
   );
   const [loadingActiveMessages, setLoadingActiveMessages] = useState(false);
-  const [activeMessageError, setActiveMessageError] = useState("");
+  const [activeMessageError, setActiveMessageError] = useAutoDismissMessage(2000);
   // 历史工单的完整对话记录（按工单 ID 存储）
   const [historyMessagesById, setHistoryMessagesById] = useState<
     Record<number, TicketMessage[]>

@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureScriptSharesTable } from "../../_utils/scriptSharesTable";
 import { buildScriptShareR2Key, containsCjkCharacters, isAllowedScriptFilename, sanitizeDisplayText } from "../../_utils/scriptShares";
+import { buildScriptShareCoverR2Key, decodeScriptTextPreview, generateScriptShareCoverSvg } from "../../_utils/scriptShareCover";
 import { requireUserFromRequest } from "../_utils/userSession";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
 
@@ -10,6 +11,7 @@ type ScriptShareListItem = {
   publicUsername: string;
   lang: AppLanguage;
   isPublic: boolean;
+  coverUrl: string;
   originalFilename: string;
   sizeBytes: number;
   createdAt: string;
@@ -70,6 +72,7 @@ export async function GET(request: Request) {
     publicUsername: r.public_username,
     lang: normalizeAppLanguage(r.lang),
     isPublic: !!r.is_public,
+    coverUrl: `/api/script-shares/${encodeURIComponent(r.id)}/cover`,
     originalFilename: r.original_filename,
     sizeBytes: r.size_bytes,
     createdAt: r.created_at,
@@ -142,11 +145,22 @@ export async function POST(request: Request) {
         },
       });
 
+      const scriptText = decodeScriptTextPreview(buffer);
+      const { svg, mimeType } = generateScriptShareCoverSvg({
+        id,
+        effectName,
+        publicUsername,
+        lang,
+        scriptText,
+      });
+      const coverKey = buildScriptShareCoverR2Key(id);
+      await r2.put(coverKey, svg, { httpMetadata: { contentType: mimeType } });
+
       await db
         .prepare(
           `INSERT INTO script_shares
-           (id, owner_user_id, effect_name, public_username, lang, is_public, r2_key, original_filename, mime_type, size_bytes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           (id, owner_user_id, effect_name, public_username, lang, is_public, r2_key, cover_r2_key, cover_mime_type, cover_updated_at, original_filename, mime_type, size_bytes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)`
         )
         .bind(
           id,
@@ -156,6 +170,8 @@ export async function POST(request: Request) {
           lang,
           isPublic ? 1 : 0,
           r2Key,
+          coverKey,
+          mimeType,
           file.name,
           file.type || "application/octet-stream",
           file.size
@@ -176,6 +192,7 @@ export async function POST(request: Request) {
       if (r2Key) {
         await r2.delete(r2Key).catch(() => {});
       }
+      await r2.delete(buildScriptShareCoverR2Key(id)).catch(() => {});
       return new Response("上传失败，请稍后重试", { status: 500 });
     }
   }
@@ -189,6 +206,7 @@ export async function POST(request: Request) {
     publicUsername,
     lang,
     isPublic,
+    coverUrl: `/api/script-shares/${encodeURIComponent(id)}/cover`,
     originalFilename: file.name,
     sizeBytes: file.size,
     createdAt: nowIso,

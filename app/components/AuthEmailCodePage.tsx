@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { TurnstileWidget } from "./TurnstileWidget";
+import { useAutoDismissMessage } from "../hooks/useAutoDismissMessage";
 import {
   applyLanguage,
   applyTheme,
@@ -179,7 +180,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
   const [turnstileRequired, setTurnstileRequired] = useState(true);
   const [lastSentToken, setLastSentToken] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useAutoDismissMessage(2000);
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [primary, setPrimary] = useState<PrimaryColorKey>("green");
   const [lang, setLang] = useState<Lang>("zh-CN");
