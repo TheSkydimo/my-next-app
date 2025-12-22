@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureScriptSharesTable } from "../../_utils/scriptSharesTable";
 import {
   buildScriptShareR2Key,
+  containsCjkCharacters,
   isAllowedScriptFilename,
   sanitizeDisplayText,
 } from "../../_utils/scriptShares";
@@ -157,6 +158,9 @@ export async function POST(request: Request) {
 
   if (!effectName) return new Response("脚本效果名字不能为空", { status: 400 });
   if (!publicUsername) return new Response("公开展示的昵称不能为空", { status: 400 });
+  if (lang === "en-US" && containsCjkCharacters(effectName)) {
+    return new Response("英文区上传：脚本名字不能包含中文字符", { status: 400 });
+  }
   if (!(file instanceof File)) return new Response("File is required", { status: 400 });
   if (!isAllowedScriptFilename(file.name)) {
     return new Response("只允许上传 .skmode 文件", { status: 400 });

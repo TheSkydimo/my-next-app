@@ -192,7 +192,6 @@ export default function ScriptSharesPage() {
       const params = new URLSearchParams({
         page: "1",
         pageSize: "50",
-        lang: language,
       });
       const res = await fetch(`/api/user/script-shares?${params.toString()}`, {
         credentials: "include",
@@ -229,7 +228,7 @@ export default function ScriptSharesPage() {
   useEffect(() => {
     if (!hasUser) return;
     void loadMine();
-  }, [hasUser, language]);
+  }, [hasUser]);
 
   useEffect(() => {
     void loadAll();

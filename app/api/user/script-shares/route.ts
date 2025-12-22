@@ -33,14 +33,13 @@ export async function GET(request: Request) {
   await ensureScriptSharesTable(db);
 
   const { searchParams } = new URL(request.url);
-  const lang = normalizeAppLanguage(searchParams.get("lang"));
   const page = clampInt(searchParams.get("page"), 1, 1, 10_000);
   const pageSize = clampInt(searchParams.get("pageSize"), 20, 1, 50);
   const offset = (page - 1) * pageSize;
 
   const countRes = await db
-    .prepare("SELECT COUNT(*) AS c FROM script_shares WHERE owner_user_id = ? AND lang = ?")
-    .bind(authed.user.id, lang)
+    .prepare("SELECT COUNT(*) AS c FROM script_shares WHERE owner_user_id = ?")
+    .bind(authed.user.id)
     .all<{ c: number }>();
   const total = countRes.results?.[0]?.c ?? 0;
 
@@ -48,11 +47,11 @@ export async function GET(request: Request) {
     .prepare(
       `SELECT id, effect_name, public_username, lang, is_public, original_filename, size_bytes, created_at, updated_at
        FROM script_shares
-       WHERE owner_user_id = ? AND lang = ?
+       WHERE owner_user_id = ?
        ORDER BY created_at DESC
        LIMIT ? OFFSET ?`
     )
-    .bind(authed.user.id, lang, pageSize, offset)
+    .bind(authed.user.id, pageSize, offset)
     .all<{
       id: string;
       effect_name: string;
