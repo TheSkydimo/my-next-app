@@ -1545,6 +1545,172 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	justify-content: center;
 }
 
+/* 用户通知小铃铛 */
+.user-notif {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+}
+
+.user-notif__btn {
+	position: relative;
+	padding-right: 14px;
+}
+
+.user-notif__icon {
+	display: inline-block;
+	line-height: 1;
+}
+
+.user-notif__badge {
+	position: absolute;
+	top: -6px;
+	right: -6px;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: 9999px;
+	background: #ef4444;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.user-notif__panel {
+	position: absolute;
+	right: 0;
+	top: calc(100% + 10px);
+	width: min(420px, 92vw);
+	max-height: 60vh;
+	overflow: hidden;
+	border-radius: 14px;
+	border: 1px solid rgba(148, 163, 184, 0.2);
+	background: rgba(2, 6, 23, 0.98);
+	box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+	z-index: 60;
+}
+
+.user-notif__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 12px;
+	border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.user-notif__title {
+	color: #e5e7eb;
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.user-notif__header-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.user-notif__link {
+	background: transparent;
+	border: none;
+	color: #93c5fd;
+	cursor: pointer;
+	font-size: 12px;
+	padding: 4px 6px;
+}
+
+.user-notif__link:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.user-notif__error {
+	padding: 10px 12px;
+	color: #fca5a5;
+	font-size: 12px;
+}
+
+.user-notif__empty {
+	padding: 16px 12px;
+	color: #9ca3af;
+	font-size: 12px;
+}
+
+.user-notif__list {
+	max-height: calc(60vh - 44px);
+	overflow: auto;
+}
+
+.user-notif__item {
+	width: 100%;
+	text-align: left;
+	display: block;
+	padding: 10px 12px;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.user-notif__item:hover {
+	background: rgba(15, 23, 42, 0.75);
+}
+
+.user-notif__item--read {
+	opacity: 0.72;
+}
+
+.user-notif__item-top {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.user-notif__item-title {
+	color: #e5e7eb;
+	font-size: 12.5px;
+	font-weight: 700;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.user-notif__dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 9999px;
+	background: #22c55e;
+	box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.user-notif__item-time {
+	color: #94a3b8;
+	font-size: 11px;
+	white-space: nowrap;
+}
+
+.user-notif__item-body {
+	margin-top: 6px;
+	color: #cbd5e1;
+	font-size: 12px;
+	line-height: 1.35;
+}
+
+.user-notif__item--warn .user-notif__dot {
+	background: #f59e0b;
+	box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.user-notif__item--critical .user-notif__dot {
+	background: #ef4444;
+	box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
 /* 顶栏左侧项目 Logo / 名称区域（User / Admin 共用） */
 .topbar-brand {
 	display: inline-flex;

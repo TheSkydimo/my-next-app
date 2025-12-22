@@ -9,6 +9,7 @@ import {
 import { requireAdminFromRequest } from "../../_utils/adminSession";
 import { normalizeAppLanguage } from "../../../_utils/appLanguage";
 import { writeAdminAuditLog } from "../../../_utils/adminAuditLogs";
+import { createUserNotification } from "../../../_utils/userNotifications";
 
 type DbRow = {
   id: string;
@@ -62,6 +63,18 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
 
   await db.prepare("DELETE FROM script_shares WHERE id = ?").bind(id).run();
   if (row.r2_key) await r2.delete(row.r2_key).catch(() => {});
+
+  // 必须通知：脚本物理删除（管理端删除）
+  await createUserNotification({
+    db,
+    userId: row.owner_user_id,
+    type: "script_physical_delete",
+    level: "critical",
+    title: "你的脚本已被删除",
+    body: `脚本《${row.effect_name}》（ID: ${row.id}）已被管理员删除。`,
+    linkUrl: "/script-shares#mine",
+    meta: { scriptShareId: row.id },
+  }).catch(() => {});
 
   return Response.json({ ok: true });
 }
@@ -178,6 +191,20 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     )
     .bind(nextEffect, nextPublic, nextIsPublic, id)
     .run();
+
+  // 建议通知：公有脚本被设为私密/下架
+  if (row.is_public === 1 && nextIsPublic === 0) {
+    await createUserNotification({
+      db,
+      userId: row.owner_user_id,
+      type: "script_unlisted",
+      level: "warn",
+      title: "你的脚本已被设为私密",
+      body: `脚本《${row.effect_name}》（ID: ${row.id}）已被管理员设为私密，仅你可访问。`,
+      linkUrl: "/script-shares#mine",
+      meta: { scriptShareId: row.id, previousIsPublic: 1, nextIsPublic: 0 },
+    }).catch(() => {});
+  }
 
   return Response.json({
     ok: true,

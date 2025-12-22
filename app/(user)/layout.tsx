@@ -14,6 +14,7 @@ import {
 } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import FeedbackBubble from "../components/FeedbackBubble";
+import UserNotificationBell from "../components/UserNotificationBell";
 import { UserProvider, useOptionalUser } from "../contexts/UserContext";
 
 /**
@@ -578,6 +579,7 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
 
                 <div className="user-topbar__actions">
                   {/* 全局设置：语言 / 样式 / 退出 */}
+                  <UserNotificationBell />
                   <button
                     type="button"
                     className="user-topbar__icon-btn user-topbar__icon-btn--translate"
