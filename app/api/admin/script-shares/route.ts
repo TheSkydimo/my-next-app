@@ -9,6 +9,7 @@ import {
 import { buildScriptShareCoverR2Key, decodeScriptTextPreview, generateScriptShareCoverSvg } from "../../_utils/scriptShareCover";
 import { requireAdminFromRequest } from "../_utils/adminSession";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
+import { getOfficialPublicNickname } from "../../../_utils/officialPublicNickname";
 
 function clampInt(
   value: string | null,
@@ -151,10 +152,9 @@ export async function POST(request: Request) {
     typeof effectNameRaw === "string" ? effectNameRaw : "",
     80
   );
+  const defaultPublicUsername = getOfficialPublicNickname(lang);
   const publicUsername = sanitizeDisplayText(
-    typeof publicUsernameRaw === "string"
-      ? publicUsernameRaw
-      : authed.admin.username,
+    typeof publicUsernameRaw === "string" ? publicUsernameRaw : defaultPublicUsername,
     40
   );
 

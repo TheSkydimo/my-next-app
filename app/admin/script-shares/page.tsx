@@ -7,6 +7,7 @@ import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
+import { getOfficialPublicNickname } from "../../_utils/officialPublicNickname";
 
 type AdminShareItem = {
   id: string;
@@ -159,9 +160,11 @@ export default function AdminScriptSharesPage() {
   const [okMsg, setOkMsg] = useAutoDismissMessage(2000);
 
   const [effectName, setEffectName] = useState("");
-  const [publicUsername, setPublicUsername] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadLang, setUploadLang] = useState<"zh-CN" | "en-US">("zh-CN");
+  const [publicUsername, setPublicUsername] = useState(() =>
+    getOfficialPublicNickname("zh-CN")
+  );
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -176,6 +179,20 @@ export default function AdminScriptSharesPage() {
     window.addEventListener("app-language-changed", handler as EventListener);
     return () => window.removeEventListener("app-language-changed", handler as EventListener);
   }, []);
+
+  // 公开昵称：按上传语言区自动给默认值（中文区=官方，英文区=official）。
+  // 用户若手动输入了其它值，则不覆盖。
+  useEffect(() => {
+    const nextDefault = getOfficialPublicNickname(uploadLang);
+    setPublicUsername((prev) => {
+      const trimmed = (prev ?? "").trim();
+      if (!trimmed) return nextDefault;
+      if (trimmed === "官方" || trimmed.toLowerCase() === "official") {
+        return nextDefault;
+      }
+      return prev;
+    });
+  }, [uploadLang]);
 
   const canUpload = useMemo(() => {
     return !!effectName.trim() && !!publicUsername.trim() && isSkmodeFile(uploadFile);
@@ -376,7 +393,7 @@ export default function AdminScriptSharesPage() {
             <select
               value={uploadLang}
               onChange={(e) => setUploadLang(e.target.value as "zh-CN" | "en-US")}
-              style={{ padding: "8px 10px", borderRadius: 6 }}
+              className="app-select"
               aria-label="upload language"
               title={language === "zh-CN" ? "选择上传到哪个语言区" : "Choose target language"}
             >
@@ -446,7 +463,7 @@ export default function AdminScriptSharesPage() {
         <select
           value={filterLang}
           onChange={(e) => setFilterLang(e.target.value as "all" | "zh-CN" | "en-US")}
-          style={{ padding: "8px 10px", borderRadius: 6 }}
+          className="app-select"
           aria-label="language filter"
         >
           <option value="all">{language === "zh-CN" ? "全部语言" : "All languages"}</option>

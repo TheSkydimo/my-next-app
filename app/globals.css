@@ -206,6 +206,41 @@ input {
 	font-size: 14px;
 }
 
+/* 统一 select 样式：解决深色主题下原生下拉背景导致内容不可读（尤其是 Windows） */
+.app-select {
+	padding: 8px 10px;
+	border-radius: 6px;
+	border: 1px solid #334155;
+	background: #000000;
+	color: #e5e7eb;
+	font-size: 14px;
+}
+
+.app-select:focus {
+	outline: none;
+	border-color: rgba(191, 219, 254, 0.95);
+	box-shadow:
+		0 0 0 1px rgba(191, 219, 254, 0.85),
+		0 0 0 6px rgba(59, 130, 246, 0.35);
+}
+
+/* dropdown 选项：避免浅色 option 叠在深色背景上发白看不清 */
+.app-select option {
+	background: #000000;
+	color: #e5e7eb;
+}
+
+:root[data-theme="light"] .app-select {
+	border-color: #d1d5db;
+	background: #ffffff;
+	color: #111827;
+}
+
+:root[data-theme="light"] .app-select option {
+	background: #ffffff;
+	color: #111827;
+}
+
 /* ========== Script shares (cards) ========== */
 .script-share-grid {
 	margin-top: 10px;
