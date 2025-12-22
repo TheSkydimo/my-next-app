@@ -175,6 +175,10 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         href: "/admin/profile",
         keywords: ["信息", "资料", "profile", "account"],
       },
+      {
+        href: "/admin/script-shares",
+        keywords: ["脚本", "分享", "script", "share", "shares"],
+      },
     ];
 
     const matched = routes.find((r) =>
@@ -584,6 +588,16 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
               }`}
             >
               {messages.layout.navUsers}
+            </Link>
+            <Link
+              href="/admin/script-shares"
+              className={`admin-layout__nav-link ${
+                isActive("/admin/script-shares")
+                  ? "admin-layout__nav-link--active"
+                  : ""
+              }`}
+            >
+              {language === "zh-CN" ? "脚本分享" : "Script shares"}
             </Link>
             </nav>
         </aside>

@@ -3,6 +3,7 @@ export type ScriptShareRow = {
   owner_user_id: number;
   effect_name: string;
   public_username: string;
+  lang: string;
   is_public: number;
   r2_key: string;
   original_filename: string;
@@ -21,6 +22,7 @@ export async function ensureScriptSharesTable(db: D1Database) {
         owner_user_id INTEGER NOT NULL,
         effect_name TEXT NOT NULL,
         public_username TEXT NOT NULL,
+        lang TEXT NOT NULL DEFAULT 'zh-CN',
         is_public INTEGER NOT NULL DEFAULT 1,
         r2_key TEXT NOT NULL,
         original_filename TEXT NOT NULL,
@@ -47,6 +49,17 @@ export async function ensureScriptSharesTable(db: D1Database) {
     }
   }
 
+  try {
+    await db
+      .prepare("ALTER TABLE script_shares ADD COLUMN lang TEXT NOT NULL DEFAULT 'zh-CN'")
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: lang")) {
+      throw e;
+    }
+  }
+
   // Indexes (id is already indexed as PRIMARY KEY)
   await db
     .prepare(
@@ -56,6 +69,16 @@ export async function ensureScriptSharesTable(db: D1Database) {
   await db
     .prepare(
       "CREATE INDEX IF NOT EXISTS idx_script_shares_created ON script_shares (created_at DESC)"
+    )
+    .run();
+  await db
+    .prepare(
+      "CREATE INDEX IF NOT EXISTS idx_script_shares_lang_created ON script_shares (lang, created_at DESC)"
+    )
+    .run();
+  await db
+    .prepare(
+      "CREATE INDEX IF NOT EXISTS idx_script_shares_owner_lang_created ON script_shares (owner_user_id, lang, created_at DESC)"
     )
     .run();
 }

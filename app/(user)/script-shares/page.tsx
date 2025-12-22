@@ -36,6 +36,10 @@ function isSkmodeFile(file: File | null): boolean {
   return file.name.toLowerCase().endsWith(".skmode");
 }
 
+function containsCjkCharacters(input: string): boolean {
+  return /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/.test(input);
+}
+
 function basenameWithoutExt(filename: string, extLower: string): string {
   const name = String(filename ?? "");
   const lower = name.toLowerCase();
@@ -185,7 +189,12 @@ export default function ScriptSharesPage() {
   const loadMine = async () => {
     setLoadingMine(true);
     try {
-      const res = await fetch("/api/user/script-shares?page=1&pageSize=50", {
+      const params = new URLSearchParams({
+        page: "1",
+        pageSize: "50",
+        lang: language,
+      });
+      const res = await fetch(`/api/user/script-shares?${params.toString()}`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -201,7 +210,12 @@ export default function ScriptSharesPage() {
   const loadAll = async () => {
     setLoadingAll(true);
     try {
-      const res = await fetch("/api/script-shares?page=1&pageSize=50");
+      const params = new URLSearchParams({
+        page: "1",
+        pageSize: "50",
+        lang: language,
+      });
+      const res = await fetch(`/api/script-shares?${params.toString()}`);
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as { items?: ShareItem[] };
       setAll(data.items ?? []);
@@ -215,11 +229,11 @@ export default function ScriptSharesPage() {
   useEffect(() => {
     if (!hasUser) return;
     void loadMine();
-  }, [hasUser]);
+  }, [hasUser, language]);
 
   useEffect(() => {
     void loadAll();
-  }, []);
+  }, [language]);
 
   // 默认昵称：使用当前登录用户的用户名（可编辑覆盖）
   useEffect(() => {
@@ -245,6 +259,10 @@ export default function ScriptSharesPage() {
       setError(language === "zh-CN" ? "请填写公开展示昵称" : "Please enter public nickname.");
       return;
     }
+    if (language === "en-US" && containsCjkCharacters(effectName)) {
+      setError("英文区上传：脚本名字不能包含中文字符");
+      return;
+    }
     if (!isSkmodeFile(uploadFile)) {
       setError(language === "zh-CN" ? "只允许上传 .skmode 文件" : "Only .skmode files are allowed");
       return;
@@ -255,6 +273,7 @@ export default function ScriptSharesPage() {
       const form = new FormData();
       form.append("effectName", effectName.trim());
       form.append("publicUsername", publicUsername.trim());
+      form.append("lang", language);
       form.append("isPublic", isPublic ? "1" : "0");
       form.append("file", uploadFile);
 

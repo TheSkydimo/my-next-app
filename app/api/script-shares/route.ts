@@ -1,10 +1,12 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureScriptSharesTable } from "../_utils/scriptSharesTable";
+import { normalizeAppLanguage, type AppLanguage } from "../_utils/appLanguage";
 
 type ListItem = {
   id: string;
   effectName: string;
   publicUsername: string;
+  lang: AppLanguage;
   isPublic: boolean;
   originalFilename: string;
   sizeBytes: number;
@@ -25,28 +27,31 @@ export async function GET(request: Request) {
   await ensureScriptSharesTable(db);
 
   const { searchParams } = new URL(request.url);
+  const lang = normalizeAppLanguage(searchParams.get("lang"));
   const page = clampInt(searchParams.get("page"), 1, 1, 10_000);
   const pageSize = clampInt(searchParams.get("pageSize"), 20, 1, 50);
   const offset = (page - 1) * pageSize;
 
   const countRes = await db
-    .prepare("SELECT COUNT(*) AS c FROM script_shares WHERE is_public = 1")
+    .prepare("SELECT COUNT(*) AS c FROM script_shares WHERE is_public = 1 AND lang = ?")
+    .bind(lang)
     .all<{ c: number }>();
   const total = countRes.results?.[0]?.c ?? 0;
 
   const { results } = await db
     .prepare(
-      `SELECT id, effect_name, public_username, is_public, original_filename, size_bytes, created_at, updated_at
+      `SELECT id, effect_name, public_username, lang, is_public, original_filename, size_bytes, created_at, updated_at
        FROM script_shares
-       WHERE is_public = 1
+       WHERE is_public = 1 AND lang = ?
        ORDER BY created_at DESC
        LIMIT ? OFFSET ?`
     )
-    .bind(pageSize, offset)
+    .bind(lang, pageSize, offset)
     .all<{
       id: string;
       effect_name: string;
       public_username: string;
+      lang: AppLanguage;
       is_public: number;
       original_filename: string;
       size_bytes: number;
@@ -58,6 +63,7 @@ export async function GET(request: Request) {
     id: r.id,
     effectName: r.effect_name,
     publicUsername: r.public_username,
+    lang: normalizeAppLanguage(r.lang),
     isPublic: !!r.is_public,
     originalFilename: r.original_filename,
     sizeBytes: r.size_bytes,

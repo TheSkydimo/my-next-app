@@ -1,6 +1,11 @@
 export const SCRIPT_SHARE_FILE_EXT = ".skmode";
 export const SCRIPT_SHARE_R2_PREFIX = "script-shares/";
 
+export function containsCjkCharacters(input: string): boolean {
+  // Basic CJK ranges: CJK Unified Ideographs + Extension A + Compatibility Ideographs
+  return /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/.test(input);
+}
+
 export function isAllowedScriptFilename(name: string): boolean {
   const n = (name || "").trim().toLowerCase();
   return n.endsWith(SCRIPT_SHARE_FILE_EXT);

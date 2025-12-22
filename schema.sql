@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS script_shares (
   owner_user_id INTEGER NOT NULL,
   effect_name TEXT NOT NULL,
   public_username TEXT NOT NULL,
+  -- 语言环境：zh-CN / en-US。不同语言环境下只展示对应脚本。
+  lang TEXT NOT NULL DEFAULT 'zh-CN',
   -- 是否公开：1=公开（所有用户可查看/下载），0=私密（仅作者/管理员可查看/下载）
   is_public INTEGER NOT NULL DEFAULT 1,
   r2_key TEXT NOT NULL,
@@ -72,3 +74,5 @@ CREATE TABLE IF NOT EXISTS script_shares (
 
 CREATE INDEX IF NOT EXISTS idx_script_shares_owner_created ON script_shares (owner_user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_script_shares_created ON script_shares (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_script_shares_lang_created ON script_shares (lang, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_script_shares_owner_lang_created ON script_shares (owner_user_id, lang, created_at DESC);
