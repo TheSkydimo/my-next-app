@@ -2,6 +2,8 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureScriptSharesTable } from "../../../_utils/scriptSharesTable";
 import { SCRIPT_SHARE_R2_PREFIX, safeDownloadFilename } from "../../../_utils/scriptShares";
 import { requireUserFromRequest } from "../../../user/_utils/userSession";
+import { requireAdminFromRequest } from "../../../admin/_utils/adminSession";
+import { writeAdminAuditLog } from "../../../_utils/adminAuditLogs";
 
 type DbRow = {
   id: string;
@@ -34,12 +36,31 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     return new Response("Invalid key", { status: 400 });
   }
 
-  // Private scripts: only owner/admin can download.
+  // Private scripts: only owner (user) or super admin (with audit) can download.
   if (!row.is_public) {
-    const authed = await requireUserFromRequest({ request, env, db });
-    if (authed instanceof Response) return authed;
-    if (authed.user.id !== row.owner_user_id && !authed.user.isAdmin) {
-      return new Response("Forbidden", { status: 403 });
+    const authedUser = await requireUserFromRequest({ request, env, db });
+    if (!(authedUser instanceof Response) && authedUser.user.id === row.owner_user_id) {
+      // owner ok
+    } else {
+      const authedAdmin = await requireAdminFromRequest({ request, env, db });
+      if (authedAdmin instanceof Response) {
+        // If user auth failed, keep the original response; otherwise forbid.
+        return authedUser instanceof Response ? authedUser : new Response("Forbidden", { status: 403 });
+      }
+      if (!authedAdmin.admin.isSuperAdmin) {
+        return new Response("Forbidden", { status: 403 });
+      }
+
+      await writeAdminAuditLog({
+        db,
+        request,
+        actor: { id: authedAdmin.admin.id, role: authedAdmin.admin.role },
+        action: "view_private_script_download",
+        targetType: "script_share",
+        targetId: row.id,
+        targetOwnerUserId: row.owner_user_id,
+        meta: { updatedAt: row.updated_at },
+      });
     }
   }
 
@@ -49,7 +70,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   const headers = new Headers();
   headers.set("Content-Type", "application/octet-stream");
   headers.set("ETag", obj.httpEtag);
-  headers.set("Cache-Control", "public, max-age=60");
+  headers.set("Cache-Control", row.is_public ? "public, max-age=60" : "private, max-age=60");
   headers.set("Content-Disposition", `attachment; filename="${safeDownloadFilename(row.effect_name)}"`);
 
   return new Response(obj.body, { headers });

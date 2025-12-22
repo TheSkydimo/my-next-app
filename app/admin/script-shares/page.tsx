@@ -53,6 +53,7 @@ function ShareCard({
   item,
   canReupload,
   language,
+  auditReason,
   onDelete,
   onReupload,
   onTogglePublic,
@@ -60,11 +61,14 @@ function ShareCard({
   item: AdminShareItem;
   canReupload: boolean;
   language: AppLanguage;
+  auditReason?: string;
   onDelete?: (id: string) => void;
   onReupload?: (id: string, file: File) => void;
   onTogglePublic?: (id: string, next: boolean) => void;
 }) {
-  const downloadUrl = `/api/script-shares/${encodeURIComponent(item.id)}/download`;
+  const reason = (auditReason ?? "").trim();
+  const reasonQuery = reason ? `?reason=${encodeURIComponent(reason)}` : "";
+  const downloadUrl = `/api/script-shares/${encodeURIComponent(item.id)}/download${reasonQuery}`;
   return (
     <div className="script-share-card">
       <div className="script-share-card__top">
@@ -148,12 +152,15 @@ export default function AdminScriptSharesPage() {
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
   const adminId = adminContext.profile?.id ?? null;
+  const isSuperAdmin = !!adminContext.profile?.isSuperAdmin;
 
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const messages = getAdminMessages(language);
 
   const [q, setQ] = useState("");
   const [filterLang, setFilterLang] = useState<"all" | "zh-CN" | "en-US">("all");
+  const [includePrivate, setIncludePrivate] = useState(false);
+  const [auditReason, setAuditReason] = useState("");
   const [items, setItems] = useState<AdminShareItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useAutoDismissMessage(2000);
@@ -207,6 +214,11 @@ export default function AdminScriptSharesPage() {
       const kw = (keyword ?? q).trim();
       if (kw) params.set("q", kw);
       params.set("lang", filterLang);
+      if (isSuperAdmin && includePrivate) {
+        params.set("includePrivate", "1");
+        const reason = auditReason.trim();
+        if (reason) params.set("reason", reason);
+      }
       const res = await fetch(`/api/admin/script-shares?${params.toString()}`, {
         credentials: "include",
       });
@@ -223,7 +235,7 @@ export default function AdminScriptSharesPage() {
   useEffect(() => {
     if (adminEmail) void fetchList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminEmail, filterLang]);
+  }, [adminEmail, filterLang, includePrivate]);
 
   const submitUpload = async () => {
     setError("");
@@ -280,6 +292,7 @@ export default function AdminScriptSharesPage() {
     try {
       const res = await fetch(`/api/admin/script-shares/${encodeURIComponent(id)}`, {
         method: "DELETE",
+        headers: auditReason.trim() ? { "X-Admin-Reason": auditReason.trim() } : undefined,
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -303,6 +316,7 @@ export default function AdminScriptSharesPage() {
       const res = await fetch(`/api/admin/script-shares/${encodeURIComponent(id)}`, {
         method: "PUT",
         body: form,
+        headers: auditReason.trim() ? { "X-Admin-Reason": auditReason.trim() } : undefined,
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -319,7 +333,10 @@ export default function AdminScriptSharesPage() {
     try {
       const res = await fetch(`/api/admin/script-shares/${encodeURIComponent(id)}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(auditReason.trim() ? { "X-Admin-Reason": auditReason.trim() } : {}),
+        },
         credentials: "include",
         body: JSON.stringify({ isPublic: next }),
       });
@@ -470,6 +487,28 @@ export default function AdminScriptSharesPage() {
           <option value="zh-CN">{language === "zh-CN" ? "中文区" : "Chinese (zh-CN)"}</option>
           <option value="en-US">{language === "zh-CN" ? "英文区" : "English (en-US)"}</option>
         </select>
+        {isSuperAdmin && (
+          <>
+            <label style={{ display: "inline-flex", gap: 6, alignItems: "center", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                checked={includePrivate}
+                onChange={(e) => setIncludePrivate(e.target.checked)}
+              />
+              <span style={{ fontSize: 12, color: "#6b7280" }}>
+                {language === "zh-CN" ? "包含私密（审计）" : "Include private (audited)"}
+              </span>
+            </label>
+            {includePrivate && (
+              <input
+                placeholder={language === "zh-CN" ? "审计原因（可选）" : "Audit reason (optional)"}
+                value={auditReason}
+                onChange={(e) => setAuditReason(e.target.value)}
+                style={{ flex: 1, minWidth: 200 }}
+              />
+            )}
+          </>
+        )}
         <button type="button" disabled={loading} onClick={() => void fetchList(q)}>
           {language === "zh-CN" ? "搜索" : "Search"}
         </button>
@@ -502,6 +541,7 @@ export default function AdminScriptSharesPage() {
               item={it}
               canReupload={adminId != null && it.ownerUserId === adminId}
               language={language}
+              auditReason={auditReason}
               onDelete={handleDelete}
               onReupload={handleReupload}
               onTogglePublic={handleTogglePublic}

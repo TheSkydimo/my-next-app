@@ -11,6 +11,7 @@ import { buildScriptShareCoverR2Key, decodeScriptTextPreview, generateScriptShar
 import { requireAdminFromRequest } from "../_utils/adminSession";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
 import { getOfficialPublicNickname } from "../../../_utils/officialPublicNickname";
+import { writeAdminAuditLog } from "../../_utils/adminAuditLogs";
 
 function clampInt(
   value: string | null,
@@ -33,6 +34,11 @@ export async function GET(request: Request) {
   await ensureScriptSharesTable(db);
 
   const { searchParams } = new URL(request.url);
+  const includePrivate =
+    authed.admin.isSuperAdmin &&
+    (searchParams.get("includePrivate") === "1" ||
+      String(searchParams.get("includePrivate") ?? "").toLowerCase() === "true");
+  const reason = (searchParams.get("reason") ?? "").trim() || null;
   const langParam = (searchParams.get("lang") ?? "").trim();
   const lang = langParam && langParam !== "all" ? normalizeAppLanguage(langParam) : null;
   const page = clampInt(searchParams.get("page"), 1, 1, 10_000);
@@ -42,6 +48,11 @@ export async function GET(request: Request) {
 
   const whereParts: string[] = [];
   const binds: unknown[] = [];
+
+  // Normal admins: only public. Super admin: public by default, private only with explicit includePrivate=1.
+  if (!includePrivate) {
+    whereParts.push("s.is_public = 1");
+  }
 
   if (lang) {
     whereParts.push("s.lang = ?");
@@ -121,6 +132,19 @@ export async function GET(request: Request) {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }));
+
+  if (includePrivate) {
+    await writeAdminAuditLog({
+      db,
+      request,
+      actor: { id: authed.admin.id, role: authed.admin.role },
+      action: "list_private_scripts",
+      targetType: "script_share",
+      targetId: "*",
+      reason,
+      meta: { lang: lang ?? "all", q: q || null, page, pageSize },
+    });
+  }
 
   return Response.json({ items, total, page, pageSize });
 }

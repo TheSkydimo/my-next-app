@@ -8,6 +8,7 @@ import {
 } from "../../../_utils/scriptShares";
 import { requireAdminFromRequest } from "../../_utils/adminSession";
 import { normalizeAppLanguage } from "../../../_utils/appLanguage";
+import { writeAdminAuditLog } from "../../../_utils/adminAuditLogs";
 
 type DbRow = {
   id: string;
@@ -42,6 +43,22 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
 
   const row = await loadById(db, id);
   if (!row) return new Response("Not found", { status: 404 });
+
+  // Private scripts owned by other users: super admin only (and audit).
+  if (!row.is_public && row.owner_user_id !== authed.admin.id) {
+    if (!authed.admin.isSuperAdmin) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    await writeAdminAuditLog({
+      db,
+      request,
+      actor: { id: authed.admin.id, role: authed.admin.role },
+      action: "delete_private_script",
+      targetType: "script_share",
+      targetId: row.id,
+      targetOwnerUserId: row.owner_user_id,
+    });
+  }
 
   await db.prepare("DELETE FROM script_shares WHERE id = ?").bind(id).run();
   if (row.r2_key) await r2.delete(row.r2_key).catch(() => {});
@@ -114,6 +131,22 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
 
   const row = await loadById(db, id);
   if (!row) return new Response("Not found", { status: 404 });
+
+  // Private scripts owned by other users: super admin only (and audit).
+  if (!row.is_public && row.owner_user_id !== authed.admin.id) {
+    if (!authed.admin.isSuperAdmin) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    await writeAdminAuditLog({
+      db,
+      request,
+      actor: { id: authed.admin.id, role: authed.admin.role },
+      action: "patch_private_script",
+      targetType: "script_share",
+      targetId: row.id,
+      targetOwnerUserId: row.owner_user_id,
+    });
+  }
 
   const body = (await request.json()) as {
     effectName?: string;

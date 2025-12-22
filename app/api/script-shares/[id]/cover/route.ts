@@ -8,6 +8,8 @@ import {
   SCRIPT_SHARE_COVER_R2_PREFIX,
 } from "../../../_utils/scriptShareCover";
 import { requireUserFromRequest } from "../../../user/_utils/userSession";
+import { requireAdminFromRequest } from "../../../admin/_utils/adminSession";
+import { writeAdminAuditLog } from "../../../_utils/adminAuditLogs";
 
 type DbRow = {
   id: string;
@@ -42,12 +44,32 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   const row = results?.[0];
   if (!row) return new Response("Not found", { status: 404 });
 
-  // Private scripts: only owner/admin can view cover.
+  // Private scripts: only owner (user) or super admin (with audit) can view cover.
   if (!row.is_public) {
-    const authed = await requireUserFromRequest({ request, env, db });
-    if (authed instanceof Response) return authed;
-    if (authed.user.id !== row.owner_user_id && !authed.user.isAdmin) {
-      return new Response("Forbidden", { status: 403 });
+    const authedUser = await requireUserFromRequest({ request, env, db });
+    if (!(authedUser instanceof Response) && authedUser.user.id === row.owner_user_id) {
+      // owner ok
+    } else {
+      const authedAdmin = await requireAdminFromRequest({ request, env, db });
+      if (authedAdmin instanceof Response) {
+        return authedUser instanceof Response
+          ? authedUser
+          : new Response("Forbidden", { status: 403 });
+      }
+      if (!authedAdmin.admin.isSuperAdmin) {
+        return new Response("Forbidden", { status: 403 });
+      }
+
+      await writeAdminAuditLog({
+        db,
+        request,
+        actor: { id: authedAdmin.admin.id, role: authedAdmin.admin.role },
+        action: "view_private_script_cover",
+        targetType: "script_share",
+        targetId: row.id,
+        targetOwnerUserId: row.owner_user_id,
+        meta: { hasCover: !!row.cover_r2_key },
+      });
     }
   }
 

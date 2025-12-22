@@ -53,7 +53,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
 
   const row = await loadShareById(db, id);
   if (!row) return new Response("Not found", { status: 404 });
-  if (row.owner_user_id !== authed.user.id && !authed.user.isAdmin) {
+  if (row.owner_user_id !== authed.user.id) {
     return new Response("Forbidden", { status: 403 });
   }
 
@@ -99,7 +99,7 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
 
   const row = await loadShareById(db, id);
   if (!row) return new Response("Not found", { status: 404 });
-  if (row.owner_user_id !== authed.user.id && !authed.user.isAdmin) {
+  if (row.owner_user_id !== authed.user.id) {
     return new Response("Forbidden", { status: 403 });
   }
 
@@ -251,7 +251,7 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
 
   const row = await loadShareById(db, id);
   if (!row) return new Response("Not found", { status: 404 });
-  if (row.owner_user_id !== authed.user.id && !authed.user.isAdmin) {
+  if (row.owner_user_id !== authed.user.id) {
     return new Response("Forbidden", { status: 403 });
   }
 
