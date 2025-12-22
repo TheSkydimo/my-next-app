@@ -366,6 +366,19 @@ input {
 	color: #f87171;
 }
 
+.script-share-card__btn-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 15px;
+	line-height: 1;
+}
+
+.script-share-card__btn-count {
+	font-variant-numeric: tabular-nums;
+	font-size: 13px;
+}
+
 .script-share-tab {
 	border-radius: 9999px;
 	padding: 6px 14px;

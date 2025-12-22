@@ -69,6 +69,19 @@ export async function ensureScriptShareInteractionsTables(db: D1Database) {
   await ensureScriptShareFavoritesTable(db);
 }
 
+export async function deleteScriptShareInteractions(options: {
+  db: D1Database;
+  scriptId: string;
+}) {
+  const { db, scriptId } = options;
+  // Order does not matter, but keep it explicit.
+  await db.prepare("DELETE FROM script_share_likes WHERE script_id = ?").bind(scriptId).run();
+  await db
+    .prepare("DELETE FROM script_share_favorites WHERE script_id = ?")
+    .bind(scriptId)
+    .run();
+}
+
 export async function getScriptShareInteractionStats(options: {
   db: D1Database;
   scriptId: string;

@@ -82,24 +82,8 @@ function ShareCard({
 }) {
   const downloadUrl = `/api/script-shares/${encodeURIComponent(item.id)}/download`;
 
-  const likeText = (() => {
-    const c = Number.isFinite(item.likeCount) ? item.likeCount : 0;
-    if (item.likedByMe) {
-      if (item.likeLocked) {
-        return language === "zh-CN" ? `已点赞（锁定）· ${c}` : `Liked (locked) · ${c}`;
-      }
-      return language === "zh-CN" ? `取消点赞 · ${c}` : `Unlike · ${c}`;
-    }
-    return language === "zh-CN" ? `点赞 · ${c}` : `Like · ${c}`;
-  })();
-
-  const favoriteText = (() => {
-    const c = Number.isFinite(item.favoriteCount) ? item.favoriteCount : 0;
-    if (item.favoritedByMe) {
-      return language === "zh-CN" ? `取消收藏 · ${c}` : `Unfavorite · ${c}`;
-    }
-    return language === "zh-CN" ? `收藏 · ${c}` : `Favorite · ${c}`;
-  })();
+  const likeCount = Number.isFinite(item.likeCount) ? item.likeCount : 0;
+  const favoriteCount = Number.isFinite(item.favoriteCount) ? item.favoriteCount : 0;
 
   return (
     <div className="script-share-card">
@@ -144,25 +128,64 @@ function ShareCard({
           type="button"
           className="script-share-card__btn script-share-card__btn--secondary"
           disabled={!!likeBusy || !!item.likeLocked}
+          aria-label={
+            item.likedByMe
+              ? language === "zh-CN"
+                ? "取消点赞"
+                : "Unlike"
+              : language === "zh-CN"
+                ? "点赞"
+                : "Like"
+          }
           title={
             item.likeLocked
               ? language === "zh-CN"
                 ? "点赞已超过 24 小时，无法取消"
                 : "Like is older than 24h and cannot be undone"
-              : undefined
+              : item.likedByMe
+                ? language === "zh-CN"
+                  ? "点击取消点赞（24h内可撤销）"
+                  : "Click to unlike (undo within 24h)"
+                : language === "zh-CN"
+                  ? "点赞"
+                  : "Like"
           }
           onClick={() => onToggleLike?.(item.id)}
         >
-          {likeText}
+          <span className="script-share-card__btn-icon" aria-hidden="true">
+            {item.likedByMe ? "♥️" : "👍"}
+          </span>
+          <span className="script-share-card__btn-count">{likeCount}</span>
         </button>
 
         <button
           type="button"
           className="script-share-card__btn script-share-card__btn--secondary"
           disabled={!!favoriteBusy}
+          aria-label={
+            item.favoritedByMe
+              ? language === "zh-CN"
+                ? "取消收藏"
+                : "Unfavorite"
+              : language === "zh-CN"
+                ? "收藏"
+                : "Favorite"
+          }
+          title={
+            item.favoritedByMe
+              ? language === "zh-CN"
+                ? "点击取消收藏"
+                : "Click to unfavorite"
+              : language === "zh-CN"
+                ? "收藏"
+                : "Favorite"
+          }
           onClick={() => onToggleFavorite?.(item.id)}
         >
-          {favoriteText}
+          <span className="script-share-card__btn-icon" aria-hidden="true">
+            {item.favoritedByMe ? "⭐" : "☆"}
+          </span>
+          <span className="script-share-card__btn-count">{favoriteCount}</span>
         </button>
 
         {canManage && (

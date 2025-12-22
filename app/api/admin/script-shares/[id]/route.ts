@@ -10,6 +10,10 @@ import { requireAdminFromRequest } from "../../_utils/adminSession";
 import { normalizeAppLanguage } from "../../../_utils/appLanguage";
 import { writeAdminAuditLog } from "../../../_utils/adminAuditLogs";
 import { createUserNotification } from "../../../_utils/userNotifications";
+import {
+  deleteScriptShareInteractions,
+  ensureScriptShareInteractionsTables,
+} from "../../../_utils/scriptShareInteractionsTable";
 
 type DbRow = {
   id: string;
@@ -63,8 +67,12 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
     });
   }
 
+  await ensureScriptShareInteractionsTables(db);
+  await deleteScriptShareInteractions({ db, scriptId: id });
   await db.prepare("DELETE FROM script_shares WHERE id = ?").bind(id).run();
   if (row.r2_key) await r2.delete(row.r2_key).catch(() => {});
+  // cover 对象（如果存在）也做 best-effort 删除
+  // NOTE: 管理端这里没有读取 cover_r2_key 字段，所以不做额外查询（避免影响性能/复杂度）。
 
   // 必须通知：脚本物理删除（管理端删除）
   await createUserNotification({

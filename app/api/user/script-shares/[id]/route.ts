@@ -12,6 +12,10 @@ import {
   generateScriptShareCoverSvg,
 } from "../../../_utils/scriptShareCover";
 import { requireUserFromRequest } from "../../_utils/userSession";
+import {
+  deleteScriptShareInteractions,
+  ensureScriptShareInteractionsTables,
+} from "../../../_utils/scriptShareInteractionsTable";
 
 type DbRow = {
   id: string;
@@ -165,6 +169,8 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
     }
 
     // Dedup: delete old share and its objects, point to existing id.
+    await ensureScriptShareInteractionsTables(db);
+    await deleteScriptShareInteractions({ db, scriptId: id });
     await db.prepare("DELETE FROM script_shares WHERE id = ?").bind(id).run();
     if (row.r2_key) await r2.delete(row.r2_key).catch(() => {});
     if (row.cover_r2_key) await r2.delete(row.cover_r2_key).catch(() => {});
@@ -219,6 +225,8 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
       )
       .run();
 
+    await ensureScriptShareInteractionsTables(db);
+    await deleteScriptShareInteractions({ db, scriptId: id });
     await db.prepare("DELETE FROM script_shares WHERE id = ?").bind(id).run();
     if (row.r2_key) await r2.delete(row.r2_key).catch(() => {});
     if (row.cover_r2_key) await r2.delete(row.cover_r2_key).catch(() => {});
@@ -255,8 +263,11 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
     return new Response("Forbidden", { status: 403 });
   }
 
+  await ensureScriptShareInteractionsTables(db);
+  await deleteScriptShareInteractions({ db, scriptId: id });
   await db.prepare("DELETE FROM script_shares WHERE id = ?").bind(id).run();
   if (row.r2_key) await r2.delete(row.r2_key).catch(() => {});
+  if (row.cover_r2_key) await r2.delete(row.cover_r2_key).catch(() => {});
 
   return Response.json({ ok: true });
 }
