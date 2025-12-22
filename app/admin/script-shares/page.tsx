@@ -50,12 +50,14 @@ function basenameWithoutExt(filename: string): string {
 
 function ShareCard({
   item,
+  canReupload,
   language,
   onDelete,
   onReupload,
   onTogglePublic,
 }: {
   item: AdminShareItem;
+  canReupload: boolean;
   language: AppLanguage;
   onDelete?: (id: string) => void;
   onReupload?: (id: string, file: File) => void;
@@ -98,20 +100,22 @@ function ShareCard({
           {language === "zh-CN" ? "下载" : "Download"}
         </a>
 
-        <label className="script-share-card__btn script-share-card__btn--secondary">
-          {language === "zh-CN" ? "重传" : "Re-upload"}
-          <input
-            type="file"
-            accept=".skmode"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const f = e.target.files?.[0] ?? null;
-              e.currentTarget.value = "";
-              if (!f) return;
-              onReupload?.(item.id, f);
-            }}
-          />
-        </label>
+        {canReupload && (
+          <label className="script-share-card__btn script-share-card__btn--secondary">
+            {language === "zh-CN" ? "重传" : "Re-upload"}
+            <input
+              type="file"
+              accept=".skmode"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                e.currentTarget.value = "";
+                if (!f) return;
+                onReupload?.(item.id, f);
+              }}
+            />
+          </label>
+        )}
 
         <button
           type="button"
@@ -142,6 +146,7 @@ function ShareCard({
 export default function AdminScriptSharesPage() {
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
+  const adminId = adminContext.profile?.id ?? null;
 
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const messages = getAdminMessages(language);
@@ -478,6 +483,7 @@ export default function AdminScriptSharesPage() {
             <ShareCard
               key={it.id}
               item={it}
+              canReupload={adminId != null && it.ownerUserId === adminId}
               language={language}
               onDelete={handleDelete}
               onReupload={handleReupload}

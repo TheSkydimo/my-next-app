@@ -151,6 +151,10 @@ export default function ScriptSharesPage() {
   const [all, setAll] = useState<ShareItem[]>([]);
   const [loadingMine, setLoadingMine] = useState(false);
   const [loadingAll, setLoadingAll] = useState(false);
+  const [allQ, setAllQ] = useState("");
+  const [allPage, setAllPage] = useState(1);
+  const [allTotal, setAllTotal] = useState(0);
+  const allPageSize = 20;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -211,14 +215,17 @@ export default function ScriptSharesPage() {
     setLoadingAll(true);
     try {
       const params = new URLSearchParams({
-        page: "1",
-        pageSize: "50",
+        page: String(allPage),
+        pageSize: String(allPageSize),
         lang: language,
       });
+      const kw = allQ.trim();
+      if (kw) params.set("q", kw);
       const res = await fetch(`/api/script-shares?${params.toString()}`);
       if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as { items?: ShareItem[] };
+      const data = (await res.json()) as { items?: ShareItem[]; total?: number };
       setAll(data.items ?? []);
+      setAllTotal(Number.isFinite(data.total) ? (data.total as number) : 0);
     } catch {
       // ignore
     } finally {
@@ -232,8 +239,15 @@ export default function ScriptSharesPage() {
   }, [hasUser]);
 
   useEffect(() => {
+    if (viewTab !== "all") return;
     void loadAll();
-  }, [language]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, viewTab, allPage]);
+
+  const allTotalPages = useMemo(() => {
+    const t = Number.isFinite(allTotal) ? allTotal : 0;
+    return Math.max(1, Math.ceil(t / allPageSize));
+  }, [allTotal]);
 
   // 默认昵称：使用当前登录用户的用户名（可编辑覆盖）
   useEffect(() => {
@@ -530,6 +544,56 @@ export default function ScriptSharesPage() {
 
       {viewTab === "all" && (
         <section id="all" style={{ marginTop: 18 }}>
+          <div className="user-page-card" style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                placeholder={language === "zh-CN" ? "模糊查找：效果名/昵称/ID" : "Search: name/nickname/id"}
+                value={allQ}
+                onChange={(e) => setAllQ(e.target.value)}
+                style={{ flex: 1, minWidth: 220 }}
+              />
+              <button
+                type="button"
+                disabled={loadingAll}
+                onClick={() => {
+                  setAllPage(1);
+                  void loadAll();
+                }}
+              >
+                {language === "zh-CN" ? "查找" : "Search"}
+              </button>
+              <button
+                type="button"
+                disabled={loadingAll}
+                onClick={() => {
+                  setAllQ("");
+                  setAllPage(1);
+                  void loadAll();
+                }}
+              >
+                {language === "zh-CN" ? "清空_toggle" : "Clear"}
+              </button>
+              <span style={{ fontSize: 12, color: "#6b7280" }}>
+                {language === "zh-CN"
+                  ? `第 ${allPage} / ${allTotalPages} 页（每页 ${allPageSize}）`
+                  : `Page ${allPage} / ${allTotalPages} (${allPageSize}/page)`}
+              </span>
+              <button
+                type="button"
+                disabled={loadingAll || allPage <= 1}
+                onClick={() => setAllPage((p) => Math.max(1, p - 1))}
+              >
+                {language === "zh-CN" ? "上一页" : "Prev"}
+              </button>
+              <button
+                type="button"
+                disabled={loadingAll || allPage >= allTotalPages}
+                onClick={() => setAllPage((p) => Math.min(allTotalPages, p + 1))}
+              >
+                {language === "zh-CN" ? "下一页" : "Next"}
+              </button>
+            </div>
+          </div>
           {loadingAll ? (
             <p>{messages.common.loading}</p>
           ) : all.length === 0 ? (

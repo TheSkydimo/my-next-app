@@ -11,6 +11,7 @@ import { normalizeAppLanguage } from "../../../_utils/appLanguage";
 
 type DbRow = {
   id: string;
+  owner_user_id: number;
   r2_key: string;
   effect_name: string;
   public_username: string;
@@ -21,7 +22,7 @@ type DbRow = {
 async function loadById(db: D1Database, id: string): Promise<DbRow | null> {
   const { results } = await db
     .prepare(
-      "SELECT id, r2_key, effect_name, public_username, lang, is_public FROM script_shares WHERE id = ? LIMIT 1"
+      "SELECT id, owner_user_id, r2_key, effect_name, public_username, lang, is_public FROM script_shares WHERE id = ? LIMIT 1"
     )
     .bind(id)
     .all<DbRow>();
@@ -64,6 +65,11 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
 
   const row = await loadById(db, id);
   if (!row) return new Response("Not found", { status: 404 });
+  // Admins are not allowed to re-upload scripts owned by other users.
+  // Reason: admins cannot access the original user file; reuploading would corrupt user-owned assets.
+  if (row.owner_user_id !== authed.admin.id) {
+    return new Response("禁止重传：该脚本归属用户，管理端不能重传", { status: 403 });
+  }
 
   const form = await request.formData();
   const file = form.get("file");

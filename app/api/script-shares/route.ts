@@ -30,12 +30,23 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const lang = normalizeAppLanguage(searchParams.get("lang"));
   const page = clampInt(searchParams.get("page"), 1, 1, 10_000);
-  const pageSize = clampInt(searchParams.get("pageSize"), 20, 1, 50);
+  // Public browse: hard-limit to 20 per page.
+  const pageSize = clampInt(searchParams.get("pageSize"), 20, 1, 20);
+  const q = (searchParams.get("q") ?? "").trim();
   const offset = (page - 1) * pageSize;
 
+  const whereParts: string[] = ["is_public = 1", "lang = ?"];
+  const binds: unknown[] = [lang];
+  if (q) {
+    whereParts.push("(id LIKE ? OR effect_name LIKE ? OR public_username LIKE ?)");
+    const like = `%${q}%`;
+    binds.push(like, like, like);
+  }
+  const whereSql = `WHERE ${whereParts.join(" AND ")}`;
+
   const countRes = await db
-    .prepare("SELECT COUNT(*) AS c FROM script_shares WHERE is_public = 1 AND lang = ?")
-    .bind(lang)
+    .prepare(`SELECT COUNT(*) AS c FROM script_shares ${whereSql}`)
+    .bind(...binds)
     .all<{ c: number }>();
   const total = countRes.results?.[0]?.c ?? 0;
 
@@ -43,11 +54,11 @@ export async function GET(request: Request) {
     .prepare(
       `SELECT id, effect_name, public_username, lang, is_public, original_filename, size_bytes, created_at, updated_at
        FROM script_shares
-       WHERE is_public = 1 AND lang = ?
+       ${whereSql}
        ORDER BY created_at DESC
        LIMIT ? OFFSET ?`
     )
-    .bind(lang, pageSize, offset)
+    .bind(...binds, pageSize, offset)
     .all<{
       id: string;
       effect_name: string;

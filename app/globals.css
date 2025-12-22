@@ -3729,6 +3729,21 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		0 0 0 1px rgba(15, 23, 42, 0.95);
 }
 
+/* 深色主题：让弹窗与整体「纯黑 + 细分隔线」风格一致，避免过强渐变导致突兀 */
+:root[data-theme="dark"] .dialog-overlay {
+	background: rgba(0, 0, 0, 0.72);
+	backdrop-filter: blur(10px);
+}
+
+:root[data-theme="dark"] .dialog-card {
+	background: #000000;
+	background-blend-mode: normal;
+	border-color: rgba(51, 65, 85, 0.95); /* 与 user-layout 分隔线一致 */
+	box-shadow:
+		0 24px 48px rgba(0, 0, 0, 0.85),
+		0 0 0 1px rgba(15, 23, 42, 0.9);
+}
+
 .dialog-card__title {
 	margin: 0 0 4px;
 	font-size: 17px;
