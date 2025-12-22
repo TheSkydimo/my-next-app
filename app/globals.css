@@ -343,6 +343,13 @@ input {
 	box-shadow: 0 10px 18px rgba(2, 6, 23, 0.35);
 }
 
+.script-share-card__btn:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+	transform: none;
+	box-shadow: none;
+}
+
 .script-share-card__btn--primary {
 	border: none;
 	color: #f9fafb;

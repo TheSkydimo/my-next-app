@@ -1,6 +1,8 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureScriptSharesTable } from "../_utils/scriptSharesTable";
 import { normalizeAppLanguage, type AppLanguage } from "../_utils/appLanguage";
+import { ensureScriptShareInteractionsTables } from "../_utils/scriptShareInteractionsTable";
+import { getOptionalUserIdFromRequest } from "../user/_utils/userSession";
 
 type ListItem = {
   id: string;
@@ -13,6 +15,12 @@ type ListItem = {
   sizeBytes: number;
   createdAt: string;
   updatedAt: string;
+  likeCount: number;
+  favoriteCount: number;
+  likedByMe: boolean;
+  favoritedByMe: boolean;
+  likeCanUndo: boolean;
+  likeLocked: boolean;
 };
 
 function clampInt(value: string | null, def: number, min: number, max: number): number {
@@ -26,6 +34,9 @@ export async function GET(request: Request) {
   const db = env.my_user_db as D1Database;
 
   await ensureScriptSharesTable(db);
+  await ensureScriptShareInteractionsTables(db);
+
+  const userId = await getOptionalUserIdFromRequest({ request, env, db });
 
   const { searchParams } = new URL(request.url);
   const lang = normalizeAppLanguage(searchParams.get("lang"));
@@ -52,13 +63,32 @@ export async function GET(request: Request) {
 
   const { results } = await db
     .prepare(
-      `SELECT id, effect_name, public_username, lang, is_public, original_filename, size_bytes, created_at, updated_at
-       FROM script_shares
+      `SELECT
+         s.id,
+         s.effect_name,
+         s.public_username,
+         s.lang,
+         s.is_public,
+         s.original_filename,
+         s.size_bytes,
+         s.created_at,
+         s.updated_at,
+         (SELECT COUNT(*) FROM script_share_likes l WHERE l.script_id = s.id) AS like_count,
+         (SELECT COUNT(*) FROM script_share_favorites f WHERE f.script_id = s.id) AS favorite_count,
+         EXISTS(SELECT 1 FROM script_share_likes l WHERE l.script_id = s.id AND l.user_id = ?) AS liked_by_me,
+         EXISTS(SELECT 1 FROM script_share_favorites f WHERE f.script_id = s.id AND f.user_id = ?) AS favorited_by_me,
+         (
+           SELECT CASE WHEN created_at >= datetime('now', '-1 day') THEN 1 ELSE 0 END
+           FROM script_share_likes l
+           WHERE l.script_id = s.id AND l.user_id = ?
+           LIMIT 1
+         ) AS my_like_can_undo
+       FROM script_shares s
        ${whereSql}
-       ORDER BY created_at DESC
+       ORDER BY s.created_at DESC
        LIMIT ? OFFSET ?`
     )
-    .bind(...binds, pageSize, offset)
+    .bind(userId, userId, userId, ...binds, pageSize, offset)
     .all<{
       id: string;
       effect_name: string;
@@ -69,6 +99,11 @@ export async function GET(request: Request) {
       size_bytes: number;
       created_at: string;
       updated_at: string;
+      like_count: number;
+      favorite_count: number;
+      liked_by_me: number;
+      favorited_by_me: number;
+      my_like_can_undo: number | null;
     }>();
 
   const items: ListItem[] = (results ?? []).map((r) => ({
@@ -82,6 +117,12 @@ export async function GET(request: Request) {
     sizeBytes: r.size_bytes,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    likeCount: r.like_count ?? 0,
+    favoriteCount: r.favorite_count ?? 0,
+    likedByMe: !!r.liked_by_me,
+    favoritedByMe: !!r.favorited_by_me,
+    likeCanUndo: r.my_like_can_undo === 1,
+    likeLocked: !!r.liked_by_me && r.my_like_can_undo !== 1,
   }));
 
   return Response.json({ items, total, page, pageSize });

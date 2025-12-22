@@ -72,4 +72,29 @@ export async function requireUserFromRequest(options: {
   };
 }
 
+export async function getOptionalUserIdFromRequest(options: {
+  request: Request;
+  env: unknown;
+  db: D1Database;
+}): Promise<number | null> {
+  const { request, env, db } = options;
+
+  const sessionSecret = String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "");
+  if (!sessionSecret) return null;
+
+  const token = getRequestCookie(request, getSessionCookieName());
+  if (!token) return null;
+
+  const payload = await verifySessionToken({ secret: sessionSecret, token });
+  if (!payload) return null;
+
+  // Make sure the user still exists.
+  const { results } = await db
+    .prepare("SELECT id FROM users WHERE id = ? LIMIT 1")
+    .bind(payload.uid)
+    .all<{ id: number }>();
+
+  return results?.[0]?.id ?? null;
+}
+
 

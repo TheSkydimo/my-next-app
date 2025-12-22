@@ -80,3 +80,29 @@ CREATE INDEX IF NOT EXISTS idx_script_shares_owner_created ON script_shares (own
 CREATE INDEX IF NOT EXISTS idx_script_shares_created ON script_shares (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_script_shares_lang_created ON script_shares (lang, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_script_shares_owner_lang_created ON script_shares (owner_user_id, lang, created_at DESC);
+
+-- 脚本点赞：一个用户对一个脚本只能点赞一次；点赞后 24h 内允许取消，超过 24h 锁定不可取消/不可再点击。
+CREATE TABLE IF NOT EXISTS script_share_likes (
+  script_id TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (script_id, user_id),
+  FOREIGN KEY (script_id) REFERENCES script_shares(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_script_share_likes_script ON script_share_likes (script_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_script_share_likes_user ON script_share_likes (user_id, created_at DESC);
+
+-- 脚本收藏：可反复切换（收藏/取消收藏）
+CREATE TABLE IF NOT EXISTS script_share_favorites (
+  script_id TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (script_id, user_id),
+  FOREIGN KEY (script_id) REFERENCES script_shares(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_script_share_favorites_script ON script_share_favorites (script_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_script_share_favorites_user ON script_share_favorites (user_id, created_at DESC);

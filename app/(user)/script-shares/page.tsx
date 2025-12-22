@@ -18,6 +18,12 @@ type ShareItem = {
   createdAt: string;
   updatedAt: string;
   canManage?: boolean;
+  likeCount: number;
+  favoriteCount: number;
+  likedByMe: boolean;
+  favoritedByMe: boolean;
+  likeCanUndo: boolean;
+  likeLocked: boolean;
 };
 
 function formatBytes(n: number): string {
@@ -55,16 +61,44 @@ function ShareCard({
   item,
   language,
   canManage,
+  likeBusy,
+  favoriteBusy,
   onDelete,
   onReupload,
+  onToggleLike,
+  onToggleFavorite,
 }: {
   item: ShareItem;
   language: AppLanguage;
   canManage: boolean;
+  likeBusy?: boolean;
+  favoriteBusy?: boolean;
   onDelete?: (id: string) => void;
   onReupload?: (id: string, file: File) => void;
+  onToggleLike?: (id: string) => void;
+  onToggleFavorite?: (id: string) => void;
 }) {
   const downloadUrl = `/api/script-shares/${encodeURIComponent(item.id)}/download`;
+
+  const likeText = (() => {
+    const c = Number.isFinite(item.likeCount) ? item.likeCount : 0;
+    if (item.likedByMe) {
+      if (item.likeLocked) {
+        return language === "zh-CN" ? `已点赞（锁定）· ${c}` : `Liked (locked) · ${c}`;
+      }
+      return language === "zh-CN" ? `取消点赞 · ${c}` : `Unlike · ${c}`;
+    }
+    return language === "zh-CN" ? `点赞 · ${c}` : `Like · ${c}`;
+  })();
+
+  const favoriteText = (() => {
+    const c = Number.isFinite(item.favoriteCount) ? item.favoriteCount : 0;
+    if (item.favoritedByMe) {
+      return language === "zh-CN" ? `取消收藏 · ${c}` : `Unfavorite · ${c}`;
+    }
+    return language === "zh-CN" ? `收藏 · ${c}` : `Favorite · ${c}`;
+  })();
+
   return (
     <div className="script-share-card">
       <div className="script-share-card__top">
@@ -98,6 +132,31 @@ function ShareCard({
         <a className="script-share-card__btn script-share-card__btn--primary" href={downloadUrl}>
           {language === "zh-CN" ? "下载" : "Download"}
         </a>
+
+        <button
+          type="button"
+          className="script-share-card__btn script-share-card__btn--secondary"
+          disabled={!!likeBusy || !!item.likeLocked}
+          title={
+            item.likeLocked
+              ? language === "zh-CN"
+                ? "点赞已超过 24 小时，无法取消"
+                : "Like is older than 24h and cannot be undone"
+              : undefined
+          }
+          onClick={() => onToggleLike?.(item.id)}
+        >
+          {likeText}
+        </button>
+
+        <button
+          type="button"
+          className="script-share-card__btn script-share-card__btn--secondary"
+          disabled={!!favoriteBusy}
+          onClick={() => onToggleFavorite?.(item.id)}
+        >
+          {favoriteText}
+        </button>
 
         {canManage && (
           <>
@@ -146,6 +205,7 @@ export default function ScriptSharesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useAutoDismissMessage(2000);
   const [okMsg, setOkMsg] = useAutoDismissMessage(2000);
+  const [interactionBusyKey, setInteractionBusyKey] = useState<string | null>(null);
 
   const [mine, setMine] = useState<ShareItem[]>([]);
   const [all, setAll] = useState<ShareItem[]>([]);
@@ -366,6 +426,94 @@ export default function ScriptSharesPage() {
     }
   };
 
+  const applyInteractionUpdate = (
+    id: string,
+    patch: Partial<
+      Pick<
+        ShareItem,
+        | "likeCount"
+        | "favoriteCount"
+        | "likedByMe"
+        | "favoritedByMe"
+        | "likeCanUndo"
+        | "likeLocked"
+      >
+    >
+  ) => {
+    setMine((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    setAll((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  };
+
+  const toggleLike = async (id: string) => {
+    setError("");
+    setOkMsg("");
+    setInteractionBusyKey(`like:${id}`);
+    try {
+      const res = await fetch(`/api/user/script-shares/${encodeURIComponent(id)}/like`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as {
+        ok: true;
+        id: string;
+        likeCount: number;
+        favoriteCount: number;
+        likedByMe: boolean;
+        favoritedByMe: boolean;
+        likeCanUndo: boolean;
+        likeLocked: boolean;
+      };
+      applyInteractionUpdate(id, {
+        likeCount: data.likeCount,
+        favoriteCount: data.favoriteCount,
+        likedByMe: data.likedByMe,
+        favoritedByMe: data.favoritedByMe,
+        likeCanUndo: data.likeCanUndo,
+        likeLocked: data.likeLocked,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : (language === "zh-CN" ? "操作失败" : "Action failed"));
+    } finally {
+      setInteractionBusyKey(null);
+    }
+  };
+
+  const toggleFavorite = async (id: string) => {
+    setError("");
+    setOkMsg("");
+    setInteractionBusyKey(`fav:${id}`);
+    try {
+      const res = await fetch(`/api/user/script-shares/${encodeURIComponent(id)}/favorite`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as {
+        ok: true;
+        id: string;
+        likeCount: number;
+        favoriteCount: number;
+        likedByMe: boolean;
+        favoritedByMe: boolean;
+        likeCanUndo: boolean;
+        likeLocked: boolean;
+      };
+      applyInteractionUpdate(id, {
+        likeCount: data.likeCount,
+        favoriteCount: data.favoriteCount,
+        likedByMe: data.likedByMe,
+        favoritedByMe: data.favoritedByMe,
+        likeCanUndo: data.likeCanUndo,
+        likeLocked: data.likeLocked,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : (language === "zh-CN" ? "操作失败" : "Action failed"));
+    } finally {
+      setInteractionBusyKey(null);
+    }
+  };
+
   if (!isUserInitialized) {
     return (
       <div className="vben-page">
@@ -532,8 +680,12 @@ export default function ScriptSharesPage() {
                     item={it}
                     language={language}
                     canManage={true}
+                    likeBusy={interactionBusyKey === `like:${it.id}`}
+                    favoriteBusy={interactionBusyKey === `fav:${it.id}`}
                     onDelete={handleDelete}
                     onReupload={handleReupload}
+                    onToggleLike={toggleLike}
+                    onToggleFavorite={toggleFavorite}
                   />
                 ))}
               </div>
@@ -594,6 +746,10 @@ export default function ScriptSharesPage() {
                     item={it}
                     language={language}
                     canManage={false}
+                    likeBusy={interactionBusyKey === `like:${it.id}`}
+                    favoriteBusy={interactionBusyKey === `fav:${it.id}`}
+                    onToggleLike={toggleLike}
+                    onToggleFavorite={toggleFavorite}
                   />
                 ))}
               </div>

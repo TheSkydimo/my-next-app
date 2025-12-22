@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureScriptSharesTable } from "../../_utils/scriptSharesTable";
+import { ensureScriptShareInteractionsTables } from "../../_utils/scriptShareInteractionsTable";
 import {
   buildScriptShareR2Key,
   containsCjkCharacters,
@@ -23,6 +24,12 @@ type ScriptShareListItem = {
   createdAt: string;
   updatedAt: string;
   canManage: true;
+  likeCount: number;
+  favoriteCount: number;
+  likedByMe: boolean;
+  favoritedByMe: boolean;
+  likeCanUndo: boolean;
+  likeLocked: boolean;
 };
 
 function clampInt(value: string | null, def: number, min: number, max: number): number {
@@ -39,6 +46,7 @@ export async function GET(request: Request) {
   if (authed instanceof Response) return authed;
 
   await ensureScriptSharesTable(db);
+  await ensureScriptShareInteractionsTables(db);
 
   const { searchParams } = new URL(request.url);
   const page = clampInt(searchParams.get("page"), 1, 1, 10_000);
@@ -53,13 +61,32 @@ export async function GET(request: Request) {
 
   const { results } = await db
     .prepare(
-      `SELECT id, effect_name, public_username, lang, is_public, original_filename, size_bytes, created_at, updated_at
-       FROM script_shares
-       WHERE owner_user_id = ?
-       ORDER BY created_at DESC
+      `SELECT
+         s.id,
+         s.effect_name,
+         s.public_username,
+         s.lang,
+         s.is_public,
+         s.original_filename,
+         s.size_bytes,
+         s.created_at,
+         s.updated_at,
+         (SELECT COUNT(*) FROM script_share_likes l WHERE l.script_id = s.id) AS like_count,
+         (SELECT COUNT(*) FROM script_share_favorites f WHERE f.script_id = s.id) AS favorite_count,
+         EXISTS(SELECT 1 FROM script_share_likes l WHERE l.script_id = s.id AND l.user_id = ?) AS liked_by_me,
+         EXISTS(SELECT 1 FROM script_share_favorites f WHERE f.script_id = s.id AND f.user_id = ?) AS favorited_by_me,
+         (
+           SELECT CASE WHEN created_at >= datetime('now', '-1 day') THEN 1 ELSE 0 END
+           FROM script_share_likes l
+           WHERE l.script_id = s.id AND l.user_id = ?
+           LIMIT 1
+         ) AS my_like_can_undo
+       FROM script_shares s
+       WHERE s.owner_user_id = ?
+       ORDER BY s.created_at DESC
        LIMIT ? OFFSET ?`
     )
-    .bind(authed.user.id, pageSize, offset)
+    .bind(authed.user.id, authed.user.id, authed.user.id, authed.user.id, pageSize, offset)
     .all<{
       id: string;
       effect_name: string;
@@ -70,6 +97,11 @@ export async function GET(request: Request) {
       size_bytes: number;
       created_at: string;
       updated_at: string;
+      like_count: number;
+      favorite_count: number;
+      liked_by_me: number;
+      favorited_by_me: number;
+      my_like_can_undo: number | null;
     }>();
 
   const items: ScriptShareListItem[] = (results ?? []).map((r) => ({
@@ -84,6 +116,12 @@ export async function GET(request: Request) {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     canManage: true,
+    likeCount: r.like_count ?? 0,
+    favoriteCount: r.favorite_count ?? 0,
+    likedByMe: !!r.liked_by_me,
+    favoritedByMe: !!r.favorited_by_me,
+    likeCanUndo: r.my_like_can_undo === 1,
+    likeLocked: !!r.liked_by_me && r.my_like_can_undo !== 1,
   }));
 
   return Response.json({ items, total, page, pageSize });
@@ -247,6 +285,12 @@ export async function POST(request: Request) {
     createdAt: nowIso,
     updatedAt: nowIso,
     canManage: true,
+    likeCount: 0,
+    favoriteCount: 0,
+    likedByMe: false,
+    favoritedByMe: false,
+    likeCanUndo: false,
+    likeLocked: false,
   } satisfies ScriptShareListItem);
 }
 
