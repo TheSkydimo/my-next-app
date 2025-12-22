@@ -547,7 +547,11 @@ export default function ScriptSharesPage() {
           <div className="user-page-card" style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <input
-                placeholder={language === "zh-CN" ? "模糊查找：效果名/昵称/ID" : "Search: name/nickname/id"}
+                placeholder={
+                  language === "zh-CN"
+                    ? "效果名称 / 作者昵称"
+                    : "Effect name / author nickname"
+                }
                 value={allQ}
                 onChange={(e) => setAllQ(e.target.value)}
                 style={{ flex: 1, minWidth: 220 }}
@@ -571,26 +575,7 @@ export default function ScriptSharesPage() {
                   void loadAll();
                 }}
               >
-                {language === "zh-CN" ? "清空_toggle" : "Clear"}
-              </button>
-              <span style={{ fontSize: 12, color: "#6b7280" }}>
-                {language === "zh-CN"
-                  ? `第 ${allPage} / ${allTotalPages} 页（每页 ${allPageSize}）`
-                  : `Page ${allPage} / ${allTotalPages} (${allPageSize}/page)`}
-              </span>
-              <button
-                type="button"
-                disabled={loadingAll || allPage <= 1}
-                onClick={() => setAllPage((p) => Math.max(1, p - 1))}
-              >
-                {language === "zh-CN" ? "上一页" : "Prev"}
-              </button>
-              <button
-                type="button"
-                disabled={loadingAll || allPage >= allTotalPages}
-                onClick={() => setAllPage((p) => Math.min(allTotalPages, p + 1))}
-              >
-                {language === "zh-CN" ? "下一页" : "Next"}
+                {language === "zh-CN" ? "清空" : "Clear"}
               </button>
             </div>
           </div>
@@ -601,16 +586,53 @@ export default function ScriptSharesPage() {
               {language === "zh-CN" ? "目前还没有公开分享。" : "No public shares yet."}
             </p>
           ) : (
-            <div className="script-share-grid">
-              {all.map((it) => (
-                <ShareCard
-                  key={it.id}
-                  item={it}
-                  language={language}
-                  canManage={false}
-                />
-              ))}
-            </div>
+            <>
+              <div className="script-share-grid">
+                {all.map((it) => (
+                  <ShareCard
+                    key={it.id}
+                    item={it}
+                    language={language}
+                    canManage={false}
+                  />
+                ))}
+              </div>
+
+              {allTotalPages > 1 && (
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ fontSize: 12, color: "#6b7280" }}>
+                    {language === "zh-CN"
+                      ? `共 ${allTotalPages} 页`
+                      : `Total ${allTotalPages} pages`}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={loadingAll || allPage <= 1}
+                    onClick={() => setAllPage((p) => Math.max(1, p - 1))}
+                  >
+                    {language === "zh-CN" ? "上一页" : "Prev"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loadingAll || allPage >= allTotalPages}
+                    onClick={() =>
+                      setAllPage((p) => Math.min(allTotalPages, p + 1))
+                    }
+                  >
+                    {language === "zh-CN" ? "下一页" : "Next"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}
