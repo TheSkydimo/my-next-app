@@ -52,3 +52,23 @@ CREATE TABLE IF NOT EXISTS user_feedback_replies (
 
 CREATE INDEX IF NOT EXISTS idx_feedback_replies_feedback ON user_feedback_replies (feedback_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feedback_replies_admin ON user_feedback_replies (admin_id, created_at DESC);
+
+-- 用户脚本分享：用户上传脚本文件到 R2，生成随机唯一 ID，供其他用户查看/下载。
+CREATE TABLE IF NOT EXISTS script_shares (
+  id TEXT PRIMARY KEY,
+  owner_user_id INTEGER NOT NULL,
+  effect_name TEXT NOT NULL,
+  public_username TEXT NOT NULL,
+  -- 是否公开：1=公开（所有用户可查看/下载），0=私密（仅作者/管理员可查看/下载）
+  is_public INTEGER NOT NULL DEFAULT 1,
+  r2_key TEXT NOT NULL,
+  original_filename TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_script_shares_owner_created ON script_shares (owner_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_script_shares_created ON script_shares (created_at DESC);

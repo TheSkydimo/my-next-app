@@ -52,6 +52,10 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
   const [feedbackSubTab, setFeedbackSubTab] = useState<"new" | "history" | null>(
     null
   );
+  const [isScriptShareMenuOpen, setIsScriptShareMenuOpen] = useState(false);
+  const [scriptShareSubTab, setScriptShareSubTab] = useState<"mine" | "all" | null>(
+    null
+  );
   // 移动端菜单状态
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -136,6 +140,33 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
     };
   }, [pathname]);
 
+  // 用户脚本分享子菜单：根据 hash 同步“我的分享 / 查看分享”，并在脚本分享页默认展开
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncFromLocation = () => {
+      if (pathname !== "/script-shares") {
+        setScriptShareSubTab(null);
+        return;
+      }
+
+      const hash = window.location.hash;
+      if (hash === "#all") {
+        setScriptShareSubTab("all");
+      } else {
+        setScriptShareSubTab("mine");
+      }
+      setIsScriptShareMenuOpen(true);
+    };
+
+    syncFromLocation();
+
+    window.addEventListener("hashchange", syncFromLocation);
+    return () => {
+      window.removeEventListener("hashchange", syncFromLocation);
+    };
+  }, [pathname]);
+
   const logout = async () => {
     try {
       await fetch("/api/logout", { method: "POST" });
@@ -193,6 +224,10 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
       {
         href: "/feedback",
         keywords: ["反馈", "意见", "问题", "feedback", "support"],
+      },
+      {
+        href: "/script-shares",
+        keywords: ["脚本", "分享", "script", "share", "shares"],
       },
     ];
 
@@ -445,6 +480,69 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
                     }}
                   >
                     {language === "zh-CN" ? "质保信息" : "Warranty info"}
+                  </Link>
+                </div>
+              )}
+            </div>
+            <div className="user-layout__nav-group">
+              <button
+                type="button"
+                className={`user-layout__nav-link user-layout__nav-link--button ${
+                  isActive("/script-shares") ? "user-layout__nav-link--active" : ""
+                }`}
+                onClick={() => {
+                  const next = !isScriptShareMenuOpen;
+                  setIsScriptShareMenuOpen(next);
+                  if (next) {
+                    setScriptShareSubTab("mine");
+                    if (pathname !== "/script-shares") {
+                      window.location.href = "/script-shares#mine";
+                    } else if (typeof window !== "undefined") {
+                      window.location.hash = "#mine";
+                    }
+                  }
+                }}
+              >
+                <span>{language === "zh-CN" ? "脚本分享" : "Script shares"}</span>
+                <span className="user-layout__nav-group-arrow">
+                  {isScriptShareMenuOpen ? "▾" : "▸"}
+                </span>
+              </button>
+              {isScriptShareMenuOpen && (
+                <div className="user-layout__nav-sub">
+                  <Link
+                    href="/script-shares#mine"
+                    className={`user-layout__nav-sub-link ${
+                      scriptShareSubTab === "mine"
+                        ? "user-layout__nav-sub-link--active"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      setScriptShareSubTab("mine");
+                      closeMobileMenu();
+                      if (typeof window !== "undefined") {
+                        window.location.hash = "#mine";
+                      }
+                    }}
+                  >
+                    {language === "zh-CN" ? "我的分享" : "My shares"}
+                  </Link>
+                  <Link
+                    href="/script-shares#all"
+                    className={`user-layout__nav-sub-link ${
+                      scriptShareSubTab === "all"
+                        ? "user-layout__nav-sub-link--active"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      setScriptShareSubTab("all");
+                      closeMobileMenu();
+                      if (typeof window !== "undefined") {
+                        window.location.hash = "#all";
+                      }
+                    }}
+                  >
+                    {language === "zh-CN" ? "查看分享" : "Browse"}
                   </Link>
                 </div>
               )}

@@ -206,6 +206,168 @@ input {
 	font-size: 14px;
 }
 
+/* ========== Script shares (cards) ========== */
+.script-share-grid {
+	margin-top: 10px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 12px;
+}
+
+.script-share-card {
+	border-radius: 14px;
+	border: 1px solid rgba(148, 163, 184, 0.35);
+	background: linear-gradient(145deg, rgba(2, 6, 23, 0.96), rgba(15, 23, 42, 0.92));
+	box-shadow: 0 18px 40px rgba(2, 6, 23, 0.45);
+	padding: 14px 14px 12px;
+	color: #e5e7eb;
+}
+
+:root[data-theme="light"] .script-share-card {
+	background: #ffffff;
+	color: #111827;
+	border-color: rgba(209, 213, 219, 0.9);
+	box-shadow: 0 14px 28px rgba(148, 163, 184, 0.35);
+}
+
+.script-share-card__title {
+	font-size: 16px;
+	font-weight: 650;
+	letter-spacing: 0.2px;
+	color: inherit;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.script-share-card__meta {
+	margin-top: 8px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+}
+
+.script-share-card__pill {
+	font-size: 12px;
+	padding: 3px 10px;
+	border-radius: 9999px;
+	border: 1px solid rgba(148, 163, 184, 0.35);
+	background: rgba(2, 6, 23, 0.35);
+	color: inherit;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.script-share-card__pill--private {
+	border: 1px solid rgba(251, 191, 36, 0.55);
+	background: rgba(251, 191, 36, 0.12);
+	color: #fbbf24;
+}
+
+:root[data-theme="light"] .script-share-card__pill {
+	background: rgba(59, 130, 246, 0.06);
+	border-color: rgba(209, 213, 219, 0.9);
+}
+
+.script-share-card__time {
+	font-size: 12px;
+	color: #9ca3af;
+}
+
+:root[data-theme="light"] .script-share-card__time {
+	color: #6b7280;
+}
+
+.script-share-card__actions {
+	margin-top: 12px;
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.script-share-card__btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 7px 12px;
+	border-radius: 9999px;
+	font-size: 13px;
+	border: 1px solid rgba(148, 163, 184, 0.35);
+	background: rgba(2, 6, 23, 0.3);
+	color: inherit;
+	cursor: pointer;
+	text-decoration: none;
+	transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.script-share-card__btn:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 10px 18px rgba(2, 6, 23, 0.35);
+}
+
+.script-share-card__btn--primary {
+	border: none;
+	color: #f9fafb;
+	background: linear-gradient(90deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.95));
+}
+
+.script-share-card__btn--secondary {
+	background: rgba(148, 163, 184, 0.08);
+}
+
+.script-share-card__btn--danger {
+	border: 1px solid rgba(239, 68, 68, 0.5);
+	background: rgba(239, 68, 68, 0.12);
+	color: #f87171;
+}
+
+.script-share-tab {
+	border-radius: 9999px;
+	padding: 6px 14px;
+	border: 1px solid rgba(148, 163, 184, 0.5);
+	background: rgba(2, 6, 23, 0.15);
+	color: inherit;
+	cursor: pointer;
+}
+
+:root[data-theme="light"] .script-share-tab {
+	background: #ffffff;
+	border-color: rgba(209, 213, 219, 0.9);
+}
+
+.script-share-tab--active {
+	border: none;
+	color: #f9fafb;
+	background: linear-gradient(90deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.95));
+}
+
+.script-share-upload-btn {
+	border-radius: 9999px;
+	padding: 7px 14px;
+	border: 1px solid rgba(148, 163, 184, 0.5);
+	background: rgba(2, 6, 23, 0.15);
+	color: inherit;
+	cursor: pointer;
+}
+
+.script-share-upload-btn:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
+}
+
+.script-share-upload-btn--primary {
+	border: none;
+	color: #f9fafb;
+	background: linear-gradient(90deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.95));
+}
+
+.script-share-upload-btn--secondary {
+	background: rgba(148, 163, 184, 0.08);
+}
+
 /* 浅色主题下的通用输入框样式 */
 :root[data-theme="light"] input {
 	background: #ffffff;
