@@ -20,6 +20,7 @@ export type UserMessages = {
   layout: {
     navHome: string;
     navProfile: string;
+    navFavorites: string;
     navDevices: string;
     navFeedback: string;
     logout: string;
@@ -131,6 +132,7 @@ const zhCN: UserMessages = {
   layout: {
     navHome: "首页",
     navProfile: "信息管理",
+    navFavorites: "收藏",
     navDevices: "订单管理",
     navFeedback: "意见反馈",
     logout: "退出",
@@ -247,6 +249,7 @@ const enUS: UserMessages = {
   layout: {
     navHome: "Home",
     navProfile: "Profile",
+    navFavorites: "Favorites",
     navDevices: "Devices",
     navFeedback: "Feedback",
     logout: "Sign out",

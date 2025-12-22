@@ -16,6 +16,7 @@ import {
   deleteScriptShareInteractions,
   ensureScriptShareInteractionsTables,
 } from "../../../_utils/scriptShareInteractionsTable";
+import { createUserNotification } from "../../../_utils/userNotifications";
 
 type DbRow = {
   id: string;
@@ -264,6 +265,44 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
   }
 
   await ensureScriptShareInteractionsTables(db);
+
+  // Notify favoriting users (exclude owner). Likes: no notification.
+  try {
+    const favRes = await db
+      .prepare(
+        "SELECT DISTINCT user_id FROM script_share_favorites WHERE script_id = ? AND user_id <> ?"
+      )
+      .bind(id, authed.user.id)
+      .all<{ user_id: number }>();
+    const favUserIds = (favRes.results ?? []).map((r) => r.user_id).filter((x) => Number.isFinite(x));
+
+    if (favUserIds.length > 0) {
+      const isEn = String(row.lang ?? "").trim() === "en-US";
+      const title = isEn ? "Script removed" : "脚本已被作者移除";
+      const body = isEn
+        ? `The author has removed the script “${row.effect_name}” (ID: ${row.id}). It is no longer available.`
+        : `作者已移除脚本《${row.effect_name}》（ID: ${row.id}），你将无法再次查看/下载该脚本。`;
+
+      // Best-effort: notifications should not block deletion.
+      await Promise.allSettled(
+        favUserIds.map((uid) =>
+          createUserNotification({
+            db,
+            userId: uid,
+            type: "script_removed_by_author",
+            level: "warn",
+            title,
+            body,
+            linkUrl: "/script-shares#all",
+            meta: { scriptShareId: row.id, effectName: row.effect_name, ownerUserId: row.owner_user_id },
+          })
+        )
+      );
+    }
+  } catch {
+    // ignore
+  }
+
   await deleteScriptShareInteractions({ db, scriptId: id });
   await db.prepare("DELETE FROM script_shares WHERE id = ?").bind(id).run();
   if (row.r2_key) await r2.delete(row.r2_key).catch(() => {});

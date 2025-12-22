@@ -219,6 +219,10 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
       { href: "/", keywords: ["首页", "home", "index"] },
       { href: "/profile", keywords: ["信息", "资料", "profile", "account"] },
       {
+        href: "/favorites",
+        keywords: ["收藏", "favorites", "favourite", "favorite", "star"],
+      },
+      {
         href: "/devices",
         keywords: ["设备", "device", "devices"],
       },
@@ -335,6 +339,15 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
               onClick={closeMobileMenu}
             >
               {messages.layout.navProfile}
+            </Link>
+            <Link
+              href="/favorites"
+              className={`user-layout__nav-link ${
+                isActive("/favorites") ? "user-layout__nav-link--active" : ""
+              }`}
+              onClick={closeMobileMenu}
+            >
+              {messages.layout.navFavorites}
             </Link>
             <div className="user-layout__nav-group">
               <button
