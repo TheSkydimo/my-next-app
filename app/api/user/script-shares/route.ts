@@ -1,6 +1,12 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureScriptSharesTable } from "../../_utils/scriptSharesTable";
-import { buildScriptShareR2Key, containsCjkCharacters, isAllowedScriptFilename, sanitizeDisplayText } from "../../_utils/scriptShares";
+import {
+  buildScriptShareR2Key,
+  containsCjkCharacters,
+  isAllowedScriptFilename,
+  sanitizeDisplayText,
+  sha256HexFromArrayBuffer,
+} from "../../_utils/scriptShares";
 import { buildScriptShareCoverR2Key, decodeScriptTextPreview, generateScriptShareCoverSvg } from "../../_utils/scriptShareCover";
 import { requireUserFromRequest } from "../_utils/userSession";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
@@ -129,75 +135,104 @@ export async function POST(request: Request) {
     return new Response("文件过大（最大 10MB）", { status: 400 });
   }
 
-  // Generate unique id (extremely low collision, still retry).
-  let id = "";
-  let inserted = false;
-  let r2Key = "";
+  const buffer = await file.arrayBuffer();
+  const contentHash = await sha256HexFromArrayBuffer(buffer);
+  const id = isPublic ? `pub_${lang}_${contentHash}` : `pri_${authed.user.id}_${contentHash}`;
+  const r2Key = buildScriptShareR2Key(id);
 
-  for (let attempt = 0; attempt < 5; attempt++) {
-    id = crypto.randomUUID();
-    r2Key = buildScriptShareR2Key(id);
-    try {
-      const buffer = await file.arrayBuffer();
-      await r2.put(r2Key, buffer, {
-        httpMetadata: {
-          contentType: "application/octet-stream",
-        },
-      });
+  const existing = await db
+    .prepare(
+      `SELECT id, owner_user_id, effect_name, public_username, lang, is_public, original_filename, size_bytes, created_at, updated_at
+       FROM script_shares WHERE id = ? LIMIT 1`
+    )
+    .bind(id)
+    .all<{
+      id: string;
+      owner_user_id: number;
+      effect_name: string;
+      public_username: string;
+      lang: AppLanguage;
+      is_public: number;
+      original_filename: string;
+      size_bytes: number;
+      created_at: string;
+      updated_at: string;
+    }>();
 
-      const scriptText = decodeScriptTextPreview(buffer);
-      const { svg, mimeType } = generateScriptShareCoverSvg({
+  const existedRow = existing.results?.[0];
+  if (existedRow) {
+    if (isPublic) {
+      return new Response(
+        `该脚本已被公开分享（效果名：${existedRow.effect_name}）。你可以搜索此效果名下载验证。`,
+        { status: 409 }
+      );
+    }
+    return new Response("你已上传过相同内容的私有脚本", { status: 409 });
+  }
+
+  let coverKey = "";
+  try {
+    await r2.put(r2Key, buffer, {
+      httpMetadata: {
+        contentType: "application/octet-stream",
+      },
+    });
+
+    const scriptText = decodeScriptTextPreview(buffer);
+    const { svg, mimeType } = generateScriptShareCoverSvg({
+      id,
+      effectName,
+      publicUsername,
+      lang,
+      scriptText,
+    });
+    coverKey = buildScriptShareCoverR2Key(id);
+    await r2.put(coverKey, svg, { httpMetadata: { contentType: mimeType } });
+
+    await db
+      .prepare(
+        `INSERT INTO script_shares
+         (id, owner_user_id, effect_name, public_username, lang, is_public, r2_key, cover_r2_key, cover_mime_type, cover_updated_at, original_filename, mime_type, size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)`
+      )
+      .bind(
         id,
+        authed.user.id,
         effectName,
         publicUsername,
         lang,
-        scriptText,
-      });
-      const coverKey = buildScriptShareCoverR2Key(id);
-      await r2.put(coverKey, svg, { httpMetadata: { contentType: mimeType } });
-
-      await db
-        .prepare(
-          `INSERT INTO script_shares
-           (id, owner_user_id, effect_name, public_username, lang, is_public, r2_key, cover_r2_key, cover_mime_type, cover_updated_at, original_filename, mime_type, size_bytes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)`
-        )
-        .bind(
-          id,
-          authed.user.id,
-          effectName,
-          publicUsername,
-          lang,
-          isPublic ? 1 : 0,
-          r2Key,
-          coverKey,
-          mimeType,
-          file.name,
-          file.type || "application/octet-stream",
-          file.size
-        )
-        .run();
-
-      inserted = true;
-      break;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("UNIQUE constraint failed: script_shares.id")) {
-        // Rare collision, retry with new UUID.
-        continue;
+        isPublic ? 1 : 0,
+        r2Key,
+        coverKey,
+        mimeType,
+        file.name,
+        file.type || "application/octet-stream",
+        file.size
+      )
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("UNIQUE constraint failed: script_shares.id")) {
+      await r2.delete(r2Key).catch(() => {});
+      if (coverKey) await r2.delete(coverKey).catch(() => {});
+      if (isPublic) {
+        const row = await db
+          .prepare(`SELECT effect_name FROM script_shares WHERE id = ? LIMIT 1`)
+          .bind(id)
+          .all<{ effect_name: string }>();
+        const effect = row.results?.[0]?.effect_name || "（未知）";
+        return new Response(
+          `该脚本已被公开分享（效果名：${effect}）。你可以搜索此效果名下载验证。`,
+          { status: 409 }
+        );
       }
-
-      console.error("create script share failed:", e);
-      // Best-effort cleanup if put succeeded.
-      if (r2Key) {
-        await r2.delete(r2Key).catch(() => {});
-      }
-      await r2.delete(buildScriptShareCoverR2Key(id)).catch(() => {});
-      return new Response("上传失败，请稍后重试", { status: 500 });
+      return new Response("你已上传过相同内容的私有脚本", { status: 409 });
     }
+    console.error("create script share failed:", e);
+    await r2.delete(r2Key).catch(() => {});
+    if (coverKey) await r2.delete(coverKey).catch(() => {});
+    return new Response("上传失败，请稍后重试", { status: 500 });
   }
-
-  if (!inserted) return new Response("生成脚本 ID 失败，请稍后重试", { status: 500 });
 
   const nowIso = new Date().toISOString();
   return Response.json({

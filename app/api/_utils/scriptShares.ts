@@ -1,6 +1,11 @@
 export const SCRIPT_SHARE_FILE_EXT = ".skmode";
 export const SCRIPT_SHARE_R2_PREFIX = "script-shares/";
 
+export async function sha256HexFromArrayBuffer(buffer: ArrayBuffer): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", buffer);
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export function containsCjkCharacters(input: string): boolean {
   // Basic CJK ranges: CJK Unified Ideographs + Extension A + Compatibility Ideographs
   return /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/.test(input);
