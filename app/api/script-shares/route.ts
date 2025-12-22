@@ -10,6 +10,8 @@ type ListItem = {
   publicUsername: string;
   lang: AppLanguage;
   isPublic: boolean;
+  isPinned: boolean;
+  pinnedAt: string | null;
   coverUrl: string;
   originalFilename: string;
   sizeBytes: number;
@@ -69,6 +71,8 @@ export async function GET(request: Request) {
          s.public_username,
          s.lang,
          s.is_public,
+         s.is_pinned,
+         s.pinned_at,
          s.original_filename,
          s.size_bytes,
          s.created_at,
@@ -85,7 +89,7 @@ export async function GET(request: Request) {
          ) AS my_like_can_undo
        FROM script_shares s
        ${whereSql}
-       ORDER BY s.created_at DESC
+       ORDER BY s.is_pinned DESC, s.pinned_at DESC, s.created_at DESC
        LIMIT ? OFFSET ?`
     )
     .bind(userId, userId, userId, ...binds, pageSize, offset)
@@ -95,6 +99,8 @@ export async function GET(request: Request) {
       public_username: string;
       lang: AppLanguage;
       is_public: number;
+      is_pinned: number;
+      pinned_at: string | null;
       original_filename: string;
       size_bytes: number;
       created_at: string;
@@ -112,6 +118,8 @@ export async function GET(request: Request) {
     publicUsername: r.public_username,
     lang: normalizeAppLanguage(r.lang),
     isPublic: !!r.is_public,
+    isPinned: !!r.is_pinned,
+    pinnedAt: r.pinned_at ?? null,
     coverUrl: `/api/script-shares/${encodeURIComponent(r.id)}/cover`,
     originalFilename: r.original_filename,
     sizeBytes: r.size_bytes,

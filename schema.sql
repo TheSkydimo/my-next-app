@@ -63,6 +63,10 @@ CREATE TABLE IF NOT EXISTS script_shares (
   lang TEXT NOT NULL DEFAULT 'zh-CN',
   -- 是否公开：1=公开（所有用户可查看/下载），0=私密（仅作者/管理员可查看/下载）
   is_public INTEGER NOT NULL DEFAULT 1,
+  -- 是否置顶：1=置顶（公共列表优先展示），0=不置顶
+  is_pinned INTEGER NOT NULL DEFAULT 0,
+  -- 置顶时间（用于排序；取消置顶后置空）
+  pinned_at TIMESTAMP,
   r2_key TEXT NOT NULL,
   -- 封面（由脚本内容生成，存放于 R2；为空则表示尚未生成/需要重新生成）
   cover_r2_key TEXT,
@@ -80,6 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_script_shares_owner_created ON script_shares (own
 CREATE INDEX IF NOT EXISTS idx_script_shares_created ON script_shares (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_script_shares_lang_created ON script_shares (lang, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_script_shares_owner_lang_created ON script_shares (owner_user_id, lang, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_script_shares_lang_pinned_created ON script_shares (lang, is_pinned DESC, pinned_at DESC, created_at DESC);
 
 -- 脚本点赞：一个用户对一个脚本只能点赞一次；点赞后 24h 内允许取消，超过 24h 锁定不可取消/不可再点击。
 CREATE TABLE IF NOT EXISTS script_share_likes (

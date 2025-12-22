@@ -13,6 +13,8 @@ type ShareItem = {
   effectName: string;
   publicUsername: string;
   isPublic?: boolean;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
   originalFilename: string;
   sizeBytes: number;
   createdAt: string;
@@ -110,6 +112,11 @@ function ShareCard({
             {language === "zh-CN" ? "作者：" : "By: "}
             {item.publicUsername}
           </span>
+          {item.isPinned && (
+            <span className="script-share-card__pill">
+              {language === "zh-CN" ? "置顶" : "Pinned"}
+            </span>
+          )}
           {canManage && item.isPublic === false && (
             <span className="script-share-card__pill script-share-card__pill--private">
               {language === "zh-CN" ? "私密" : "Private"}

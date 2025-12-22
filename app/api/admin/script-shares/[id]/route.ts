@@ -19,12 +19,14 @@ type DbRow = {
   public_username: string;
   lang: string;
   is_public: number;
+  is_pinned: number;
+  pinned_at: string | null;
 };
 
 async function loadById(db: D1Database, id: string): Promise<DbRow | null> {
   const { results } = await db
     .prepare(
-      "SELECT id, owner_user_id, r2_key, effect_name, public_username, lang, is_public FROM script_shares WHERE id = ? LIMIT 1"
+      "SELECT id, owner_user_id, r2_key, effect_name, public_username, lang, is_public, is_pinned, pinned_at FROM script_shares WHERE id = ? LIMIT 1"
     )
     .bind(id)
     .all<DbRow>();
@@ -165,6 +167,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     effectName?: string;
     publicUsername?: string;
     isPublic?: boolean;
+    isPinned?: boolean;
   };
 
   const effectName =
@@ -172,6 +175,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const publicUsername =
     body.publicUsername != null ? sanitizeDisplayText(body.publicUsername, 40) : null;
   const isPublic = body.isPublic != null ? !!body.isPublic : null;
+  const isPinned = body.isPinned != null ? !!body.isPinned : null;
 
   if (effectName === "") return new Response("脚本效果名字不能为空", { status: 400 });
   if (publicUsername === "") return new Response("公开展示的昵称不能为空", { status: 400 });
@@ -182,15 +186,27 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const nextEffect = effectName ?? row.effect_name;
   const nextPublic = publicUsername ?? row.public_username;
   const nextIsPublic = isPublic == null ? row.is_public : isPublic ? 1 : 0;
+  const nextIsPinned = isPinned == null ? row.is_pinned : isPinned ? 1 : 0;
+
+  if (nextIsPinned === 1 && nextIsPublic !== 1) {
+    return new Response("置顶只支持公开脚本，请先设为公开", { status: 400 });
+  }
 
   await db
     .prepare(
       `UPDATE script_shares
-       SET effect_name = ?, public_username = ?, is_public = ?, updated_at = CURRENT_TIMESTAMP
+       SET effect_name = ?,
+           public_username = ?,
+           is_public = ?,
+           is_pinned = ?,
+           pinned_at = CASE WHEN ? = 1 THEN COALESCE(pinned_at, CURRENT_TIMESTAMP) ELSE NULL END,
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`
     )
-    .bind(nextEffect, nextPublic, nextIsPublic, id)
+    .bind(nextEffect, nextPublic, nextIsPublic, nextIsPinned, nextIsPinned, id)
     .run();
+
+  const updated = await loadById(db, id);
 
   // 建议通知：公有脚本被设为私密/下架
   if (row.is_public === 1 && nextIsPublic === 0) {
@@ -212,6 +228,8 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     effectName: nextEffect,
     publicUsername: nextPublic,
     isPublic: !!nextIsPublic,
+    isPinned: !!nextIsPinned,
+    pinnedAt: updated?.pinned_at ?? null,
     updatedAt: new Date().toISOString(),
   });
 }

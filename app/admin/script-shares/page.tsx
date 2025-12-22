@@ -18,6 +18,8 @@ type AdminShareItem = {
   publicUsername: string;
   lang?: "zh-CN" | "en-US";
   isPublic: boolean;
+  isPinned: boolean;
+  pinnedAt: string | null;
   originalFilename: string;
   sizeBytes: number;
   createdAt: string;
@@ -57,6 +59,7 @@ function ShareCard({
   onDelete,
   onReupload,
   onTogglePublic,
+  onTogglePinned,
 }: {
   item: AdminShareItem;
   canReupload: boolean;
@@ -65,6 +68,7 @@ function ShareCard({
   onDelete?: (id: string) => void;
   onReupload?: (id: string, file: File) => void;
   onTogglePublic?: (id: string, next: boolean) => void;
+  onTogglePinned?: (id: string, next: boolean) => void;
 }) {
   const reason = (auditReason ?? "").trim();
   const reasonQuery = reason ? `?reason=${encodeURIComponent(reason)}` : "";
@@ -80,6 +84,11 @@ function ShareCard({
             {language === "zh-CN" ? "展示昵称：" : "Display: "}
             {item.publicUsername}
           </span>
+          {item.isPinned && (
+            <span className="script-share-card__pill">
+              {language === "zh-CN" ? "置顶" : "Pinned"}
+            </span>
+          )}
           {!item.isPublic && (
             <span className="script-share-card__pill script-share-card__pill--private">
               {language === "zh-CN" ? "私密" : "Private"}
@@ -134,6 +143,28 @@ function ShareCard({
             : item.isPublic
               ? "Make private"
               : "Make public"}
+        </button>
+
+        <button
+          type="button"
+          className="script-share-card__btn script-share-card__btn--secondary"
+          disabled={!item.isPublic && !item.isPinned}
+          title={
+            !item.isPublic && !item.isPinned
+              ? language === "zh-CN"
+                ? "置顶只支持公开脚本，请先设为公开"
+                : "Pinned only supports public scripts. Make it public first."
+              : undefined
+          }
+          onClick={() => onTogglePinned?.(item.id, !item.isPinned)}
+        >
+          {language === "zh-CN"
+            ? item.isPinned
+              ? "取消置顶"
+              : "置顶"
+            : item.isPinned
+              ? "Unpin"
+              : "Pin"}
         </button>
 
         <button
@@ -356,6 +387,38 @@ export default function AdminScriptSharesPage() {
     }
   };
 
+  const handleTogglePinned = async (id: string, next: boolean) => {
+    setError("");
+    setOkMsg("");
+    try {
+      const res = await fetch(`/api/admin/script-shares/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(auditReason.trim() ? { "X-Admin-Reason": auditReason.trim() } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ isPinned: next }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as { id: string; isPinned: boolean; pinnedAt: string | null };
+      setItems((prev) =>
+        prev.map((x) => (x.id === id ? { ...x, isPinned: data.isPinned, pinnedAt: data.pinnedAt } : x))
+      );
+      setOkMsg(
+        language === "zh-CN"
+          ? data.isPinned
+            ? "已置顶"
+            : "已取消置顶"
+          : data.isPinned
+            ? "Pinned"
+            : "Unpinned"
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : (language === "zh-CN" ? "操作失败" : "Action failed"));
+    }
+  };
+
   if (!adminEmail) {
     return (
       <div className="vben-page">
@@ -545,6 +608,7 @@ export default function AdminScriptSharesPage() {
               onDelete={handleDelete}
               onReupload={handleReupload}
               onTogglePublic={handleTogglePublic}
+              onTogglePinned={handleTogglePinned}
             />
           ))}
         </div>

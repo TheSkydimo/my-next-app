@@ -5,6 +5,8 @@ export type ScriptShareRow = {
   public_username: string;
   lang: string;
   is_public: number;
+  is_pinned: number;
+  pinned_at: string | null;
   r2_key: string;
   cover_r2_key: string | null;
   cover_mime_type: string | null;
@@ -27,6 +29,8 @@ export async function ensureScriptSharesTable(db: D1Database) {
         public_username TEXT NOT NULL,
         lang TEXT NOT NULL DEFAULT 'zh-CN',
         is_public INTEGER NOT NULL DEFAULT 1,
+        is_pinned INTEGER NOT NULL DEFAULT 0,
+        pinned_at TIMESTAMP,
         r2_key TEXT NOT NULL,
         cover_r2_key TEXT,
         cover_mime_type TEXT,
@@ -87,6 +91,22 @@ export async function ensureScriptSharesTable(db: D1Database) {
     if (!msg.includes("duplicate column name: cover_updated_at")) throw e;
   }
 
+  try {
+    await db
+      .prepare("ALTER TABLE script_shares ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0")
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: is_pinned")) throw e;
+  }
+
+  try {
+    await db.prepare("ALTER TABLE script_shares ADD COLUMN pinned_at TIMESTAMP").run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: pinned_at")) throw e;
+  }
+
   // Indexes (id is already indexed as PRIMARY KEY)
   await db
     .prepare(
@@ -106,6 +126,12 @@ export async function ensureScriptSharesTable(db: D1Database) {
   await db
     .prepare(
       "CREATE INDEX IF NOT EXISTS idx_script_shares_owner_lang_created ON script_shares (owner_user_id, lang, created_at DESC)"
+    )
+    .run();
+
+  await db
+    .prepare(
+      "CREATE INDEX IF NOT EXISTS idx_script_shares_lang_pinned_created ON script_shares (lang, is_pinned DESC, pinned_at DESC, created_at DESC)"
     )
     .run();
 }
