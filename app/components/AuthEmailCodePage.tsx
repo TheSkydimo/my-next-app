@@ -13,7 +13,14 @@ import {
   type AppTheme,
 } from "../client-prefs";
 
-type PrimaryColorKey = "blue" | "purple" | "magenta" | "gold" | "green" | "gray";
+type PrimaryColorKey =
+  | "charcoal"
+  | "blue"
+  | "purple"
+  | "magenta"
+  | "gold"
+  | "green"
+  | "gray";
 type Lang = "zh-CN" | "en";
 type LoginStep = "email" | "turnstile" | "code";
 type AuthLayoutAlign = "left" | "center" | "right";
@@ -161,6 +168,7 @@ const TEXTS: Record<
 };
 
 const PRIMARY_COLORS: { key: PrimaryColorKey; color: string }[] = [
+  { key: "charcoal", color: "#070707" },
   { key: "blue", color: "#3b82f6" },
   { key: "purple", color: "#8b5cf6" },
   { key: "magenta", color: "#ec4899" },
@@ -168,6 +176,26 @@ const PRIMARY_COLORS: { key: PrimaryColorKey; color: string }[] = [
   { key: "green", color: "#22c55e" },
   { key: "gray", color: "#6b7280" },
 ];
+
+const PRIMARY_ACCENT: Record<PrimaryColorKey, string> = {
+  charcoal: "#070707",
+  blue: "#2563eb",
+  purple: "#7c3aed",
+  magenta: "#ec4899",
+  gold: "#eab308",
+  green: "#22c55e",
+  gray: "#6b7280",
+};
+
+const PRIMARY_SUBMIT_BG: Record<PrimaryColorKey, string> = {
+  charcoal: "#070707",
+  blue: "linear-gradient(135deg, #2563eb, #4f46e5)",
+  purple: "linear-gradient(135deg, #7c3aed, #a855f7)",
+  magenta: "linear-gradient(135deg, #ec4899, #f97316)",
+  gold: "linear-gradient(135deg, #eab308, #f97316)",
+  green: "linear-gradient(135deg, #10b981, #22c55e)",
+  gray: "linear-gradient(135deg, #4b5563, #6b7280)",
+};
 
 export function AuthEmailCodePage(props: { variant: Variant }) {
   const { variant } = props;
@@ -183,12 +211,12 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [lastSentToken, setLastSentToken] = useState("");
   const [error, setError] = useAutoDismissMessage(2000);
   const [theme, setTheme] = useState<AppTheme>("dark");
-  const [primary, setPrimary] = useState<PrimaryColorKey>("green");
+  const [primary, setPrimary] = useState<PrimaryColorKey>("charcoal");
   const [lang, setLang] = useState<Lang>("zh-CN");
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
-  const [layoutAlign, setLayoutAlign] = useState<AuthLayoutAlign>("right");
+  const [layoutAlign, setLayoutAlign] = useState<AuthLayoutAlign>("center");
 
   const t = TEXTS[variant][lang];
 
@@ -218,8 +246,12 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 统一使用全局主题 / 语言首选项（与用户端 / 管理端保持一致）
-    const initialTheme = getInitialTheme();
+    // 登录页：默认深色主题（仅当用户未设置过全局主题偏好时）
+    const storedTheme = window.localStorage.getItem("appTheme") as
+      | AppTheme
+      | null;
+    const initialTheme: AppTheme =
+      storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
     setTheme(initialTheme);
     applyTheme(initialTheme);
 
@@ -243,6 +275,9 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       storedAlign === "right"
     ) {
       setLayoutAlign(storedAlign);
+    } else {
+      // 登录页默认居中布局
+      window.localStorage.setItem("authAlign", "center");
     }
   }, []);
 
@@ -485,6 +520,13 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   return (
     <div
       className={`auth-page auth-page--split auth-page--vben auth-page--canvas auth-page--${theme} auth-page--primary-${primary} auth-page--align-${layoutAlign}`}
+      style={
+        {
+          // 确保按钮/勾选框“立即”跟随主色变化（避免被 CSS 覆盖或缓存影响）
+          ["--auth-accent" as any]: PRIMARY_ACCENT[primary],
+          ["--auth-submit-bg" as any]: PRIMARY_SUBMIT_BG[primary],
+        } as React.CSSProperties
+      }
     >
       <div className="auth-page__split-shell">
         <div className="auth-toolbar">

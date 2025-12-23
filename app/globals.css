@@ -2955,21 +2955,31 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 /* 复选框等控件跟随登录页主色 */
 .auth-page--primary-blue {
 	--auth-accent: #2563eb;
+	--auth-submit-bg: linear-gradient(135deg, #2563eb, #4f46e5);
+}
+.auth-page--primary-charcoal {
+	--auth-accent: #070707;
+	--auth-submit-bg: #070707;
 }
 .auth-page--primary-purple {
 	--auth-accent: #7c3aed;
+	--auth-submit-bg: linear-gradient(135deg, #7c3aed, #a855f7);
 }
 .auth-page--primary-magenta {
 	--auth-accent: #ec4899;
+	--auth-submit-bg: linear-gradient(135deg, #ec4899, #f97316);
 }
 .auth-page--primary-gold {
 	--auth-accent: #eab308;
+	--auth-submit-bg: linear-gradient(135deg, #eab308, #f97316);
 }
 .auth-page--primary-green {
 	--auth-accent: #22c55e;
+	--auth-submit-bg: linear-gradient(135deg, #10b981, #22c55e);
 }
 .auth-page--primary-gray {
 	--auth-accent: #6b7280;
+	--auth-submit-bg: linear-gradient(135deg, #4b5563, #6b7280);
 }
 
 .auth-page--light .auth-plain__remember {
@@ -3025,7 +3035,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	padding-block: 9px;
 	border-radius: 9999px;
 	border: 1px solid rgba(191, 219, 254, 0.9);
-	background: linear-gradient(135deg, #2563eb, #4f46e5);
+	background: var(--auth-submit-bg, linear-gradient(135deg, #2563eb, #4f46e5));
 	color: #f9fafb;
 	font-weight: 600;
 	/* 取消强烈发光效果，只保留轻微边框 */
@@ -3036,30 +3046,6 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		background-position 160ms ease-out;
 	background-size: 140% 140%;
 	background-position: 0% 50%;
-}
-
-.auth-page--primary-blue .auth-card__submit-button {
-	background: linear-gradient(135deg, #2563eb, #4f46e5);
-}
-
-.auth-page--primary-purple .auth-card__submit-button {
-	background: linear-gradient(135deg, #7c3aed, #a855f7);
-}
-
-.auth-page--primary-magenta .auth-card__submit-button {
-	background: linear-gradient(135deg, #ec4899, #f97316);
-}
-
-.auth-page--primary-gold .auth-card__submit-button {
-	background: linear-gradient(135deg, #eab308, #f97316);
-}
-
-.auth-page--primary-green .auth-card__submit-button {
-	background: linear-gradient(135deg, #10b981, #22c55e);
-}
-
-.auth-page--primary-gray .auth-card__submit-button {
-	background: linear-gradient(135deg, #4b5563, #6b7280);
 }
 
 .auth-page--light .auth-card__submit-button {
@@ -3205,6 +3191,16 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 .auth-page--primary-purple .auth-card__ghost-button--link,
 .auth-page--primary-purple .auth-card__links a {
 	color: #7c3aed;
+}
+
+.auth-page--primary-charcoal .auth-card__ghost-button--link,
+.auth-page--primary-charcoal .auth-card__links a {
+	color: rgba(229, 231, 235, 0.92);
+}
+
+.auth-page--primary-charcoal .auth-card__ghost-button--link:hover,
+.auth-page--primary-charcoal .auth-card__links a:hover {
+	color: #ffffff;
 }
 
 .auth-page--primary-purple .auth-card__ghost-button--link:hover,
