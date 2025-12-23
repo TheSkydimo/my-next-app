@@ -14,7 +14,7 @@
 
 :root[data-theme="light"] .admin-layout__sidebar {
 	border-right: none;
-	background: transparent;
+	background: #f3f4f6;
 }
 
 :root[data-theme="light"] .admin-layout__display-name {
@@ -29,17 +29,20 @@
 
 :root[data-theme="light"] .admin-layout__nav-link:hover {
 	/* 浅色主题 hover：避免深黑背景导致可读性差，改为更柔和的淡蓝/浅灰 */
-	background: rgba(59, 130, 246, 0.1);
-	color: #1d4ed8;
+	background: rgba(148, 163, 184, 0.16);
+	border-color: rgba(148, 163, 184, 0.28);
+	color: #0f172a;
 	text-shadow: none;
-	box-shadow: 0 8px 16px rgba(148, 163, 184, 0.35);
+	box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
 }
 
 :root[data-theme="light"] .admin-layout__nav-link--active {
-	color: #f9fafb;
+	background: rgba(148, 163, 184, 0.18);
+	border-color: rgba(148, 163, 184, 0.35);
+	color: #0f172a;
 	box-shadow:
-		0 0 0 1px rgba(191, 219, 254, 0.9),
-		0 14px 26px rgba(37, 99, 235, 0.65);
+		0 0 0 1px rgba(148, 163, 184, 0.16),
+		0 12px 22px rgba(15, 23, 42, 0.16);
 }
 
 :root[data-theme="light"] .admin-layout__main h1,
@@ -67,7 +70,10 @@
 }
 
 :root[data-theme="light"] .admin-layout__main p {
-	color: #374151;
+	color: #111827;
+	box-shadow:
+		0 8px 18px rgba(148, 163, 184, 0.5),
+		0 0 0 1px rgba(209, 213, 219, 0.9);
 }
 
 :root[data-theme="light"] .admin-layout__main a {
@@ -80,7 +86,10 @@
 
 :root[data-theme="light"] .admin-topbar {
 	background: transparent;
-	border: none;
+	border-color: rgba(209, 213, 219, 0.95);
+	box-shadow:
+		0 8px 18px rgba(148, 163, 184, 0.45),
+		0 0 0 1px rgba(209, 213, 219, 0.9);
 	box-shadow: none;
 	border-radius: 0;
 }
@@ -552,7 +561,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 
 .btn-primary:hover {
 	transform: translateY(-1px);
-	background: #e5e7eb;
+	background: radial-gradient(circle at 0 0, rgba(248, 250, 252, 0.9), rgba(229, 231, 235, 0.9));
 	box-shadow: none;
 }
 
@@ -594,7 +603,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 :root[data-theme="light"] .btn-secondary {
 	background: rgba(249, 250, 251, 0.9);
 	border-color: rgba(209, 213, 219, 0.8);
-	color: #374151;
+	color: #111827;
+	box-shadow:
+		0 8px 18px rgba(148, 163, 184, 0.5),
+		0 0 0 1px rgba(209, 213, 219, 0.9);
 }
 
 :root[data-theme="light"] .btn-secondary:hover {
@@ -1274,6 +1286,27 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	color: #eff6ff;
 }
 
+/* 浅色主题下：用户端主内容区与链接使用更深的文字颜色，保证可读性 */
+:root[data-theme="light"] .user-layout__main {
+	background: var(--background);
+	color: var(--foreground);
+}
+
+:root[data-theme="light"] .user-layout__main h1,
+:root[data-theme="light"] .user-layout__main h2,
+:root[data-theme="light"] .user-layout__main h3 {
+	color: var(--foreground);
+	text-shadow: none;
+}
+
+:root[data-theme="light"] .user-layout__main a {
+	color: #2563eb;
+}
+
+:root[data-theme="light"] .user-layout__main a:hover {
+	color: #1d4ed8;
+}
+
 /* 用户端通用内容卡片（用于设备信息等页面），保持与整体暗色背景风格一致 */
 .user-page-section {
 	margin-top: 24px;
@@ -1310,6 +1343,23 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		inset 0 0 0 1px rgba(15, 23, 42, 0.95);
 }
 
+/* 浅色主题下：用户端内容卡片使用浅底，避免文字/边框对比不足 */
+:root[data-theme="light"] .user-page-section__title {
+	color: #111827;
+}
+
+:root[data-theme="light"] .user-page-section__subtext {
+	color: #6b7280;
+}
+
+:root[data-theme="light"] .user-page-card {
+	border-color: rgba(209, 213, 219, 0.95);
+	background: #ffffff;
+	box-shadow:
+		0 18px 38px rgba(15, 23, 42, 0.08),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+}
+
 /* 用户资料页：按钮等级（头像 / 用户名 / 密码 / 邮箱） */
 .user-profile-button {
 	display: inline-flex;
@@ -1334,6 +1384,12 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		transform 120ms ease-out;
 }
 
+/* 浅色主题下：资料页按钮需要更深的文字颜色，否则会“消失” */
+:root[data-theme="light"] .user-profile-button {
+	border-color: rgba(209, 213, 219, 0.95);
+	color: #111827;
+}
+
 /* Primary：主操作（修改登录密码 / 修改登录邮箱），满宽、视觉最强 */
 .user-profile-button--primary {
 	width: 100%;
@@ -1354,6 +1410,20 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	box-shadow:
 		0 0 0 1px rgba(124, 58, 237, 0.28),
 		0 0 26px rgba(59, 130, 246, 0.35);
+}
+
+/* 浅色主题下：主按钮阴影更轻，避免“发灰” */
+:root[data-theme="light"] .user-profile-button--primary {
+	border-color: rgba(37, 99, 235, 0.6);
+	box-shadow:
+		0 0 0 1px rgba(37, 99, 235, 0.12),
+		0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="light"] .user-profile-button--primary:hover {
+	box-shadow:
+		0 0 0 1px rgba(37, 99, 235, 0.18),
+		0 14px 30px rgba(15, 23, 42, 0.1);
 }
 
 /* 紧凑尺寸：用于底部“更新信息”按钮的小号主按钮 */
@@ -1385,6 +1455,20 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	box-shadow:
 		0 10px 22px rgba(15, 23, 42, 0.85),
 		0 0 0 1px rgba(15, 23, 42, 0.95);
+}
+
+/* 浅色主题下：次按钮 hover 使用深色文字 */
+:root[data-theme="light"] .user-profile-button--secondary {
+	border-color: rgba(148, 163, 184, 0.75);
+	color: #111827;
+}
+
+:root[data-theme="light"] .user-profile-button--secondary:hover {
+	border-color: rgba(37, 99, 235, 0.75);
+	color: #0f172a;
+	box-shadow:
+		0 12px 26px rgba(15, 23, 42, 0.08),
+		0 0 0 1px rgba(15, 23, 42, 0.02);
 }
 
 /* Tertiary：内联轻量操作（更换头像），小号文字按钮 */
@@ -1421,6 +1505,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 /* 浅色主题下：头像按钮 / 用户名行内编辑 / 修改链接提高清晰度 */
 :root[data-theme="light"] .user-profile-button--tertiary {
 	color: #2563eb;
+}
+
+:root[data-theme="light"] .user-profile-button--tertiary:hover {
+	color: #1d4ed8;
 }
 
 :root[data-theme="light"] .user-profile-inline-edit {
@@ -3129,7 +3217,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 
 .auth-page--primary-gray .auth-card__ghost-button--link,
 .auth-page--primary-gray .auth-card__links a {
-	color: #374151;
+	color: #111827;
 }
 
 .auth-page--primary-gray .auth-card__ghost-button--link:hover,
@@ -3258,20 +3346,20 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	height: 56px;
 	border-radius: 9999px;
 	overflow: hidden;
-	border: 1px solid rgba(129, 140, 248, 0.9);
+	border: 1px solid rgba(148, 163, 184, 0.7);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: radial-gradient(circle at 25% 0%, #4f46e5, #020617);
+	background: radial-gradient(circle at 30% 0%, #1d4ed8, #0f172a);
 	font-size: 18px;
 	font-weight: 600;
 	color: #e5e7eb;
 	cursor: pointer;
 	flex-shrink: 0;
 	box-shadow:
-		0 0 0 1px rgba(15, 23, 42, 0.95),
-		0 0 0 6px rgba(129, 140, 248, 0.55),
-		0 14px 22px rgba(15, 23, 42, 0.8);
+		0 0 0 1px rgba(15, 23, 42, 0.9),
+		0 0 0 6px rgba(59, 130, 246, 0.35),
+		0 14px 22px rgba(15, 23, 42, 0.7);
 	transition:
 		transform 180ms ease-out,
 		box-shadow 180ms ease-out,
@@ -3281,10 +3369,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 .admin-layout__avatar:hover {
 	transform: translateY(-1px) scale(1.04);
 	box-shadow:
-		0 0 0 1px rgba(191, 219, 254, 0.9),
-		0 0 0 8px rgba(129, 140, 248, 0.75),
-		0 18px 30px rgba(15, 23, 42, 0.9);
-	border-color: rgba(191, 219, 254, 0.95);
+		0 0 0 1px rgba(129, 140, 248, 0.9),
+		0 0 0 8px rgba(59, 130, 246, 0.5),
+		0 18px 30px rgba(15, 23, 42, 0.85);
+	border-color: rgba(129, 140, 248, 0.9);
 }
 
 .admin-layout__avatar-img {
@@ -3306,13 +3394,14 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 }
 
 .admin-layout__display-name {
-	font-size: 14px;
+	font-size: 16px;
+	font-weight: 600;
 	color: #e5e7eb;
 	max-width: 100%;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	text-shadow: 0 1px 8px rgba(15, 23, 42, 0.9);
+	text-shadow: 0 1px 6px rgba(15, 23, 42, 0.9);
 }
 
 .admin-layout__role-badge {
@@ -3347,10 +3436,13 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 }
 
 .admin-layout__nav-link {
-	display: inline-flex;
+	position: relative;
+	display: flex;
 	align-items: center;
-	padding: 7px 10px;
-	border-radius: 9999px;
+	width: 100%;
+	gap: 6px;
+	padding: 10px 12px;
+	border-radius: 10px;
 	color: #e5e7eb;
 	text-decoration: none;
 	font-weight: 400;
@@ -3360,20 +3452,63 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		color 140ms ease-out,
 		transform 140ms ease-out,
 		box-shadow 140ms ease-out;
+	border: 1px solid transparent;
+	background: transparent;
+	cursor: pointer;
+	text-align: left;
+}
+
+.admin-layout__nav-link::before {
+	content: "";
+	width: 6px;
+	height: 6px;
+	border-radius: 9999px;
+	background: rgba(148, 163, 184, 0.7);
+	box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.16);
+	opacity: 0.4;
+	transform: scale(0.8);
+	transition:
+		background-color 160ms ease-out,
+		box-shadow 160ms ease-out,
+		opacity 160ms ease-out,
+		transform 160ms ease-out;
 }
 
 .admin-layout__nav-link:hover {
-	background: rgba(0, 0, 0, 0.9);
 	transform: translateX(2px);
-	box-shadow: 0 10px 18px rgba(15, 23, 42, 0.8);
+	color: #e5e7eb;
+	background: rgba(148, 163, 184, 0.12);
+	border-color: rgba(148, 163, 184, 0.18);
+	box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
 }
 
 .admin-layout__nav-link--active {
-	background: linear-gradient(135deg, #4f46e5, #7c3aed);
+	background: rgba(148, 163, 184, 0.16);
+	border-color: rgba(148, 163, 184, 0.28);
 	font-weight: 600;
+	color: #f9fafb;
 	box-shadow:
-		0 0 0 1px rgba(191, 219, 254, 0.7),
-		0 14px 24px rgba(55, 48, 163, 0.9);
+		0 0 0 1px rgba(148, 163, 184, 0.16),
+		0 14px 28px rgba(0, 0, 0, 0.35);
+}
+
+.admin-layout__nav-link--active:hover {
+	transform: translateX(2px);
+	color: #ffffff;
+	border-color: rgba(148, 163, 184, 0.45);
+	box-shadow:
+		0 0 0 1px rgba(148, 163, 184, 0.2),
+		0 0 18px rgba(148, 163, 184, 0.18),
+		0 18px 34px rgba(0, 0, 0, 0.4);
+}
+
+.admin-layout__nav-link--active::before {
+	background: rgba(226, 232, 240, 0.9);
+	box-shadow:
+		0 0 0 5px rgba(148, 163, 184, 0.22),
+		0 0 14px rgba(148, 163, 184, 0.2);
+	opacity: 1;
+	transform: scale(1.1);
 }
 
 /* 兼容旧的 main 样式（已迁移到 admin-shell--content，保留回退） */
@@ -3551,10 +3686,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 }
 
 .admin-topbar__actions {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
-	gap: 12px;
-	margin-left: 16px;
+	gap: 6px;
+	margin-left: 12px;
 	flex-shrink: 0;
 }
 
@@ -3804,32 +3939,47 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 }
 
 .admin-layout .admin-topbar__icon-btn {
-	width: 32px;
-	height: 32px;
-	border-radius: 8px;
-	border: none;
-	background: #374151;
+	padding: 4px 14px;
+	border-radius: 9999px;
+	border: 1px solid rgba(248, 250, 252, 0.25);
+	background: radial-gradient(circle at 0 0, rgba(248, 250, 252, 0.14), rgba(15, 23, 42, 0.92));
 	color: #e5e7eb;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 14px;
+	font-size: 12px;
 	cursor: pointer;
+	box-shadow:
+		0 10px 20px rgba(15, 23, 42, 0.9),
+		0 0 0 1px rgba(15, 23, 42, 0.9);
+	transition:
+		background-color 160ms ease-out,
+		border-color 160ms ease-out,
+		transform 140ms ease-out,
+		box-shadow 140ms ease-out;
 }
 
 .admin-layout .admin-topbar__icon-btn:hover {
-	background: #4b5563;
+	background: radial-gradient(circle at 0 0, rgba(248, 250, 252, 0.26), rgba(15, 23, 42, 0.92));
+	border-color: rgba(248, 250, 252, 0.5);
+	box-shadow:
+		0 14px 26px rgba(15, 23, 42, 0.95),
+		0 0 0 1px rgba(251, 251, 251, 0.9);
+	transform: translateY(-1px);
 }
 
 :root[data-theme="light"] .admin-layout .admin-topbar__icon-btn {
-	background: #e5e7eb;
-	border: 1px solid #d1d5db;
-	color: #374151;
+	background: radial-gradient(circle at 0 0, rgba(248, 250, 252, 0.9), rgba(229, 231, 235, 0.9));
+	border-color: rgba(209, 213, 219, 0.95);
+	color: #111827;
+	box-shadow:
+		0 8px 18px rgba(148, 163, 184, 0.5),
+		0 0 0 1px rgba(209, 213, 219, 0.9);
 }
 
 :root[data-theme="light"] .admin-layout .admin-topbar__icon-btn:hover {
-	background: #d1d5db;
-	border-color: #9ca3af;
+	background: radial-gradient(circle at 0 0, #ffffff, #e5e7eb);
+	border-color: rgba(209, 213, 219, 0.95);
 }
 
 /* 顶栏语言按钮内部文字样式 */
@@ -3837,6 +3987,11 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	font-size: 11px;
 	font-weight: 600;
 	letter-spacing: 0.04em;
+}
+
+.admin-topbar__icon-btn--translate {
+	min-width: 34px;
+	justify-content: center;
 }
 
 .admin-topbar__icon-img {
@@ -3857,15 +4012,29 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	min-width: 36px;
 	min-height: 36px;
 	border-radius: 9999px;
-	border: none !important;
-	background: transparent !important;
+	border: 1px solid rgba(148, 163, 184, 0.6);
+	background: radial-gradient(circle at 30% 0%, rgba(29, 78, 216, 0.95), rgba(15, 23, 42, 0.95));
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	padding: 0;
 	cursor: pointer;
 	overflow: visible;
-	box-shadow: none !important;
+	box-shadow:
+		0 0 0 1px rgba(15, 23, 42, 0.9),
+		0 8px 18px rgba(15, 23, 42, 0.85);
+	transition:
+		transform 140ms ease-out,
+		box-shadow 140ms ease-out,
+		border-color 140ms ease-out;
+}
+
+.admin-topbar__avatar-btn:hover {
+	transform: translateY(-1px);
+	border-color: rgba(129, 140, 248, 0.85);
+	box-shadow:
+		0 0 0 1px rgba(129, 140, 248, 0.65),
+		0 12px 22px rgba(15, 23, 42, 0.9);
 }
 
 .admin-topbar__avatar-img {
@@ -3876,12 +4045,14 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	border-radius: 9999px;
 	object-fit: cover;
 	background: transparent;
+	border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
 .admin-topbar__avatar-initial {
 	font-size: 13px;
 	font-weight: 600;
 	color: #ffffff;
+	text-shadow: 0 2px 10px rgba(15, 23, 42, 0.9);
 }
 
 :root[data-theme="light"] .admin-topbar__avatar-btn {
