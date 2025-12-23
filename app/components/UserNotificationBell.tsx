@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type NotificationItem = {
   id: number;
@@ -34,7 +34,7 @@ export default function UserNotificationBell() {
     return String(unreadCount);
   }, [unreadCount]);
 
-  const fetchList = async () => {
+  const fetchList = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -53,7 +53,7 @@ export default function UserNotificationBell() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const markRead = async (id: number) => {
     try {
@@ -91,14 +91,12 @@ export default function UserNotificationBell() {
     if (typeof window === "undefined") return;
     // 初次加载未读数/列表（轻量：直接拉一次 list）
     void fetchList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchList]);
 
   useEffect(() => {
     if (!open) return;
     void fetchList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, fetchList]);
 
   useEffect(() => {
     if (!open) return;

@@ -592,7 +592,7 @@ export default function UserDevicesPage() {
     if (userEmail) {
       loadDevices(userEmail, page);
     }
-  }, [userEmail, page, messages.devices.fetchFailed]);
+  }, [userEmail, page, messages.devices.fetchFailed, setError, setOkMsg]);
 
   // 加载当前用户所有订单截图（按设备分组）
   useEffect(() => {

@@ -76,8 +76,8 @@ export function TurnstileWidget({
     try {
       widgetIdRef.current = window.turnstile.render(containerRef.current, options);
     } catch {
-      onToken("");
-      onError?.();
+      callbacksRef.current.onToken("");
+      callbacksRef.current.onError?.();
       widgetIdRef.current = null;
       return;
     }
@@ -93,7 +93,7 @@ export function TurnstileWidget({
         }
       }
     };
-  }, [options, scriptReady]);
+  }, [options, scriptReady, siteKey]);
 
   return (
     <>

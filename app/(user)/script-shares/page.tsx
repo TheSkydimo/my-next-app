@@ -665,7 +665,7 @@ export default function ScriptSharesPage() {
                   <button
                     type="button"
                     className="script-share-upload-btn script-share-upload-btn--primary"
-                    disabled={submitting}
+                    disabled={submitting || !canSubmit}
                     onClick={submitUpload}
                   >
                     {submitting

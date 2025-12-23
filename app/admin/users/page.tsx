@@ -99,7 +99,7 @@ export default function AdminUsersPage() {
         setLoading(false);
       }
     },
-    [adminEmail, page, messages.users.fetchFailed]
+    [adminEmail, page, messages.users.fetchFailed, setError]
   );
 
   useEffect(() => {

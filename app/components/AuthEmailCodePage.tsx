@@ -8,7 +8,6 @@ import {
   applyLanguage,
   applyTheme,
   getInitialLanguage,
-  getInitialTheme,
   type AppLanguage,
   type AppTheme,
 } from "../client-prefs";
@@ -168,7 +167,7 @@ const TEXTS: Record<
 };
 
 const PRIMARY_COLORS: { key: PrimaryColorKey; color: string }[] = [
-  { key: "charcoal", color: "#070707" },
+  { key: "charcoal", color: "#1A1A1A" },
   { key: "blue", color: "#3b82f6" },
   { key: "purple", color: "#8b5cf6" },
   { key: "magenta", color: "#ec4899" },
@@ -178,7 +177,7 @@ const PRIMARY_COLORS: { key: PrimaryColorKey; color: string }[] = [
 ];
 
 const PRIMARY_ACCENT: Record<PrimaryColorKey, string> = {
-  charcoal: "#070707",
+  charcoal: "#1A1A1A",
   blue: "#2563eb",
   purple: "#7c3aed",
   magenta: "#ec4899",
@@ -188,7 +187,7 @@ const PRIMARY_ACCENT: Record<PrimaryColorKey, string> = {
 };
 
 const PRIMARY_SUBMIT_BG: Record<PrimaryColorKey, string> = {
-  charcoal: "#070707",
+  charcoal: "#1A1A1A",
   blue: "linear-gradient(135deg, #2563eb, #4f46e5)",
   purple: "linear-gradient(135deg, #7c3aed, #a855f7)",
   magenta: "linear-gradient(135deg, #ec4899, #f97316)",
@@ -217,6 +216,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const [layoutAlign, setLayoutAlign] = useState<AuthLayoutAlign>("center");
+
+  const normalizeEmailCode = (raw: string) => raw.replace(/\s+/g, "");
 
   const t = TEXTS[variant][lang];
 
@@ -389,6 +390,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     [
       email,
       emailPurpose,
+      setError,
       t.errorEmailRequired,
       t.errorSendCode,
       t.errorTurnstileLoadFailed,
@@ -451,14 +453,15 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     e.preventDefault();
     setError("");
 
-    if (!emailCode) {
+    const normalizedCode = normalizeEmailCode(emailCode);
+    if (!normalizedCode) {
       setError(t.errorCodeRequired);
       return;
     }
 
     const res = await fetch(loginEndpoint, {
       method: "POST",
-      body: JSON.stringify({ email, emailCode, remember: rememberMe }),
+      body: JSON.stringify({ email, emailCode: normalizedCode, remember: rememberMe }),
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
@@ -523,8 +526,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       style={
         {
           // 确保按钮/勾选框“立即”跟随主色变化（避免被 CSS 覆盖或缓存影响）
-          ["--auth-accent" as any]: PRIMARY_ACCENT[primary],
-          ["--auth-submit-bg" as any]: PRIMARY_SUBMIT_BG[primary],
+          "--auth-accent": PRIMARY_ACCENT[primary],
+          "--auth-submit-bg": PRIMARY_SUBMIT_BG[primary],
         } as React.CSSProperties
       }
     >
@@ -749,7 +752,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                       pattern="[0-9]*"
                       placeholder={t.emailCodePlaceholder}
                       value={emailCode}
-                      onChange={(e) => setEmailCode(e.target.value)}
+                      onChange={(e) => setEmailCode(normalizeEmailCode(e.target.value))}
                       className="auth-card__field-grow"
                       aria-label={t.emailCodeLabel}
                       required

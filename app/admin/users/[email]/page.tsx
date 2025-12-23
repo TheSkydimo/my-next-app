@@ -171,6 +171,7 @@ export default function AdminUserDetailPage({
     messages.common.unknownError,
     messages.orders.fetchFailed,
     messages.users.fetchFailed,
+    setError,
     userEmail,
   ]);
 

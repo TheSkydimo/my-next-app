@@ -56,7 +56,7 @@ export default function AdminOrdersPage() {
   }, []);
 
   useEffect(() => {
-    const loadOrders = async (email: string) => {
+    const loadOrders = async () => {
       setLoading(true);
       setError("");
       try {
@@ -78,9 +78,9 @@ export default function AdminOrdersPage() {
     };
 
     if (adminEmail) {
-      loadOrders(adminEmail);
+      loadOrders();
     }
-  }, [adminEmail, messages.orders.fetchFailed]);
+  }, [adminEmail, messages.orders.fetchFailed, setError]);
 
   if (!adminEmail) {
     return (

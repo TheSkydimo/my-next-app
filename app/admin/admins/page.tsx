@@ -78,7 +78,7 @@ export default function AdminAdminsPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminEmail, messages.admins.fetchFailed]);
+  }, [adminEmail, messages.admins.fetchFailed, setError]);
 
   useEffect(() => {
     if (adminEmail) {

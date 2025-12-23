@@ -2958,8 +2958,8 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	--auth-submit-bg: linear-gradient(135deg, #2563eb, #4f46e5);
 }
 .auth-page--primary-charcoal {
-	--auth-accent: #070707;
-	--auth-submit-bg: #070707;
+	--auth-accent: #1A1A1A;
+	--auth-submit-bg: #1A1A1A;
 }
 .auth-page--primary-purple {
 	--auth-accent: #7c3aed;

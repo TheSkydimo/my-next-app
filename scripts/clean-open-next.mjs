@@ -12,15 +12,25 @@ const maxAttempts = 25;
 const baseDelayMs = 120;
 
 function tryRenameOutOfTheWay(dir) {
-  if (!fs.existsSync(dir)) return true;
+  if (!fs.existsSync(dir)) return { renamed: false, trash: null };
   const trash = `${dir}.__trash__${Date.now()}`;
-  fs.renameSync(dir, trash);
-  return true;
+  try {
+    fs.renameSync(dir, trash);
+    return { renamed: true, trash };
+  } catch (e) {
+    return { renamed: false, trash: null, error: e };
+  }
 }
 
 function tryRemove(dir) {
   if (!fs.existsSync(dir)) return true;
-  fs.rmSync(dir, { recursive: true, force: true });
+  // Node supports built-in retry options for transient Windows locks.
+  fs.rmSync(dir, {
+    recursive: true,
+    force: true,
+    maxRetries: 10,
+    retryDelay: 100,
+  });
   return true;
 }
 
@@ -29,10 +39,14 @@ for (let attempt = 1; attempt <= maxAttempts; attempt++) {
   try {
     // Prefer rename: OpenNext only needs `.open-next` to be absent so it can recreate it.
     // Renaming often succeeds even when deleting fails due to transient Windows locks.
-    tryRenameOutOfTheWay(target);
+    const renameResult = tryRenameOutOfTheWay(target);
 
-    // Best-effort cleanup: if the folder wasn't renamed (or rename isn't supported), remove it.
-    tryRemove(target);
+    // If rename worked, delete the renamed directory best-effort. If rename failed, try deleting in place.
+    if (renameResult.renamed && renameResult.trash) {
+      tryRemove(renameResult.trash);
+    } else {
+      tryRemove(target);
+    }
     lastErr = undefined;
     break;
   } catch (e) {
