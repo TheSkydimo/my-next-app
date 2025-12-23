@@ -184,6 +184,13 @@ export async function POST(request: Request) {
   let prevAvatarUrl: string | null = null;
   let normalizedAvatarDbUrl: string | null = null;
   if (hasAvatarField) {
+    // 禁止 data: base64（体积大、不可缓存、会导致返回 avatarUrl 为 null 进而“更新成功但不显示”）
+    if (typeof avatarUrl === "string" && avatarUrl.trim().startsWith("data:")) {
+      return new Response("不支持 base64(data:) 头像，请使用“上传头像”功能", {
+        status: 400,
+      });
+    }
+
     // 先读用户 id 与旧头像，方便后续校验“头像 key 归属”，以及（最佳努力）删除旧 R2 对象
     const prev = await db
       .prepare("SELECT avatar_url FROM users WHERE id = ?")

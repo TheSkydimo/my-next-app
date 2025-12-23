@@ -120,10 +120,30 @@ export default function UserProfilePage() {
     setError("");
     setOkMsg("");
     try {
-      const finalAvatarUrl =
+      let finalAvatarUrl =
         overrideAvatarUrl !== undefined
           ? overrideAvatarUrl
           : avatarUrlInput.trim() || null;
+
+      // 如果用户粘贴了 data:image/...;base64,...，自动转存到 R2，再把 r2://... 写入资料
+      if (typeof finalAvatarUrl === "string" && finalAvatarUrl.startsWith("data:")) {
+        const res = await fetch("/api/avatar/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl: finalAvatarUrl }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || messages.profile.errorAvatarUpdateFailed);
+        }
+        const data = (await res.json()) as { dbUrl: string };
+        if (!data?.dbUrl) {
+          throw new Error(messages.profile.errorAvatarUpdateFailed);
+        }
+        setAvatarUrlInput(data.dbUrl);
+        finalAvatarUrl = data.dbUrl;
+      }
+
       const res = await fetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -139,9 +159,13 @@ export default function UserProfilePage() {
         | { avatarUrl?: string | null }
         | null;
 
-      setOkMsg(messages.profile.successAvatarUpdated);
       const newAvatarUrl =
         typeof data?.avatarUrl === "string" ? data.avatarUrl : null;
+
+      // 用户提交了非空头像，但服务端未返回可展示的 avatarUrl，视为失败（避免“成功但不显示”）
+      if (finalAvatarUrl && !newAvatarUrl) {
+        throw new Error(messages.profile.errorAvatarUpdateFailed);
+      }
       setProfile((p) =>
         p
           ? { ...p, avatarUrl: newAvatarUrl }
@@ -150,7 +174,9 @@ export default function UserProfilePage() {
 
       // 同步更新到 UserContext，触发全局状态更新（包括 localStorage 和事件通知）
       userContext.updateProfile({ avatarUrl: newAvatarUrl });
+      setOkMsg(messages.profile.successAvatarUpdated);
     } catch (e) {
+      setOkMsg("");
       setError(
         e instanceof Error
           ? e.message
