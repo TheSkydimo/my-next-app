@@ -786,7 +786,7 @@ export default function UserDevicesPage() {
                 <button
                   type="button"
                   onClick={() => setIsUploadModalOpen(true)}
-                  className="btn btn-glow btn-lg upload-modal-trigger-btn"
+                  className="btn btn-primary btn-lg upload-modal-trigger-btn"
                 >
                   <svg
                     width="20"
@@ -938,12 +938,7 @@ export default function UserDevicesPage() {
                   onClick={() =>
                     hasPrev && setPage((p) => Math.max(1, p - 1))
                   }
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: 9999,
-                    fontSize: 12,
-                    opacity: hasPrev ? 1 : 0.5,
-                  }}
+                  className="btn btn-secondary btn-xs"
                 >
                   {language === "zh-CN" ? "上一页" : "Prev"}
                 </button>
@@ -953,12 +948,7 @@ export default function UserDevicesPage() {
                   onClick={() =>
                     hasNext && setPage((p) => Math.min(maxPage, p + 1))
                   }
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: 9999,
-                    fontSize: 12,
-                    opacity: hasNext ? 1 : 0.5,
-                  }}
+                  className="btn btn-secondary btn-xs"
                 >
                   {language === "zh-CN" ? "下一页" : "Next"}
                 </button>
@@ -1023,7 +1013,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                 />
                 <label
                   htmlFor={`device-order-file-${uploadingOrderForDevice}`}
-                  className="btn btn-glow btn-sm"
+                  className="btn btn-secondary btn-sm"
                 >
                   {language === "zh-CN"
                     ? "选择截图文件"
@@ -1051,6 +1041,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button
                   type="button"
+                  disabled={loading}
                   onClick={async () => {
                     if (!userEmail || !uploadingOrderForDevice) return;
                     if (!orderFile) {
@@ -1114,6 +1105,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                       setLoading(false);
                     }
                   }}
+                  className="btn btn-primary btn-sm"
                 >
                   {language === "zh-CN" ? "提交" : "Submit"}
                 </button>
@@ -1124,7 +1116,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                     setOrderFile(null);
                     setOrderNote("");
                   }}
-                  style={{ opacity: 0.8 }}
+                  className="btn btn-secondary btn-sm"
                 >
                   {language === "zh-CN" ? "取消" : "Cancel"}
                 </button>
@@ -1159,18 +1151,8 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
               position: "absolute",
               top: 16,
               right: 16,
-              background: "rgba(255, 255, 255, 0.9)",
-              border: "none",
-              borderRadius: "50%",
-              width: 40,
-              height: 40,
-              fontSize: 24,
-              cursor: "pointer",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              color: "#374151",
             }}
+            className="btn btn-secondary btn-icon btn-lg"
             aria-label={language === "zh-CN" ? "关闭预览" : "Close preview"}
           >
             ×
@@ -1289,14 +1271,6 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={closeUploadModal}
-                className="btn btn-ghost btn-icon btn-sm"
-                aria-label={language === "zh-CN" ? "关闭" : "Close"}
-              >
-                ×
-              </button>
             </div>
 
             {/* 弹窗内容 */}
@@ -1496,14 +1470,14 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                 onClick={() => {
                   closeUploadModal();
                 }}
-                className="btn btn-outline btn-lg"
+                className="btn btn-secondary btn-lg"
               >
                 {language === "zh-CN" ? "取消" : "Cancel"}
               </button>
               <button
                 type="button"
                 disabled={loading}
-                className="btn btn-glow btn-lg"
+                className="btn btn-primary btn-lg"
                 onClick={async () => {
                   if (!userEmail) return;
                   if (!globalOrderFile) {
