@@ -16,6 +16,7 @@ import {
 type PrimaryColorKey = "blue" | "purple" | "magenta" | "gold" | "green" | "gray";
 type Lang = "zh-CN" | "en";
 type LoginStep = "email" | "turnstile" | "code";
+type AuthLayoutAlign = "left" | "center" | "right";
 
 type Variant = "user" | "admin";
 
@@ -186,6 +187,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [lang, setLang] = useState<Lang>("zh-CN");
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
+  const [layoutAlign, setLayoutAlign] = useState<AuthLayoutAlign>("right");
 
   const t = TEXTS[variant][lang];
 
@@ -229,6 +232,17 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     ) as PrimaryColorKey | null;
     if (storedPrimary && PRIMARY_COLORS.some((c) => c.key === storedPrimary)) {
       setPrimary(storedPrimary);
+    }
+
+    const storedAlign = window.localStorage.getItem(
+      "authAlign"
+    ) as AuthLayoutAlign | null;
+    if (
+      storedAlign === "left" ||
+      storedAlign === "center" ||
+      storedAlign === "right"
+    ) {
+      setLayoutAlign(storedAlign);
     }
   }, []);
 
@@ -279,6 +293,14 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     // 将登录页语言切换同步到全局 App 语言（用于后续页面）
     const appLang: AppLanguage = value === "en" ? "en-US" : "zh-CN";
     applyLanguage(appLang);
+  };
+
+  const changeLayoutAlign = (align: AuthLayoutAlign) => {
+    setLayoutAlign(align);
+    setLayoutMenuOpen(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("authAlign", align);
+    }
   };
 
   const sendLoginEmailCode = useCallback(
@@ -462,7 +484,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
 
   return (
     <div
-      className={`auth-page auth-page--split auth-page--vben auth-page--canvas auth-page--${theme} auth-page--primary-${primary} auth-page--align-right`}
+      className={`auth-page auth-page--split auth-page--vben auth-page--canvas auth-page--${theme} auth-page--primary-${primary} auth-page--align-${layoutAlign}`}
     >
       <div className="auth-page__split-shell">
         <div className="auth-toolbar">
@@ -494,6 +516,47 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                       />
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+
+            <div className="auth-toolbar__icon-wrapper">
+              <button
+                type="button"
+                className={`auth-toolbar__icon-button auth-toolbar__icon-button--layout auth-toolbar__icon-button--layout-${layoutAlign}`}
+                onClick={() => setLayoutMenuOpen((v) => !v)}
+                aria-haspopup="true"
+                aria-expanded={layoutMenuOpen}
+                aria-label="切换布局"
+                title="切换布局"
+              >
+                <span className="auth-toolbar__layout-bar auth-toolbar__layout-bar--left" />
+                <span className="auth-toolbar__layout-bar auth-toolbar__layout-bar--center" />
+                <span className="auth-toolbar__layout-bar auth-toolbar__layout-bar--right" />
+              </button>
+              {layoutMenuOpen && (
+                <div className="auth-toolbar__dropdown">
+                  <button
+                    type="button"
+                    className="auth-toolbar__dropdown-item"
+                    onClick={() => changeLayoutAlign("left")}
+                  >
+                    {t.alignLeft}
+                  </button>
+                  <button
+                    type="button"
+                    className="auth-toolbar__dropdown-item"
+                    onClick={() => changeLayoutAlign("center")}
+                  >
+                    {t.alignCenter}
+                  </button>
+                  <button
+                    type="button"
+                    className="auth-toolbar__dropdown-item"
+                    onClick={() => changeLayoutAlign("right")}
+                  >
+                    {t.alignRight}
+                  </button>
                 </div>
               )}
             </div>

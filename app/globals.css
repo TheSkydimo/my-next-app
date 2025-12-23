@@ -2099,6 +2099,9 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	background: transparent;
 	box-shadow: none;
 	overflow: hidden;
+	/* 允许根据“内部容器宽度”做响应式（而不是只看 viewport 宽度） */
+	container-type: inline-size;
+	container-name: auth-shell;
 }
 
 .auth-page--vben .auth-toolbar {
@@ -2132,22 +2135,9 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 }
 
 /* vben 模式下始终保持左右结构（即使用户切到“居中”） */
+/* vben 模式：遵循布局器的 left / center / right 切换（与 vben.pro 登录页一致） */
 .auth-page--vben.auth-page--align-center .auth-page__visual {
-	display: flex;
-}
-
-.auth-page--vben.auth-page--align-center .auth-page__panel {
-	flex: 1;
-}
-
-/* vben 模式：无论 align 是什么，左右顺序固定（避免右侧操作影响左侧） */
-.auth-page--vben .auth-page__visual {
-	order: 1;
-	display: flex;
-}
-
-.auth-page--vben .auth-page__panel {
-	order: 2;
+	display: none;
 }
 
 /* light theme: split backgrounds like Vben */
@@ -2272,8 +2262,25 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		width: 100%;
 		min-height: 100vh;
 		padding-top: 0;
+		/* 变窄时只显示登录/注册区域（隐藏视觉区），避免拥挤 */
 	}
 
+	.auth-page--vben .auth-page__visual {
+		display: none;
+	}
+
+	.auth-page--vben .auth-page__panel {
+		padding: 26px 18px 22px;
+	}
+
+	/* 小屏 + 居中布局：仍然隐藏视觉区，只展示表单 */
+	.auth-page--vben.auth-page--align-center .auth-page__visual {
+		display: none;
+	}
+}
+
+/* 容器变窄（不一定是窗口变窄）时：只显示表单区，隐藏左侧视觉区 */
+@container auth-shell (max-width: 960px) {
 	.auth-page--vben .auth-page__visual {
 		display: none;
 	}
@@ -2942,7 +2949,27 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	width: 14px;
 	height: 14px;
 	margin: 0;
-	accent-color: #22c55e;
+	accent-color: var(--auth-accent, #22c55e);
+}
+
+/* 复选框等控件跟随登录页主色 */
+.auth-page--primary-blue {
+	--auth-accent: #2563eb;
+}
+.auth-page--primary-purple {
+	--auth-accent: #7c3aed;
+}
+.auth-page--primary-magenta {
+	--auth-accent: #ec4899;
+}
+.auth-page--primary-gold {
+	--auth-accent: #eab308;
+}
+.auth-page--primary-green {
+	--auth-accent: #22c55e;
+}
+.auth-page--primary-gray {
+	--auth-accent: #6b7280;
 }
 
 .auth-page--light .auth-plain__remember {
