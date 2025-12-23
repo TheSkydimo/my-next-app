@@ -22,7 +22,6 @@ export type UserMessages = {
     navProfile: string;
     navFavorites: string;
     navDevices: string;
-    navFeedback: string;
     logout: string;
     searchPlaceholder: string;
     searchNotFound: string;
@@ -134,7 +133,6 @@ const zhCN: UserMessages = {
     navProfile: "信息管理",
     navFavorites: "收藏",
     navDevices: "订单管理",
-    navFeedback: "意见反馈",
     logout: "退出",
     searchPlaceholder: "搜索功能 / Ctrl + K",
     searchNotFound: "未找到相关功能，请尝试：",
@@ -251,7 +249,6 @@ const enUS: UserMessages = {
     navProfile: "Profile",
     navFavorites: "Favorites",
     navDevices: "Devices",
-    navFeedback: "Feedback",
     logout: "Sign out",
     searchPlaceholder: "Search features / Ctrl + K",
     searchNotFound: "No matching feature found. Try:",

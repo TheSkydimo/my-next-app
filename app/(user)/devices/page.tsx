@@ -384,6 +384,7 @@ export default function UserDevicesPage() {
   // 全局（未绑定设备）的订单截图上传
   const [globalOrderFile, setGlobalOrderFile] = useState<File | null>(null);
   const [globalOrderNote, setGlobalOrderNote] = useState("");
+  const [uploadModalError, setUploadModalError] = useState("");
   const [orders, setOrders] = useState<Record<string, OrderSnapshot[]>>({});
   // 折叠菜单：订单信息 / 质保信息
   // 默认只展开第一个子菜单（订单信息），质保信息默认折叠
@@ -395,6 +396,13 @@ export default function UserDevicesPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const messages = getUserMessages(language);
+
+  const closeUploadModal = () => {
+    setGlobalOrderFile(null);
+    setGlobalOrderNote("");
+    setUploadModalError("");
+    setIsUploadModalOpen(false);
+  };
 
   // 根据地址栏 hash（#order-section / #warranty-section）控制右侧折叠菜单的展开状态，
   // 保证从其它页面跳转到设备信息页时自动展示正确的区域。
@@ -778,23 +786,7 @@ export default function UserDevicesPage() {
                 <button
                   type="button"
                   onClick={() => setIsUploadModalOpen(true)}
-                  className="upload-modal-trigger-btn"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "12px 24px",
-                    borderRadius: 12,
-                    background:
-                      "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(37,99,235,0.95))",
-                    color: "#fff",
-                    fontSize: 15,
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    border: "none",
-                    boxShadow: "0 4px 14px rgba(59,130,246,0.4)",
-                    transition: "all 0.2s ease",
-                  }}
+                  className="btn btn-glow btn-lg upload-modal-trigger-btn"
                 >
                   <svg
                     width="20"
@@ -1031,19 +1023,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                 />
                 <label
                   htmlFor={`device-order-file-${uploadingOrderForDevice}`}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 9999,
-                    background:
-                      "linear-gradient(90deg, rgba(59,130,246,0.9), rgba(37,99,235,0.9))",
-                    color: "#fff",
-                    fontSize: 13,
-                    cursor: "pointer",
-                    border: "none",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                  className="btn btn-glow btn-sm"
                 >
                   {language === "zh-CN"
                     ? "选择截图文件"
@@ -1216,9 +1196,9 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
       {isUploadModalOpen && (
         <div
           className="upload-modal-overlay"
-          onClick={() => setIsUploadModalOpen(false)}
+          onClick={closeUploadModal}
           onKeyDown={(e) => {
-            if (e.key === "Escape") setIsUploadModalOpen(false);
+            if (e.key === "Escape") closeUploadModal();
           }}
           style={{
             position: "fixed",
@@ -1239,10 +1219,10 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
               position: "relative",
               width: "90%",
               maxWidth: 480,
-              background: "linear-gradient(145deg, #1a1a2e 0%, #16213e 100%)",
+              background: "var(--order-upload-modal-bg)",
               borderRadius: 16,
-              border: "1px solid rgba(59, 130, 246, 0.3)",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(59, 130, 246, 0.15)",
+              border: "1px solid var(--order-upload-modal-border)",
+              boxShadow: "var(--order-upload-modal-shadow)",
               animation: "slideUp 0.3s ease-out",
               overflow: "hidden",
             }}
@@ -1254,8 +1234,8 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "20px 24px",
-                borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-                background: "rgba(59, 130, 246, 0.1)",
+                borderBottom: "1px solid var(--order-upload-modal-header-border)",
+                background: "var(--order-upload-modal-header-bg)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1291,7 +1271,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                       margin: 0,
                       fontSize: 18,
                       fontWeight: 600,
-                      color: "#f1f5f9",
+                      color: "var(--order-upload-modal-title)",
                     }}
                   >
                     {language === "zh-CN" ? "上传订单截图" : "Upload Order Screenshot"}
@@ -1300,7 +1280,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                     style={{
                       margin: 0,
                       fontSize: 13,
-                      color: "#94a3b8",
+                      color: "var(--order-upload-modal-subtitle)",
                     }}
                   >
                     {language === "zh-CN"
@@ -1311,21 +1291,8 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
               </div>
               <button
                 type="button"
-                onClick={() => setIsUploadModalOpen(false)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  border: "none",
-                  background: "rgba(255, 255, 255, 0.1)",
-                  color: "#94a3b8",
-                  fontSize: 18,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "all 0.2s ease",
-                }}
+                onClick={closeUploadModal}
+                className="btn btn-ghost btn-icon btn-sm"
                 aria-label={language === "zh-CN" ? "关闭" : "Close"}
               >
                 ×
@@ -1344,11 +1311,11 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                 {/* 文件选择区域 */}
                 <div
                   style={{
-                    border: "2px dashed rgba(59, 130, 246, 0.4)",
+                    border: "2px dashed var(--order-upload-modal-drop-border)",
                     borderRadius: 12,
                     padding: 24,
                     textAlign: "center",
-                    background: "rgba(59, 130, 246, 0.05)",
+                    background: "var(--order-upload-modal-drop-bg)",
                     transition: "all 0.2s ease",
                   }}
                 >
@@ -1370,6 +1337,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                     onChange={(e) => {
                       const file = e.target.files?.[0] ?? null;
                       setGlobalOrderFile(file);
+                      setUploadModalError("");
                     }}
                   />
                   <label
@@ -1432,7 +1400,9 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                           margin: 0,
                           fontSize: 14,
                           fontWeight: 500,
-                          color: globalOrderFile ? "#22c55e" : "#e2e8f0",
+                          color: globalOrderFile
+                            ? "#22c55e"
+                            : "var(--order-upload-modal-file-title)",
                         }}
                       >
                         {globalOrderFile
@@ -1445,7 +1415,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                         style={{
                           margin: "4px 0 0",
                           fontSize: 12,
-                          color: "#64748b",
+                          color: "var(--order-upload-modal-file-muted)",
                         }}
                       >
                         {language === "zh-CN"
@@ -1456,6 +1426,25 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                   </label>
                 </div>
 
+                {/* 弹窗内错误提示（上传失败/校验失败） */}
+                {uploadModalError && (
+                  <div
+                    role="alert"
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: "1px solid var(--order-upload-modal-error-border)",
+                      background: "var(--order-upload-modal-error-bg)",
+                      color: "var(--order-upload-modal-error-fg)",
+                      fontSize: 13,
+                      lineHeight: 1.4,
+                      whiteSpace: "pre-line",
+                    }}
+                  >
+                    {uploadModalError}
+                  </div>
+                )}
+
                 {/* 备注输入 */}
                 <div>
                   <label
@@ -1464,7 +1453,7 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                       display: "block",
                       fontSize: 13,
                       fontWeight: 500,
-                      color: "#94a3b8",
+                      color: "var(--order-upload-modal-note-label)",
                       marginBottom: 8,
                     }}
                   >
@@ -1480,9 +1469,9 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                       minHeight: 80,
                       padding: 12,
                       borderRadius: 10,
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
-                      background: "rgba(0, 0, 0, 0.2)",
-                      color: "#e2e8f0",
+                      border: "1px solid var(--order-upload-modal-textarea-border)",
+                      background: "var(--order-upload-modal-textarea-bg)",
+                      color: "var(--order-upload-modal-textarea-fg)",
                       fontSize: 14,
                       resize: "vertical",
                       outline: "none",
@@ -1505,41 +1494,28 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
               <button
                 type="button"
                 onClick={() => {
-                  setGlobalOrderFile(null);
-                  setGlobalOrderNote("");
-                  setIsUploadModalOpen(false);
+                  closeUploadModal();
                 }}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  background: "transparent",
-                  color: "#94a3b8",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
+                className="btn btn-outline btn-lg"
               >
                 {language === "zh-CN" ? "取消" : "Cancel"}
               </button>
               <button
                 type="button"
                 disabled={loading}
+                className="btn btn-glow btn-lg"
                 onClick={async () => {
                   if (!userEmail) return;
                   if (!globalOrderFile) {
-                    setError(
+                    setUploadModalError(
                       language === "zh-CN"
                         ? "请选择要上传的截图文件"
                         : "Please choose a file to upload"
                     );
-                    setOkMsg("");
                     return;
                   }
                   setLoading(true);
-                  setError("");
-                  setOkMsg("");
+                  setUploadModalError("");
                   try {
                     const formData = new FormData();
                     formData.append("email", userEmail);
@@ -1574,37 +1550,24 @@ style={{ marginTop: 28, borderTop: "1px solid #d1d5db", paddingTop: 16 }}
                         ? "订单截图上传成功"
                         : "Order screenshot uploaded"
                     );
-                    setGlobalOrderFile(null);
-                    setGlobalOrderNote("");
-                    setIsUploadModalOpen(false);
+                    closeUploadModal();
                   } catch (e) {
-                    setError(
+                    const baseMsg =
                       e instanceof Error
                         ? e.message
                         : language === "zh-CN"
                           ? "上传订单截图失败"
-                          : "Failed to upload order screenshot"
+                          : "Failed to upload order screenshot";
+                    const hint =
+                      language === "zh-CN"
+                        ? "请重新选择截图并再次提交。"
+                        : "Please re-select the screenshot and submit again.";
+                    setUploadModalError(
+                      baseMsg.includes(hint) ? baseMsg : `${baseMsg}\n${hint}`
                     );
                   } finally {
                     setLoading(false);
                   }
-                }}
-                style={{
-                  padding: "10px 24px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: loading
-                    ? "rgba(59, 130, 246, 0.5)"
-                    : "linear-gradient(135deg, #3b82f6, #2563eb)",
-                  color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
-                  transition: "all 0.2s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
                 }}
               >
                 {loading && (

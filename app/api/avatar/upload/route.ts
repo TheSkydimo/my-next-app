@@ -3,7 +3,7 @@ import {
   makeAvatarImageApiUrlFromR2Key,
   makeR2SchemeUrl,
 } from "../../_utils/r2ObjectUrls";
-import { requireUserFromRequest } from "../user/_utils/userSession";
+import { requireUserFromRequest } from "../../user/_utils/userSession";
 
 /**
  * 上传头像到 R2（对象存储），并返回：

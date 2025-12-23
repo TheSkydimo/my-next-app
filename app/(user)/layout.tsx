@@ -45,16 +45,10 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<AppTheme>("light");
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [searchValue, setSearchValue] = useState("");
+  // 当前“选中”的左侧菜单组（仅用于高亮，不触发路由/内容更新）
+  const [activeNavGroup, setActiveNavGroup] = useState<null | "devices">(null);
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
   const [deviceSubTab, setDeviceSubTab] = useState<"order" | "warranty" | null>(
-    null
-  );
-  const [isFeedbackMenuOpen, setIsFeedbackMenuOpen] = useState(false);
-  const [feedbackSubTab, setFeedbackSubTab] = useState<"new" | "history" | null>(
-    null
-  );
-  const [isScriptShareMenuOpen, setIsScriptShareMenuOpen] = useState(false);
-  const [scriptShareSubTab, setScriptShareSubTab] = useState<"mine" | "all" | null>(
     null
   );
   // 移动端菜单状态
@@ -103,61 +97,6 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
         setDeviceSubTab("order");
       }
       setIsDeviceMenuOpen(true);
-    };
-
-    syncFromLocation();
-
-    window.addEventListener("hashchange", syncFromLocation);
-    return () => {
-      window.removeEventListener("hashchange", syncFromLocation);
-    };
-  }, [pathname]);
-
-  // 意见反馈子菜单：根据当前地址栏 hash 同步“提交反馈 / 历史工单”选中态，并在反馈页默认展开子菜单
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const syncFromLocation = () => {
-      if (pathname !== "/feedback") {
-        setFeedbackSubTab(null);
-        return;
-      }
-
-      const hash = window.location.hash;
-      if (hash === "#feedback-history-section") {
-        setFeedbackSubTab("history");
-      } else {
-        // 默认选中“提交反馈”
-        setFeedbackSubTab("new");
-      }
-      setIsFeedbackMenuOpen(true);
-    };
-
-    syncFromLocation();
-
-    window.addEventListener("hashchange", syncFromLocation);
-    return () => {
-      window.removeEventListener("hashchange", syncFromLocation);
-    };
-  }, [pathname]);
-
-  // 用户脚本分享子菜单：根据 hash 同步“我的分享 / 查看分享”，并在脚本分享页默认展开
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const syncFromLocation = () => {
-      if (pathname !== "/script-shares") {
-        setScriptShareSubTab(null);
-        return;
-      }
-
-      const hash = window.location.hash;
-      if (hash === "#all") {
-        setScriptShareSubTab("all");
-      } else {
-        setScriptShareSubTab("mine");
-      }
-      setIsScriptShareMenuOpen(true);
     };
 
     syncFromLocation();
@@ -219,20 +158,8 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
       { href: "/", keywords: ["首页", "home", "index"] },
       { href: "/profile", keywords: ["信息", "资料", "profile", "account"] },
       {
-        href: "/favorites",
-        keywords: ["收藏", "favorites", "favourite", "favorite", "star"],
-      },
-      {
         href: "/devices",
         keywords: ["设备", "device", "devices"],
-      },
-      {
-        href: "/feedback",
-        keywords: ["反馈", "意见", "问题", "feedback", "support"],
-      },
-      {
-        href: "/script-shares",
-        keywords: ["脚本", "分享", "script", "share", "shares"],
       },
     ];
 
@@ -325,123 +252,44 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
             <Link
               href="/"
               className={`user-layout__nav-link ${
-                isActive("/") ? "user-layout__nav-link--active" : ""
+                isActive("/") && activeNavGroup === null
+                  ? "user-layout__nav-link--active"
+                  : ""
               }`}
-              onClick={closeMobileMenu}
+              onClick={() => {
+                setActiveNavGroup(null);
+                closeMobileMenu();
+              }}
             >
               {messages.layout.navHome}
             </Link>
             <Link
               href="/profile"
               className={`user-layout__nav-link ${
-                isActive("/profile") ? "user-layout__nav-link--active" : ""
+                isActive("/profile") && activeNavGroup === null
+                  ? "user-layout__nav-link--active"
+                  : ""
               }`}
-              onClick={closeMobileMenu}
+              onClick={() => {
+                setActiveNavGroup(null);
+                closeMobileMenu();
+              }}
             >
               {messages.layout.navProfile}
             </Link>
-            <Link
-              href="/favorites"
-              className={`user-layout__nav-link ${
-                isActive("/favorites") ? "user-layout__nav-link--active" : ""
-              }`}
-              onClick={closeMobileMenu}
-            >
-              {messages.layout.navFavorites}
-            </Link>
             <div className="user-layout__nav-group">
               <button
                 type="button"
                 className={`user-layout__nav-link user-layout__nav-link--button ${
-                  isActive("/feedback") ? "user-layout__nav-link--active" : ""
+                  isActive("/devices") || activeNavGroup === "devices"
+                    ? "user-layout__nav-link--active"
+                    : ""
                 }`}
                 onClick={() => {
-                  const next = !isFeedbackMenuOpen;
-                  setIsFeedbackMenuOpen(next);
-                  if (next) {
-                    setFeedbackSubTab("new");
-                    if (pathname !== "/feedback") {
-                      window.location.href = "/feedback#feedback-new-section";
-                    } else if (typeof window !== "undefined") {
-                      const el = document.getElementById("feedback-new-section");
-                      el?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }
-                  }
-                }}
-              >
-                <span>{messages.layout.navFeedback}</span>
-                <span className="user-layout__nav-group-arrow">
-                  {isFeedbackMenuOpen ? "▾" : "▸"}
-                </span>
-              </button>
-              {isFeedbackMenuOpen && (
-                <div className="user-layout__nav-sub">
-                  <Link
-                    href="/feedback#feedback-new-section"
-                    className={`user-layout__nav-sub-link ${
-                      feedbackSubTab === "new"
-                        ? "user-layout__nav-sub-link--active"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      setFeedbackSubTab("new");
-                      closeMobileMenu();
-                      if (typeof window !== "undefined") {
-                        window.dispatchEvent(
-                          new CustomEvent("user-feedback-section-changed", {
-                            detail: { section: "new" },
-                          })
-                        );
-                      }
-                    }}
-                  >
-                    {language === "zh-CN" ? "提交反馈" : "New feedback"}
-                  </Link>
-                  <Link
-                    href="/feedback#feedback-history-section"
-                    className={`user-layout__nav-sub-link ${
-                      feedbackSubTab === "history"
-                        ? "user-layout__nav-sub-link--active"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      setFeedbackSubTab("history");
-                      closeMobileMenu();
-                      if (typeof window !== "undefined") {
-                        window.dispatchEvent(
-                          new CustomEvent("user-feedback-section-changed", {
-                            detail: { section: "history" },
-                          })
-                        );
-                      }
-                    }}
-                  >
-                    {language === "zh-CN" ? "历史工单" : "History"}
-                  </Link>
-                </div>
-              )}
-            </div>
-            <div className="user-layout__nav-group">
-              <button
-                type="button"
-                className={`user-layout__nav-link user-layout__nav-link--button ${
-                  isActive("/devices") ? "user-layout__nav-link--active" : ""
-                }`}
-                onClick={() => {
-                  // 切换折叠状态，并在需要时跳转到设备信息页
+                  // 可选中父级菜单，但只做展开/收起，不触发内容更新/跳转
+                  setActiveNavGroup("devices");
                   const next = !isDeviceMenuOpen;
                   setIsDeviceMenuOpen(next);
-                  if (next) {
-                    setDeviceSubTab("order");
-                    if (pathname !== "/devices") {
-                      // 直接跳转到第一个子菜单（订单信息）
-                      window.location.href = "/devices#order-section";
-                    } else if (typeof window !== "undefined") {
-                      // 已经在设备页时，滚动到第一个子菜单区域
-                      const el = document.getElementById("order-section");
-                      el?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }
-                  }
                 }}
               >
                 <span>{messages.layout.navDevices}</span>
@@ -459,6 +307,7 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
                         : ""
                     }`}
                     onClick={() => {
+                      setActiveNavGroup(null);
                       setDeviceSubTab("order");
                       closeMobileMenu();
                       if (typeof window !== "undefined") {
@@ -481,6 +330,7 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
                         : ""
                     }`}
                     onClick={() => {
+                      setActiveNavGroup(null);
                       setDeviceSubTab("warranty");
                       closeMobileMenu();
                       if (typeof window !== "undefined") {
@@ -494,69 +344,6 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
                     }}
                   >
                     {language === "zh-CN" ? "质保信息" : "Warranty info"}
-                  </Link>
-                </div>
-              )}
-            </div>
-            <div className="user-layout__nav-group">
-              <button
-                type="button"
-                className={`user-layout__nav-link user-layout__nav-link--button ${
-                  isActive("/script-shares") ? "user-layout__nav-link--active" : ""
-                }`}
-                onClick={() => {
-                  const next = !isScriptShareMenuOpen;
-                  setIsScriptShareMenuOpen(next);
-                  if (next) {
-                    setScriptShareSubTab("mine");
-                    if (pathname !== "/script-shares") {
-                      window.location.href = "/script-shares#mine";
-                    } else if (typeof window !== "undefined") {
-                      window.location.hash = "#mine";
-                    }
-                  }
-                }}
-              >
-                <span>{language === "zh-CN" ? "脚本分享" : "Script shares"}</span>
-                <span className="user-layout__nav-group-arrow">
-                  {isScriptShareMenuOpen ? "▾" : "▸"}
-                </span>
-              </button>
-              {isScriptShareMenuOpen && (
-                <div className="user-layout__nav-sub">
-                  <Link
-                    href="/script-shares#mine"
-                    className={`user-layout__nav-sub-link ${
-                      scriptShareSubTab === "mine"
-                        ? "user-layout__nav-sub-link--active"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      setScriptShareSubTab("mine");
-                      closeMobileMenu();
-                      if (typeof window !== "undefined") {
-                        window.location.hash = "#mine";
-                      }
-                    }}
-                  >
-                    {language === "zh-CN" ? "我的分享" : "My shares"}
-                  </Link>
-                  <Link
-                    href="/script-shares#all"
-                    className={`user-layout__nav-sub-link ${
-                      scriptShareSubTab === "all"
-                        ? "user-layout__nav-sub-link--active"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      setScriptShareSubTab("all");
-                      closeMobileMenu();
-                      if (typeof window !== "undefined") {
-                        window.location.hash = "#all";
-                      }
-                    }}
-                  >
-                    {language === "zh-CN" ? "查看分享" : "Browse"}
                   </Link>
                 </div>
               )}
