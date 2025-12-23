@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { requireUserFromRequest } from "../../_utils/userSession";
 
 /**
  * 从 R2 存储中读取订单图片
@@ -24,7 +25,49 @@ export async function GET(request: Request) {
   }
 
   const { env } = await getCloudflareContext();
+  const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;
+
+  // 兼容新库/空库：确保 user_orders 表存在（至少包含归属校验所需字段）
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS user_orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        device_id TEXT NOT NULL,
+        image_url TEXT NOT NULL,
+        note TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        order_no TEXT,
+        order_created_time TEXT,
+        order_paid_time TEXT,
+        platform TEXT,
+        shop_name TEXT,
+        device_count INTEGER
+      )`
+    )
+    .run();
+
+  // 必须登录；普通用户只能读取自己的订单截图；管理员可读取任意用户订单截图。
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
+
+  // 归属校验：确保该 key 在 DB 中确实属于当前用户（或管理员）
+  const dbUrl = `r2://${key}`;
+  const ownerRes = await db
+    .prepare("SELECT user_id FROM user_orders WHERE image_url = ? LIMIT 1")
+    .bind(dbUrl)
+    .all<{ user_id: number }>();
+  const owner = ownerRes.results?.[0]?.user_id ?? null;
+
+  if (owner == null) {
+    // 不暴露对象是否存在于 R2（避免枚举），统一当作不存在
+    return new Response("Image not found", { status: 404 });
+  }
+
+  if (!authed.user.isAdmin && owner !== authed.user.id) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
   const object = await r2.get(key);
 

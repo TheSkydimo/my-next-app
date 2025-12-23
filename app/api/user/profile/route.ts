@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { sha256 } from "../../_utils/auth";
 import { verifyAndUseEmailCode } from "../../_utils/emailCode";
+import { requireUserFromRequest } from "../_utils/userSession";
 import {
   convertDbAvatarUrlToPublicUrl,
   makeR2SchemeUrl,
@@ -30,15 +31,11 @@ async function ensureAvatarUrlColumn(db: D1Database) {
 
 // 获取用户个人信息
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const email = searchParams.get("email");
-
-  if (!email) {
-    return new Response("缺少 email 参数", { status: 400 });
-  }
-
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
+
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   try {
     await ensureAvatarUrlColumn(db);
@@ -49,9 +46,9 @@ export async function GET(request: Request) {
 
   const queryResult = await db
     .prepare(
-      "SELECT id, username, email, is_admin, avatar_url, created_at FROM users WHERE email = ?"
+      "SELECT id, username, email, is_admin, avatar_url, created_at FROM users WHERE id = ?"
     )
-    .bind(email)
+    .bind(authed.user.id)
     .all<UserRow>();
 
   const user = queryResult.results?.[0];
@@ -93,7 +90,6 @@ function isOwnedAvatarR2KeyForUser(userId: number, key: string): boolean {
 // 更新用户个人信息
 export async function POST(request: Request) {
   const body = (await request.json()) as {
-    email?: string;
     username?: string;
     oldPassword?: string;
     newPassword?: string;
@@ -102,12 +98,7 @@ export async function POST(request: Request) {
     avatarUrl?: string | null;
   };
 
-  const { email, username, oldPassword, newPassword, newEmail, emailCode, avatarUrl } =
-    body;
-
-  if (!email) {
-    return new Response("邮箱不能为空", { status: 400 });
-  }
+  const { username, oldPassword, newPassword, newEmail, emailCode, avatarUrl } = body;
 
   const hasAvatarField = Object.prototype.hasOwnProperty.call(
     body,
@@ -121,6 +112,9 @@ export async function POST(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;
+
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   // POST 也需要兼容旧库（避免用户只调用更新接口而未触发 GET）
   try {
@@ -138,8 +132,8 @@ export async function POST(request: Request) {
 
     const oldHash = await sha256(oldPassword);
     const { results } = await db
-      .prepare("SELECT id FROM users WHERE email = ? AND password_hash = ?")
-      .bind(email, oldHash)
+      .prepare("SELECT id FROM users WHERE id = ? AND password_hash = ?")
+      .bind(authed.user.id, oldHash)
       .all();
 
     if (!results || results.length === 0) {
@@ -187,14 +181,13 @@ export async function POST(request: Request) {
 
   // 头像允许设置为空字符串代表清空，所以只要客户端传了 avatarUrl 字段（即使为空字符串）
   // 就认为需要更新；未传该字段则不更新
-  let userIdForAvatar: number | null = null;
   let prevAvatarUrl: string | null = null;
   let normalizedAvatarDbUrl: string | null = null;
   if (hasAvatarField) {
     // 先读用户 id 与旧头像，方便后续校验“头像 key 归属”，以及（最佳努力）删除旧 R2 对象
     const prev = await db
-      .prepare("SELECT id, avatar_url FROM users WHERE email = ?")
-      .bind(email)
+      .prepare("SELECT avatar_url FROM users WHERE id = ?")
+      .bind(authed.user.id)
       .all<{ id: number; avatar_url: string | null }>();
 
     const prevRow = prev.results?.[0];
@@ -202,7 +195,6 @@ export async function POST(request: Request) {
       return new Response("用户不存在", { status: 404 });
     }
 
-    userIdForAvatar = prevRow.id;
     prevAvatarUrl = prevRow.avatar_url ?? null;
 
     normalizedAvatarDbUrl =
@@ -214,7 +206,7 @@ export async function POST(request: Request) {
     if (normalizedAvatarDbUrl) {
       const key = r2KeyFromSchemeUrl(normalizedAvatarDbUrl);
       if (key && key.startsWith("avatars/")) {
-        if (!isOwnedAvatarR2KeyForUser(userIdForAvatar, key)) {
+        if (!isOwnedAvatarR2KeyForUser(authed.user.id, key)) {
           return new Response("非法头像地址：只能使用自己上传的头像", {
             status: 400,
           });
@@ -226,11 +218,11 @@ export async function POST(request: Request) {
     values.push(normalizedAvatarDbUrl);
   }
 
-  values.push(email);
+  values.push(authed.user.id);
 
   try {
     await db
-      .prepare(`UPDATE users SET ${fields.join(", ")} WHERE email = ?`)
+      .prepare(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`)
       .bind(...values)
       .run();
   } catch (e) {
@@ -255,8 +247,7 @@ export async function POST(request: Request) {
     if (
       prevKey &&
       // 只允许删除当前用户目录下的头像，避免误删他人对象
-      userIdForAvatar != null &&
-      isOwnedAvatarR2KeyForUser(userIdForAvatar, prevKey) &&
+      isOwnedAvatarR2KeyForUser(authed.user.id, prevKey) &&
       // 新头像为空 或者 新 key 与旧 key 不同
       (!nextKey || nextKey !== prevKey)
     ) {

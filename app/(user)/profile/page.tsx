@@ -90,7 +90,6 @@ export default function UserProfilePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: userEmail,
           username: usernameInput,
         }),
       });
@@ -129,7 +128,6 @@ export default function UserProfilePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: userEmail,
           avatarUrl: finalAvatarUrl,
         }),
       });
@@ -208,7 +206,6 @@ export default function UserProfilePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: userEmail,
           newEmail,
           emailCode,
         }),
@@ -386,7 +383,6 @@ export default function UserProfilePage() {
 
                         try {
                           const formData = new FormData();
-                          formData.append("email", userEmail);
                           formData.append("file", file);
 
                           const res = await fetch("/api/avatar/upload", {

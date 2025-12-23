@@ -3,10 +3,7 @@ import {
   makeAvatarImageApiUrlFromR2Key,
   makeR2SchemeUrl,
 } from "../../_utils/r2ObjectUrls";
-
-function isLikelyEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+import { requireUserFromRequest } from "../user/_utils/userSession";
 
 /**
  * 上传头像到 R2（对象存储），并返回：
@@ -15,12 +12,8 @@ function isLikelyEmail(email: string): boolean {
  */
 export async function POST(request: Request) {
   const form = await request.formData();
-  const email = form.get("email");
   const file = form.get("file");
 
-  if (typeof email !== "string" || !email || !isLikelyEmail(email)) {
-    return new Response("Email is required", { status: 400 });
-  }
   if (!(file instanceof File)) {
     return new Response("File is required", { status: 400 });
   }
@@ -38,21 +31,14 @@ export async function POST(request: Request) {
   // 复用现有 R2 bucket（订单截图已使用该 bucket）
   const r2 = env.ORDER_IMAGES as R2Bucket;
 
-  const userQuery = await db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .bind(email)
-    .all<{ id: number }>();
-
-  const user = userQuery.results?.[0];
-  if (!user) {
-    return new Response("User not found", { status: 404 });
-  }
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   const mimeType = file.type || "image/png";
   const ext = mimeType.split("/")[1] || "png";
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 10);
-  const r2Key = `avatars/${user.id}/${timestamp}-${random}.${ext}`;
+  const r2Key = `avatars/${authed.user.id}/${timestamp}-${random}.${ext}`;
 
   const buffer = await file.arrayBuffer();
   await r2.put(r2Key, buffer, {

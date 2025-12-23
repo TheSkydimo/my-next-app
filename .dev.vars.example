@@ -9,5 +9,11 @@ TURNSTILE_SECRET_KEY=""
 # Generate a long random secret for HMAC signing session tokens.
 SESSION_SECRET=""
 
+# Email (SMTP)
+SMTP_PASS=""
+
+# Mole API (optional, used by /api/user/orders)
+MOLE_API_KEY=""
+
 # Load .env.development* files when running `wrangler dev`
 NEXTJS_ENV=development

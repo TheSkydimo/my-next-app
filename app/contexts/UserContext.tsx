@@ -97,7 +97,9 @@ export function UserProvider({ children }: UserProviderProps) {
    */
   const loadProfile = useCallback(async (email: string): Promise<UserProfile | null> => {
     try {
-      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`);
+      // 安全：不再通过 email 参数拉取资料，统一基于 httpOnly session cookie 获取“我”的信息
+      void email;
+      const res = await fetch("/api/user/me", { method: "GET", credentials: "include" });
       if (!res.ok) {
         return null;
       }

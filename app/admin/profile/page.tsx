@@ -139,7 +139,6 @@ export default function AdminProfilePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: adminEmail,
           username: usernameInput,
         }),
       });
@@ -178,7 +177,6 @@ export default function AdminProfilePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: adminEmail,
           avatarUrl: finalAvatarUrl,
         }),
       });
@@ -261,7 +259,6 @@ export default function AdminProfilePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: adminEmail,
           newEmail,
           emailCode,
         }),
@@ -428,7 +425,6 @@ export default function AdminProfilePage() {
 
                         try {
                           const formData = new FormData();
-                          formData.append("email", adminEmail);
                           formData.append("file", file);
 
                           const res = await fetch("/api/avatar/upload", {

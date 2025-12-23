@@ -8,13 +8,15 @@ APP_NAME = "订阅管理"
 SMTP_HOST = "smtp.qiye.aliyun.com"
 SMTP_PORT = "465"
 SMTP_USER = "noreply@skydimo.com"
-SMTP_PASS = "fbn2WqHG1CnhGfyK"
 SMTP_ENCRYPTION = "ssl"
 SMTP_FROM = "noreply@skydimo.com"
 
-MOLE_API_KEY = "sk-oldQ12WzF3qesYtgppUOS77dZFrpLr2wY3NslooRJxZDVZmi"
 MOLE_API_BASE_URL = "https://api.moleapi.com/v1"
 MOLE_AI_MODEL = "gpt-4o"
+
+# Secrets (DO NOT COMMIT)
+# - SMTP_PASS: set via `wrangler secret put SMTP_PASS`
+# - MOLE_API_KEY: set via `wrangler secret put MOLE_API_KEY`
 
 # Cloudflare Turnstile
 # - NEXT_PUBLIC_TURNSTILE_SITE_KEY: 前端渲染所需的站点 Key（可放 vars）

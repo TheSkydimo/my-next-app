@@ -47,6 +47,23 @@ This project uses **Cloudflare Turnstile** on the register page.
 For local preview on the Cloudflare runtime, copy `.dev.vars.example` to `.dev.vars` and fill values.
 For production, set the secret via `wrangler secret put TURNSTILE_SECRET_KEY` (do not commit it).
 
+## Secrets (SMTP / Mole API)
+
+This repo expects the following **server-side secrets** (never commit them):
+
+- `SMTP_PASS` (SMTP password)
+- `MOLE_API_KEY` (optional; used by `/api/user/orders`)
+
+For local preview on the Cloudflare runtime, put them in `.dev.vars`.
+For production, set them via:
+
+```bash
+wrangler secret put SMTP_PASS
+wrangler secret put MOLE_API_KEY
+```
+
+If these values were ever committed, treat them as **compromised** and rotate them immediately.
+
 ## Remember login (Session Cookie)
 
 This project uses a **signed httpOnly cookie** (`user_session`) to persist login sessions.
