@@ -11,6 +11,7 @@ type FeedbackBubbleMessages = {
   sending: string;
   successTitle: string;
   successMessage: string;
+  warningMessage: string;
   errorMessage: string;
 };
 
@@ -22,6 +23,7 @@ const messages: Record<AppLanguage, FeedbackBubbleMessages> = {
     sending: "发送中...",
     successTitle: "感谢您的反馈！",
     successMessage: "我们会尽快处理您的反馈。",
+    warningMessage: "已提交，但邮件通知未发送（不影响提交结果）。",
     errorMessage: "发送失败，请稍后再试",
   },
   "en-US": {
@@ -31,6 +33,7 @@ const messages: Record<AppLanguage, FeedbackBubbleMessages> = {
     sending: "Sending...",
     successTitle: "Thank you for your feedback!",
     successMessage: "We will process your feedback as soon as possible.",
+    warningMessage: "Submitted, but email notification was not sent.",
     errorMessage: "Failed to send, please try again later",
   },
 };
@@ -40,7 +43,9 @@ export default function FeedbackBubble() {
   const [content, setContent] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sending, setSending] = useState(false);
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "success" | "warning" | "error"
+  >("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [theme, setTheme] = useState<AppTheme>("dark");
@@ -133,7 +138,27 @@ export default function FeedbackBubble() {
         throw new Error(text || msg.errorMessage);
       }
 
-      setStatus("success");
+      type FeedbackQuickResponse = {
+        ok: boolean;
+        stored?: boolean;
+        userEmailSent?: boolean;
+        adminEmailSent?: boolean;
+        emailError?: string;
+      };
+
+      let data: FeedbackQuickResponse | null = null;
+      try {
+        data = (await res.json()) as FeedbackQuickResponse;
+      } catch {
+        // ignore
+      }
+
+      if (data?.emailError) {
+        setStatus("warning");
+        setErrorMsg(String(data.emailError || msg.warningMessage));
+      } else {
+        setStatus("success");
+      }
       setContent("");
 
       // 3秒后自动关闭成功提示
@@ -166,6 +191,9 @@ export default function FeedbackBubble() {
     successBg: isLight
       ? "linear-gradient(135deg, #10b981, #059669)"
       : "linear-gradient(135deg, #10b981, #059669)",
+    warningBg: isLight
+      ? "linear-gradient(135deg, #f59e0b, #d97706)"
+      : "linear-gradient(135deg, #f59e0b, #d97706)",
     errorBg: isLight
       ? "linear-gradient(135deg, #ef4444, #dc2626)"
       : "linear-gradient(135deg, #ef4444, #dc2626)",
@@ -232,11 +260,14 @@ export default function FeedbackBubble() {
             color: colors.text,
           }}
         >
-          {status === "success" ? (
+          {status === "success" || status === "warning" ? (
             <div className="feedback-bubble__success">
               <div
                 className="feedback-bubble__success-icon"
-                style={{ background: colors.successBg }}
+                style={{
+                  background:
+                    status === "warning" ? colors.warningBg : colors.successBg,
+                }}
               >
                 <svg
                   width="32"
@@ -260,6 +291,14 @@ export default function FeedbackBubble() {
               >
                 {msg.successMessage}
               </p>
+              {status === "warning" && (
+                <p
+                  className="feedback-bubble__success-message"
+                  style={{ color: colors.textMuted, marginTop: 8 }}
+                >
+                  {errorMsg || msg.warningMessage}
+                </p>
+              )}
             </div>
           ) : (
             <>

@@ -10,6 +10,7 @@ SMTP_PORT = "465"
 SMTP_USER = "noreply@skydimo.com"
 SMTP_ENCRYPTION = "ssl"
 SMTP_FROM = "noreply@skydimo.com"
+FEEDBACK_NOTIFY_TO = "support@skydimo.com"
 
 MOLE_API_BASE_URL = "https://api.moleapi.com/v1"
 MOLE_AI_MODEL = "gpt-4o"

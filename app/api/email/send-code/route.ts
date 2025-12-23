@@ -1,10 +1,10 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import nodemailer from "nodemailer";
 import { isValidEmail } from "../../_utils/auth";
 import type { EmailCodePurpose } from "../../_utils/emailCode";
 import { ensureEmailCodeTable } from "../../_utils/emailCode";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
 import { ensureUsersIsAdminColumn } from "../../_utils/usersTable";
+import { createSmtpTransport, getSmtpConfig } from "../../_utils/mailer";
 import {
   getRuntimeEnvVar,
   isDevBypassTurnstileEnabled,
@@ -117,33 +117,18 @@ export async function POST(request: Request) {
   }
 
   const APP_NAME = getRuntimeEnvVar(env, "APP_NAME");
-  const SMTP_HOST = getRuntimeEnvVar(env, "SMTP_HOST");
-  const SMTP_PORT = getRuntimeEnvVar(env, "SMTP_PORT");
-  const SMTP_USER = getRuntimeEnvVar(env, "SMTP_USER");
-  const SMTP_PASS = getRuntimeEnvVar(env, "SMTP_PASS");
-  const SMTP_ENCRYPTION = getRuntimeEnvVar(env, "SMTP_ENCRYPTION");
-  const SMTP_FROM = getRuntimeEnvVar(env, "SMTP_FROM");
-
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
+  const smtp = getSmtpConfig(env);
+  if (!smtp) {
     console.error("SMTP 配置缺失");
     return new Response("邮件服务未配置", { status: 500 });
   }
-
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: SMTP_ENCRYPTION === "ssl" || Number(SMTP_PORT) === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
+  const transporter = createSmtpTransport(smtp);
 
   const appName = APP_NAME || "应用";
 
   try {
     await transporter.sendMail({
-      from: `${appName} <${SMTP_FROM}>`,
+      from: `${appName} <${smtp.from}>`,
       to: email,
       subject: `[${appName}] 邮箱验证码`,
       text: `您的验证码是：${code}，10 分钟内有效。若非本人操作，请忽略此邮件。`,

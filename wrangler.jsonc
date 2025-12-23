@@ -39,6 +39,7 @@
 		"SMTP_USER": "noreply@skydimo.com",
 		"SMTP_ENCRYPTION": "ssl",
 		"SMTP_FROM": "noreply@skydimo.com",
+		"FEEDBACK_NOTIFY_TO": "support@skydimo.com",
 		"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a"
 	},
 	"env": {
@@ -69,6 +70,7 @@
 				"SMTP_USER": "noreply@skydimo.com",
 				"SMTP_ENCRYPTION": "ssl",
 				"SMTP_FROM": "noreply@skydimo.com",
+				"FEEDBACK_NOTIFY_TO": "support@skydimo.com",
 				"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a",
 
 				/**

@@ -12,6 +12,12 @@ SESSION_SECRET=""
 # Email (SMTP)
 SMTP_PASS=""
 
+# Feedback (email notify)
+# - FEEDBACK_NOTIFY_TO: comma-separated recipients (e.g. "support@skydimo.com")
+# - Optional: use dedicated SMTP account for feedback:
+#   FEEDBACK_SMTP_HOST/FEEDBACK_SMTP_PORT/FEEDBACK_SMTP_USER/FEEDBACK_SMTP_PASS/FEEDBACK_SMTP_FROM/FEEDBACK_SMTP_ENCRYPTION
+FEEDBACK_NOTIFY_TO=""
+
 # Mole API (optional, used by /api/user/orders)
 MOLE_API_KEY=""
 

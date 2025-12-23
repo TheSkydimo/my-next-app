@@ -64,6 +64,14 @@ wrangler secret put MOLE_API_KEY
 
 If these values were ever committed, treat them as **compromised** and rotate them immediately.
 
+## Feedback email notifications
+
+When a logged-in user submits quick feedback, the server will **store it in D1** and (best-effort) **send an email to the support mailbox**.
+
+- **Required**: set `FEEDBACK_NOTIFY_TO` (support inbox recipients, comma-separated)
+- **Default SMTP**: uses `SMTP_*`
+- **Optional override**: use a dedicated feedback SMTP account via `FEEDBACK_SMTP_*` (same keys as `SMTP_*`, but prefixed with `FEEDBACK_`)
+
 ## Remember login (Session Cookie)
 
 This project uses a **signed httpOnly cookie** (`user_session`) to persist login sessions.
