@@ -12,7 +12,7 @@ export type SmtpConfig = {
 };
 
 export function getSmtpConfig(env: unknown): SmtpConfig | null {
-  return getSmtpConfigWithPrefix(env, "");
+  return getSmtpConfigWithPrefix(env, "SMTP_");
 }
 
 /**
@@ -22,7 +22,7 @@ export function getSmtpConfig(env: unknown): SmtpConfig | null {
  */
 export function getSmtpConfigWithPrefix(
   env: unknown,
-  prefix: "" | "FEEDBACK_SMTP_"
+  prefix: "SMTP_" | "FEEDBACK_SMTP_"
 ): SmtpConfig | null {
   const APP_NAME = getRuntimeEnvVar(env, "APP_NAME") || "应用";
   const SMTP_HOST = getRuntimeEnvVar(env, `${prefix}HOST`);
