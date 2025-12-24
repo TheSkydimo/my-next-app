@@ -16,6 +16,7 @@ import { getUserMessages } from "../user-i18n";
 import FeedbackBubble from "../components/FeedbackBubble";
 import UserNotificationBell from "../components/UserNotificationBell";
 import { UserProvider, useOptionalUser } from "../contexts/UserContext";
+import { TranslateIcon } from "../components/icons/TranslateIcon";
 
 /**
  * 用户端布局组件（外层包装）
@@ -387,9 +388,7 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
                     title={language === "zh-CN" ? "切换到 English" : "Switch to 中文"}
                     onClick={toggleLanguage}
                   >
-                    <span className="user-topbar__lang-label">
-                      {language === "zh-CN" ? "中" : "EN"}
-                    </span>
+                    <TranslateIcon className="user-topbar__translate-icon" />
                   </button>
                   <button
                     type="button"

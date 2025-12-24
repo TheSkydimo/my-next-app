@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { TurnstileWidget } from "./TurnstileWidget";
+import { TranslateIcon } from "./icons/TranslateIcon";
 import {
   applyLanguage,
   applyTheme,
@@ -37,6 +38,7 @@ const TEXTS: Record<
       stepTurnstileTitle: string;
       stepCodeTitle: string;
       turnstileNotice: string;
+      turnstileVerifying: string;
       emailLabel: string;
       emailPlaceholder: string;
       emailCodeLabel: string;
@@ -72,6 +74,7 @@ const TEXTS: Record<
       stepTurnstileTitle: "验证",
       stepCodeTitle: "输入验证码",
       turnstileNotice: "您的连接需要被验证才能继续",
+      turnstileVerifying: "验证中…",
       emailLabel: "请输入您的邮箱进行登录或者创建账户",
       emailPlaceholder: "name@example.com",
       emailCodeLabel: "邮箱验证码",
@@ -104,7 +107,8 @@ const TEXTS: Record<
       stepEmailTitle: "Sign in / Sign up",
       stepTurnstileTitle: "Verification",
       stepCodeTitle: "Enter code",
-      turnstileNotice: "Your connection needs to be verified before you can proceed",
+      turnstileNotice: "Your connection needs to be verified before you can proceed.",
+      turnstileVerifying: "Verifying…",
       emailLabel: "Please enter your email to login or create an account",
       emailPlaceholder: "name@example.com",
       emailCodeLabel: "Email code",
@@ -141,6 +145,7 @@ const TEXTS: Record<
       stepTurnstileTitle: "验证",
       stepCodeTitle: "输入验证码",
       turnstileNotice: "您的连接需要被验证才能继续。",
+      turnstileVerifying: "验证中…",
       emailLabel: "请输入管理员邮箱获取验证码",
       emailPlaceholder: "admin@example.com",
       emailCodeLabel: "邮箱验证码",
@@ -172,7 +177,8 @@ const TEXTS: Record<
       stepEmailTitle: "Admin sign in",
       stepTurnstileTitle: "Verification",
       stepCodeTitle: "Enter code",
-      turnstileNotice: "Your connection needs to be verified before you can proceed",
+      turnstileNotice: "Your connection needs to be verified before you can proceed.",
+      turnstileVerifying: "Verifying…",
       emailLabel: "Enter admin email to receive a sign-in code",
       emailPlaceholder: "admin@example.com",
       emailCodeLabel: "Email code",
@@ -842,12 +848,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                 aria-expanded={langMenuOpen}
                 aria-label={lang === "zh-CN" ? "切换语言" : "Change language"}
               >
-                <Image
-                  src="/translate.svg"
-                  alt={lang === "zh-CN" ? "语言" : "Language"}
-                  width={16}
-                  height={16}
-                />
+                <TranslateIcon className="auth-toolbar__icon-svg" size={16} />
               </button>
               {langMenuOpen && (
                 <div className="auth-toolbar__dropdown">
@@ -963,7 +964,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                       className="auth-plain__hint"
                       style={{ marginTop: 10, fontSize: 16, fontWeight: 600 }}
                     >
-                      Verifying…
+                      {t.turnstileVerifying}
                     </div>
                   )}
                 </>

@@ -14,6 +14,7 @@ import {
 } from "../client-prefs";
 import { getAdminMessages } from "../admin-i18n";
 import { AdminProvider, useOptionalAdmin } from "../contexts/AdminContext";
+import { TranslateIcon } from "../components/icons/TranslateIcon";
 
 /**
  * 管理端布局组件（外层包装）
@@ -317,9 +318,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                     title={language === "zh-CN" ? "切换到 English" : "Switch to 中文"}
                     onClick={toggleLanguage}
                   >
-                    <span className="admin-topbar__lang-label">
-                      {language === "zh-CN" ? "中" : "EN"}
-                    </span>
+                    <TranslateIcon className="admin-topbar__translate-icon" />
                   </button>
                   <button
                     type="button"
