@@ -5,15 +5,16 @@ const THEME_KEY = "appTheme";
 const LANG_KEY = "appLanguage";
 
 export function getInitialTheme(): AppTheme {
-  if (typeof window === "undefined") return "light";
+  // 让 SSR 首屏也默认深色，避免无痕/首次打开出现“默认浅色/闪白”
+  if (typeof window === "undefined") return "dark";
 
   const stored = window.localStorage.getItem(THEME_KEY) as AppTheme | null;
   if (stored === "light" || stored === "dark") {
     return stored;
   }
 
-  // 统一默认使用浅色主题
-  return "light";
+  // 无本地偏好时默认深色主题（例如无痕首次打开）
+  return "dark";
 }
 
 export function applyTheme(theme: AppTheme) {

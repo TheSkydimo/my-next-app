@@ -2,6 +2,10 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isValidEmail } from "../../_utils/auth";
 import type { EmailCodePurpose } from "../../_utils/emailCode";
 import { ensureEmailCodeTable } from "../../_utils/emailCode";
+import {
+  normalizeAppLanguage,
+  type AppLanguage,
+} from "../../_utils/appLanguage";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
 import { ensureUsersIsAdminColumn } from "../../_utils/usersTable";
 import { createSmtpTransport, getSmtpConfig } from "../../_utils/mailer";
@@ -19,19 +23,149 @@ function generateCode(length = 6): string {
   return code;
 }
 
+function resolveRequestLanguage(options: {
+  request: Request;
+  bodyLanguage?: unknown;
+}): AppLanguage {
+  const { request, bodyLanguage } = options;
+  // 1) 客户端显式传递（优先级最高）
+  const normalized = normalizeAppLanguage(bodyLanguage);
+  if (bodyLanguage === "en-US" || bodyLanguage === "zh-CN") {
+    return normalized;
+  }
+
+  // 2) 回退：Accept-Language（仅做简单判断，避免引入复杂解析）
+  const accept = String(request.headers.get("accept-language") ?? "")
+    .trim()
+    .toLowerCase();
+  if (accept.startsWith("en") || accept.includes(",en") || accept.includes("-en")) {
+    return "en-US";
+  }
+
+  return "zh-CN";
+}
+
+function getApiMessage(lang: AppLanguage) {
+  const zh = {
+    emailRequired: "邮箱不能为空",
+    emailInvalid: "邮箱格式不正确",
+    turnstileMissing: "请完成人机验证",
+    turnstileFailed: "人机验证失败，请重试",
+    turnstileNotConfigured: "Turnstile 未配置（缺少 TURNSTILE_SECRET_KEY）",
+    codeTooFrequent: "验证码发送太频繁，请稍后再试",
+    adminEmailNotFound: "该管理员邮箱不存在或不是管理员账号",
+    smtpMissing: "邮件服务未配置",
+    sendMailFailed: "发送邮件失败，请稍后再试",
+  };
+  const en = {
+    emailRequired: "Email is required.",
+    emailInvalid: "Invalid email format.",
+    turnstileMissing: "Please complete the human verification.",
+    turnstileFailed: "Human verification failed. Please try again.",
+    turnstileNotConfigured: "Turnstile is not configured (missing TURNSTILE_SECRET_KEY).",
+    codeTooFrequent: "Too many requests. Please try again later.",
+    adminEmailNotFound: "Admin email not found or not an admin account.",
+    smtpMissing: "Email service is not configured.",
+    sendMailFailed: "Failed to send email. Please try again later.",
+  };
+
+  return lang === "en-US" ? en : zh;
+}
+
+function buildEmailTemplate(options: {
+  lang: AppLanguage;
+  purpose: EmailCodePurpose;
+  code: string;
+}) {
+  const { lang, purpose, code } = options;
+
+  // 注意：按需求，验证码邮件中暂时不要出现 APP_NAME/应用名（避免“订阅管理”出现在主题/正文/发件人显示名）
+  const zhTitle: Record<EmailCodePurpose, string> = {
+    register: "注册验证码",
+    "user-login": "登录验证码",
+    "admin-login": "管理员登录验证码",
+    "user-forgot": "重置密码验证码",
+    "admin-forgot": "管理员重置密码验证码",
+    "change-email": "更换邮箱验证码",
+  };
+
+  const enTitle: Record<EmailCodePurpose, string> = {
+    register: "Sign-up verification code",
+    "user-login": "Sign-in verification code",
+    "admin-login": "Admin sign-in verification code",
+    "user-forgot": "Password reset code",
+    "admin-forgot": "Admin password reset code",
+    "change-email": "Email change verification code",
+  };
+
+  const subject = lang === "en-US" ? enTitle[purpose] : zhTitle[purpose];
+
+  // 特别按用户提供的固定文案：登录（user-login）中英文内容需要严格一致
+  if (purpose === "user-login") {
+    if (lang === "en-US") {
+      const text =
+        "Hello,\n" +
+        `Your sign-in verification code is: ${code}\n` +
+        "This code expires in 10 minutes. If you did not request this, please disregard this email.";
+      const html = `<p>Hello,</p>
+<p>Your sign-in verification code is:</p>
+<p style="font-size: 20px; font-weight: bold; letter-spacing: 1px;">${code}</p>
+<p>This code expires in 10 minutes. If you did not request this, please disregard this email.</p>`;
+      return { subject, text, html };
+    }
+
+    const text =
+      "您好：\n" +
+      `您的登录验证码为：${code}\n` +
+      "该验证码将于10分钟内失效。如非您本人发起，请忽略此邮件。";
+    const html = `<p>您好：</p>
+<p>您的登录验证码为：</p>
+<p style="font-size: 20px; font-weight: bold; letter-spacing: 1px;">${code}</p>
+<p>该验证码将于10分钟内失效。如非您本人发起，请忽略此邮件。</p>`;
+    return { subject, text, html };
+  }
+
+  // 其他用途：保持“无应用名”的简洁模板
+  if (lang === "en-US") {
+    const text =
+      "Hello,\n" +
+      `Your verification code is: ${code}\n` +
+      "This code expires in 10 minutes. If you did not request this, please disregard this email.";
+    const html = `<p>Hello,</p>
+<p>Your verification code is:</p>
+<p style="font-size: 20px; font-weight: bold; letter-spacing: 1px;">${code}</p>
+<p>This code expires in 10 minutes. If you did not request this, please disregard this email.</p>`;
+    return { subject, text, html };
+  }
+
+  const text =
+    "您好：\n" +
+    `您的验证码为：${code}\n` +
+    "该验证码将于10分钟内失效。如非您本人发起，请忽略此邮件。";
+  const html = `<p>您好：</p>
+<p>您的验证码为：</p>
+<p style="font-size: 20px; font-weight: bold; letter-spacing: 1px;">${code}</p>
+<p>该验证码将于10分钟内失效。如非您本人发起，请忽略此邮件。</p>`;
+  return { subject, text, html };
+}
+
 export async function POST(request: Request) {
-  const { email, purpose, turnstileToken } = (await request.json()) as {
+  const { email, purpose, turnstileToken, language } = (await request.json()) as {
     email: string;
     purpose: EmailCodePurpose;
     turnstileToken?: string;
+    language?: AppLanguage;
   };
 
+  const lang = resolveRequestLanguage({ request, bodyLanguage: language });
+  const msg = getApiMessage(lang);
+
   if (!email) {
-    return new Response("邮箱不能为空", { status: 400 });
+    return new Response(msg.emailRequired, { status: 400 });
   }
 
   if (!isValidEmail(email)) {
-    return new Response("邮箱格式不正确", { status: 400 });
+    return new Response(msg.emailInvalid, { status: 400 });
   }
 
   const { env } = await getCloudflareContext();
@@ -50,12 +184,12 @@ export async function POST(request: Request) {
     if (!bypassTurnstile) {
       const secret = getTurnstileSecretFromEnv(env);
       if (!secret) {
-        return new Response("Turnstile 未配置（缺少 TURNSTILE_SECRET_KEY）", {
+        return new Response(msg.turnstileNotConfigured, {
           status: 500,
         });
       }
       if (!turnstileToken) {
-        return new Response("请完成人机验证", { status: 400 });
+        return new Response(msg.turnstileMissing, { status: 400 });
       }
       const remoteip = request.headers.get("CF-Connecting-IP");
       const okTurnstile = await verifyTurnstileToken({
@@ -64,7 +198,7 @@ export async function POST(request: Request) {
         remoteip,
       });
       if (!okTurnstile) {
-        return new Response("人机验证失败，请重试", { status: 400 });
+        return new Response(msg.turnstileFailed, { status: 400 });
       }
     }
   }
@@ -81,7 +215,7 @@ export async function POST(request: Request) {
       .all();
 
     if (!results || results.length === 0) {
-      return new Response("该管理员邮箱不存在或不是管理员账号", { status: 404 });
+      return new Response(msg.adminEmailNotFound, { status: 404 });
     }
   }
 
@@ -97,7 +231,7 @@ export async function POST(request: Request) {
     .all();
 
   if (recent.results && recent.results.length > 0) {
-    return new Response("验证码发送太频繁，请稍后再试", { status: 429 });
+    return new Response(msg.codeTooFrequent, { status: 429 });
   }
 
   await db
@@ -116,30 +250,29 @@ export async function POST(request: Request) {
     return Response.json({ ok: true, devCode: code });
   }
 
+  // 仍保留 APP_NAME（其他非验证码邮件或未来用途可能会用到），但验证码邮件模板中不再展示
   const APP_NAME = getRuntimeEnvVar(env, "APP_NAME");
   const smtp = getSmtpConfig(env);
   if (!smtp) {
     console.error("SMTP 配置缺失");
-    return new Response("邮件服务未配置", { status: 500 });
+    return new Response(msg.smtpMissing, { status: 500 });
   }
   const transporter = createSmtpTransport(smtp);
 
-  const appName = APP_NAME || "应用";
+  // 按需求：验证码邮件不要显示应用名；from 仅使用邮箱地址以避免“显示名=订阅管理”
 
   try {
+    const tpl = buildEmailTemplate({ lang, purpose, code });
     await transporter.sendMail({
-      from: `${appName} <${smtp.from}>`,
+      from: smtp.from,
       to: email,
-      subject: `[${appName}] 邮箱验证码`,
-      text: `您的验证码是：${code}，10 分钟内有效。若非本人操作，请忽略此邮件。`,
-      html: `<p>您好，</p>
-             <p>您的 <strong>${appName}</strong> 邮箱验证码为：</p>
-             <p style="font-size: 20px; font-weight: bold;">${code}</p>
-             <p>该验证码在 10 分钟内有效。若非本人操作，请忽略此邮件。</p>`,
+      subject: tpl.subject,
+      text: tpl.text,
+      html: tpl.html,
     });
   } catch (e) {
     console.error("发送验证码邮件失败:", e);
-    return new Response("发送邮件失败，请稍后再试", { status: 500 });
+    return new Response(msg.sendMailFailed, { status: 500 });
   }
 
   return Response.json({ ok: true });

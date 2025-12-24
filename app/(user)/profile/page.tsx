@@ -200,6 +200,7 @@ export default function UserProfilePage() {
         body: JSON.stringify({
           email: newEmail,
           purpose: "change-email",
+          language,
         }),
       });
       if (!res.ok) {

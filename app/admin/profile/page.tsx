@@ -253,6 +253,7 @@ export default function AdminProfilePage() {
         body: JSON.stringify({
           email: newEmail,
           purpose: "change-email",
+          language,
         }),
       });
       if (!res.ok) {

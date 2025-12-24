@@ -361,6 +361,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
           body: JSON.stringify({
             email,
             purpose: emailPurpose,
+            language: lang === "en" ? "en-US" : "zh-CN",
             ...(token ? { turnstileToken: token } : {}),
           }),
         });

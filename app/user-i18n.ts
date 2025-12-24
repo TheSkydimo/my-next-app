@@ -48,7 +48,12 @@ export type UserMessages = {
     deleteConfirm: (deviceId: string) => string;
     deleteFailed: string;
     deleteSuccess: string;
-    pagerText: (total: number, page: number, maxPage: number) => string;
+    pagerText: (
+      totalDevices: number,
+      totalOrders: number,
+      page: number,
+      maxPage: number
+    ) => string;
     fetchFailed: string;
     orderNotePlaceholder: string;
   };
@@ -160,8 +165,8 @@ const zhCN: UserMessages = {
       `确定要删除设备 ${deviceId} 吗？删除后将无法恢复。`,
     deleteFailed: "删除设备失败",
     deleteSuccess: "设备已删除",
-    pagerText: (total, page, maxPage) =>
-      `共 ${total} 台设备，当前第 ${page} / ${maxPage} 页`,
+    pagerText: (totalDevices, totalOrders, page, maxPage) =>
+      `共 ${totalDevices} 台设备（${totalOrders} 个订单），当前第 ${page} / ${maxPage} 页`,
     fetchFailed: "获取设备信息失败",
     orderNotePlaceholder: "可选备注，例如订单号、平台（淘宝/京东等）",
   },
@@ -277,8 +282,8 @@ const enUS: UserMessages = {
       `Remove order ${deviceId}? This action cannot be undone.`,
     deleteFailed: "Failed to delete order",
     deleteSuccess: "Order removed",
-    pagerText: (total, page, maxPage) =>
-      `Total ${total} orders, page ${page} of ${maxPage}`,
+    pagerText: (totalDevices, totalOrders, page, maxPage) =>
+      `Total ${totalDevices} devices (${totalOrders} orders), page ${page} of ${maxPage}`,
     fetchFailed: "Failed to load orders",
     orderNotePlaceholder: "Optional note, e.g. platform or custom remark",
   },

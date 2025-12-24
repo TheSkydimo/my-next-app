@@ -375,7 +375,7 @@ export default function UserDevicesPage() {
   const [error, setError] = useAutoDismissMessage(2000);
   const [okMsg, setOkMsg] = useAutoDismissMessage(2000);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [deviceTotal, setDeviceTotal] = useState(0);
   const pageSize = 5;
   const [uploadingOrderForDevice, setUploadingOrderForDevice] =
     useState<string | null>(null);
@@ -558,7 +558,7 @@ export default function UserDevicesPage() {
         if (!res.ok) {
           if (res.status === 404) {
             setDevices([]);
-            setTotal(0);
+            setDeviceTotal(0);
             return;
           }
           const text = await res.text();
@@ -569,8 +569,8 @@ export default function UserDevicesPage() {
           // 兼容旧结构
           const list = data as Device[];
           setDevices(list);
-          setTotal(list.length);
-          setPage(1);
+          setDeviceTotal(list.length);
+          setPage(1); // 旧结构无分页信息，回退到第 1 页
         } else {
           const obj = data as {
             items?: Device[];
@@ -578,7 +578,7 @@ export default function UserDevicesPage() {
           };
           const items = obj.items ?? [];
           setDevices(items);
-          setTotal(typeof obj.total === "number" ? obj.total : items.length);
+          setDeviceTotal(typeof obj.total === "number" ? obj.total : items.length);
         }
       } catch (e) {
         setError(
@@ -593,6 +593,35 @@ export default function UserDevicesPage() {
       loadDevices(userEmail, page);
     }
   }, [userEmail, page, messages.devices.fetchFailed, setError, setOkMsg]);
+
+  // ---- 订单汇总：用于“共 X 台设备”的展示（按订单号去重后汇总数量）----
+  const getUniqueOrders = (): OrderSnapshot[] => {
+    const map = new Map<string, OrderSnapshot>();
+    Object.values(orders).forEach((list) => {
+      list.forEach((o) => {
+        const key = (o.orderNo || String(o.id)).trim();
+        if (!map.has(key)) {
+          map.set(key, o);
+        }
+      });
+    });
+    return Array.from(map.values());
+  };
+
+  const uniqueOrders = getUniqueOrders();
+  const totalOrders = uniqueOrders.length;
+  const totalDevicesFromOrders = uniqueOrders.reduce((sum, o) => {
+    // 如果识别不到数量，默认按 1 计（至少买了 1 台）
+    const n = typeof o.deviceCount === "number" && o.deviceCount > 0 ? o.deviceCount : 1;
+    return sum + n;
+  }, 0);
+
+  const hasOrderData = totalOrders > 0;
+  const totalDevicesForUi = hasOrderData ? totalDevicesFromOrders : deviceTotal;
+  const totalRowsForPaging = hasOrderData ? totalOrders : deviceTotal;
+  const maxPage = Math.max(1, Math.ceil(totalRowsForPaging / pageSize) || 1);
+  const hasPrev = page > 1;
+  const hasNext = page < maxPage;
 
   // 加载当前用户所有订单截图（按设备分组）
   useEffect(() => {
@@ -678,9 +707,7 @@ export default function UserDevicesPage() {
     }
   };
 
-  const maxPage = Math.max(1, Math.ceil(total / pageSize) || 1);
-  const hasPrev = page > 1;
-  const hasNext = page < maxPage;
+  // maxPage/hasPrev/hasNext 已在上方基于「订单条目数/旧设备数」统一计算
 
   // 等待 UserContext 初始化完成再判断登录状态
   if (!isUserInitialized) {
@@ -840,16 +867,9 @@ export default function UserDevicesPage() {
             <div className="user-page-card">
           {(() => {
             // 根据截图信息汇总订单列表（按订单号去重）
-            const map = new Map<string, OrderSnapshot>();
-            Object.values(orders).forEach((list) => {
-              list.forEach((o) => {
-                const key = (o.orderNo || String(o.id)).trim();
-                if (!map.has(key)) {
-                  map.set(key, o);
-                }
-              });
-            });
-            const orderList = Array.from(map.values());
+            const orderList = uniqueOrders;
+            const start = (page - 1) * pageSize;
+            const pagedOrders = orderList.slice(start, start + pageSize);
 
             if (orderList.length === 0 && devices.length === 0) {
               return (
@@ -883,13 +903,13 @@ export default function UserDevicesPage() {
 
             // 默认：根据截图信息生成“我的订单列表”
             // 增加一个从 1 开始的序号，便于用户直观查看第几条订单
-            return orderList.map((o, index) => (
+            return pagedOrders.map((o, index) => (
               <div key={o.id} className="user-device-card">
                 <div className="user-device-card__row">
                   <div>
                     <div className="user-page-card__item-meta">
                       {language === "zh-CN" ? "序号：" : "No. "}
-                      <strong>{index + 1}</strong>
+                      <strong>{start + index + 1}</strong>
                     </div>
                     <div className="user-page-card__item-title">
                       {messages.devices.idLabel}
@@ -926,7 +946,8 @@ export default function UserDevicesPage() {
             >
               <span>
                 {messages.devices.pagerText(
-                  total,
+                  totalDevicesForUi,
+                  totalRowsForPaging,
                   Math.min(page, maxPage),
                   maxPage
                 )}
