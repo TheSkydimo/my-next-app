@@ -253,11 +253,11 @@ const enUS: UserMessages = {
     navHome: "Home",
     navProfile: "Profile",
     navFavorites: "Favorites",
-    navDevices: "Devices",
+    navDevices: "Orders",
     logout: "Sign out",
     searchPlaceholder: "Search features / Ctrl + K",
     searchNotFound: "No matching feature found. Try:",
-    searchNotFoundHint: "Home / Profile / Devices",
+    searchNotFoundHint: "Home / Profile / Orders",
     brand: "Skydimo",
   },
   devices: {
