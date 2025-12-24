@@ -24,12 +24,13 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const parsed = await readJsonBody<{
     email: string;
     emailCode: string;
+    emailCodeChallengeId: string;
     remember?: boolean;
   }>(request);
   if (!parsed.ok) {
     return new Response("Invalid JSON", { status: 400 });
   }
-  const { email, emailCode, remember } = parsed.value;
+  const { email, emailCode, emailCodeChallengeId, remember } = parsed.value;
 
   if (!email) {
     return new Response("邮箱不能为空", { status: 400 });
@@ -45,6 +46,14 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   if (!emailCode) {
     return new Response("邮箱验证码不能为空", { status: 400 });
+  }
+
+  if (!emailCodeChallengeId) {
+    return new Response("邮箱验证码错误或已过期", { status: 400 });
+  }
+
+  if (emailCodeChallengeId.length > 64) {
+    return new Response("邮箱验证码错误或已过期", { status: 400 });
   }
 
   if (emailCode.length > 32) {
@@ -68,6 +77,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     email,
     code: emailCode,
     purpose: "user-login",
+    challengeId: emailCodeChallengeId,
   });
 
   if (!okCode) {
@@ -162,6 +172,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       ...(rememberMe ? { maxAge: maxAgeSeconds } : {}),
     });
   }
+  headers["Cache-Control"] = "no-store";
 
   return Response.json({
     ok: true,

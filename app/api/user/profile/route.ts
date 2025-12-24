@@ -96,10 +96,19 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     newPassword?: string;
     newEmail?: string;
     emailCode?: string;
+    emailCodeChallengeId?: string;
     avatarUrl?: string | null;
   };
 
-  const { username, oldPassword, newPassword, newEmail, emailCode, avatarUrl } = body;
+  const {
+    username,
+    oldPassword,
+    newPassword,
+    newEmail,
+    emailCode,
+    emailCodeChallengeId,
+    avatarUrl,
+  } = body;
 
   const hasAvatarField = Object.prototype.hasOwnProperty.call(
     body,
@@ -148,11 +157,16 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       return new Response("修改邮箱需要提供邮箱验证码", { status: 400 });
     }
 
+    if (!emailCodeChallengeId) {
+      return new Response("邮箱验证码错误或已过期", { status: 400 });
+    }
+
     const okCode = await verifyAndUseEmailCode({
       db,
       email: newEmail,
       code: emailCode,
       purpose: "change-email",
+      challengeId: emailCodeChallengeId,
     });
 
     if (!okCode) {

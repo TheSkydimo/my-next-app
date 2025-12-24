@@ -13,12 +13,14 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     email: string;
     password: string;
     emailCode?: string;
+    emailCodeChallengeId?: string;
     turnstileToken?: string;
   }>(request);
   if (!parsed.ok) {
     return new Response("Invalid JSON", { status: 400 });
   }
-  const { username, email, password, emailCode, turnstileToken } = parsed.value;
+  const { username, email, password, emailCode, emailCodeChallengeId, turnstileToken } =
+    parsed.value;
 
   if (!email || !password) {
     return new Response("邮箱和密码不能为空", { status: 400 });
@@ -26,6 +28,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   if (!emailCode) {
     return new Response("请先完成邮箱验证码验证", { status: 400 });
+  }
+  if (!emailCodeChallengeId) {
+    return new Response("邮箱验证码错误或已过期", { status: 400 });
   }
 
   if (!isValidEmail(email)) {
@@ -72,6 +77,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     email,
     code: emailCode,
     purpose: "register",
+    challengeId: emailCodeChallengeId,
   });
 
   if (!okCode) {
@@ -130,5 +136,5 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     return new Response("注册失败，请稍后再试", { status: 500 });
   }
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
 }, { name: "POST /api/register" });

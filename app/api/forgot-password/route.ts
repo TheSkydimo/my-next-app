@@ -9,11 +9,12 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     email: string;
     password: string;
     emailCode?: string;
+    emailCodeChallengeId?: string;
   }>(request);
   if (!parsed.ok) {
     return new Response("Invalid JSON", { status: 400 });
   }
-  const { email, password, emailCode } = parsed.value;
+  const { email, password, emailCode, emailCodeChallengeId } = parsed.value;
 
   if (!email || !password) {
     return new Response("邮箱和新密码不能为空", { status: 400 });
@@ -21,6 +22,10 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   if (!emailCode) {
     return new Response("请先完成邮箱验证码验证", { status: 400 });
+  }
+
+  if (!emailCodeChallengeId) {
+    return new Response("邮箱验证码错误或已过期", { status: 400 });
   }
 
   if (!isValidEmail(email)) {
@@ -43,6 +48,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     email,
     code: emailCode,
     purpose: "user-forgot",
+    challengeId: emailCodeChallengeId,
   });
 
   if (!okCode) {
@@ -65,6 +71,6 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     .bind(password_hash, email)
     .run();
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
 }, { name: "POST /api/forgot-password" });
 

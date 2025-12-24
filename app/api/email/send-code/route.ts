@@ -254,18 +254,33 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   }
 
   const code = generateCode(6);
+  const challengeId = crypto.randomUUID();
 
-  await db
-    .prepare(
-      `INSERT INTO email_verification_codes (email, code, purpose, expires_at)
-       VALUES (?, ?, ?, datetime('now', '+10 minutes'))`
-    )
-    .bind(email, code, purpose)
-    .run();
+  // 生成新验证码时：立即作废同邮箱+同用途下所有未使用旧验证码（与插入同一事务，避免并发竞态）
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE email_verification_codes
+         SET invalidated_at = datetime('now')
+         WHERE email = ? AND purpose = ?
+           AND used_at IS NULL
+           AND (invalidated_at IS NULL)`
+      )
+      .bind(email, purpose),
+    db
+      .prepare(
+        `INSERT INTO email_verification_codes (email, challenge_id, code, purpose, expires_at)
+         VALUES (?, ?, ?, ?, datetime('now', '+10 minutes'))`
+      )
+      .bind(email, challengeId, code, purpose),
+  ]);
 
   // 本地开发：允许直接返回验证码，便于手动测试（仍写入数据库）
   if (returnCodeInResponse) {
-    return Response.json({ ok: true, devCode: code });
+    return Response.json(
+      { ok: true, challengeId, devCode: code },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   }
 
   // SMTP email service config must exist in production.
@@ -282,7 +297,10 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     return new Response(msg.sendMailFailed, { status: 500 });
   }
 
-  return Response.json({ ok: true });
+  return Response.json(
+    { ok: true, challengeId },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }, { name: "POST /api/email/send-code" });
 
 

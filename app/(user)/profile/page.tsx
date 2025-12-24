@@ -34,6 +34,7 @@ export default function UserProfilePage() {
 
   const [newEmail, setNewEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
+  const [emailCodeChallengeId, setEmailCodeChallengeId] = useState("");
   const [sendingCode, setSendingCode] = useState(false);
   const [showUsernameDialog, setShowUsernameDialog] = useState(false);
   const [showAvatarDialog, setShowAvatarDialog] = useState(false);
@@ -207,6 +208,13 @@ export default function UserProfilePage() {
         const text = await res.text();
         throw new Error(text || messages.profile.errorSendCodeFailed);
       }
+      const data = (await res.json().catch(() => null)) as
+        | { challengeId?: string }
+        | null;
+      if (!data?.challengeId) {
+        throw new Error(messages.profile.errorSendCodeFailed);
+      }
+      setEmailCodeChallengeId(String(data.challengeId));
       setOkMsg(messages.profile.successCodeSent);
     } catch (e) {
       setError(
@@ -235,6 +243,7 @@ export default function UserProfilePage() {
         body: JSON.stringify({
           newEmail,
           emailCode,
+          emailCodeChallengeId,
         }),
       });
       if (!res.ok) {
@@ -244,6 +253,7 @@ export default function UserProfilePage() {
       setOkMsg(messages.profile.successEmailUpdated);
       setNewEmail("");
       setEmailCode("");
+      setEmailCodeChallengeId("");
 
       if (typeof window !== "undefined") {
         // 最佳努力清理服务端 Session Cookie
@@ -607,6 +617,7 @@ export default function UserProfilePage() {
                       setShowEmailDialog(false);
                       setNewEmail("");
                       setEmailCode("");
+                      setEmailCodeChallengeId("");
                     }}
                     className="dialog-card__cancel"
                   >

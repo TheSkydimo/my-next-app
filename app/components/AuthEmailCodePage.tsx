@@ -201,6 +201,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
+  const [emailCodeChallengeId, setEmailCodeChallengeId] = useState("");
   const [devEmailCode, setDevEmailCode] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -343,6 +344,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     async (token?: string) => {
       setError("");
       setDevEmailCode("");
+      setEmailCodeChallengeId("");
 
       if (!email) {
         setError(t.errorEmailRequired);
@@ -374,8 +376,16 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         }
 
         const data = (await res.json().catch(() => null)) as
-          | { devCode?: string }
+          | { challengeId?: string; devCode?: string }
           | null;
+
+        if (!data?.challengeId) {
+          setError(t.errorSendCode);
+          if (!turnstileRequired) setStep("email");
+          return;
+        }
+
+        setEmailCodeChallengeId(String(data.challengeId));
         if (data?.devCode) {
           setDevEmailCode(String(data.devCode));
         }
@@ -416,6 +426,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     setStep("email");
     setEmail("");
     setEmailCode("");
+    setEmailCodeChallengeId("");
     setDevEmailCode("");
     setTurnstileToken("");
     setLastSentToken("");
@@ -426,6 +437,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const startVerification = () => {
     setError("");
     setEmailCode("");
+    setEmailCodeChallengeId("");
     setDevEmailCode("");
 
     if (!email) {
@@ -463,7 +475,12 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
 
     const res = await fetch(loginEndpoint, {
       method: "POST",
-      body: JSON.stringify({ email, emailCode: normalizedCode, remember: rememberMe }),
+      body: JSON.stringify({
+        email,
+        emailCode: normalizedCode,
+        emailCodeChallengeId,
+        remember: rememberMe,
+      }),
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
