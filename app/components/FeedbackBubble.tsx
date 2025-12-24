@@ -47,8 +47,8 @@ export default function FeedbackBubble() {
     "idle" | "success" | "warning" | "error"
   >("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
-  const [theme, setTheme] = useState<AppTheme>("dark");
+  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
+  const [theme, setTheme] = useState<AppTheme>(() => getInitialTheme());
   const panelRef = useRef<HTMLDivElement>(null);
   const isSendingRef = useRef(false); // 防止重复发送
 
@@ -57,12 +57,6 @@ export default function FeedbackBubble() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const initialLang = getInitialLanguage();
-    setLanguage(initialLang);
-
-    const initialTheme = getInitialTheme();
-    setTheme(initialTheme);
 
     // 检查用户是否已登录
     const userEmail = window.localStorage.getItem("loggedInUserEmail");

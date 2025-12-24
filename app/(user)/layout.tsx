@@ -43,8 +43,8 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
   const avatarUrl = userContext?.profile?.avatarUrl ?? null;
   const displayName = userContext?.profile?.username ?? userContext?.profile?.email ?? null;
 
-  const [theme, setTheme] = useState<AppTheme>("light");
-  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [theme, setTheme] = useState<AppTheme>(() => getInitialTheme());
+  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const [searchValue, setSearchValue] = useState("");
   // 当前“选中”的左侧菜单组（仅用于高亮，不触发路由/内容更新）
   const [activeNavGroup, setActiveNavGroup] = useState<null | "devices">(null);
@@ -59,13 +59,8 @@ function UserLayoutInner({ children }: { children: ReactNode }) {
 
   // 初始化主题 / 语言，并处理 Ctrl + K 聚焦搜索框
   useEffect(() => {
-    const initialTheme = getInitialTheme();
-    setTheme(initialTheme);
-    applyTheme(initialTheme);
-
-    const initialLang = getInitialLanguage();
-    setLanguage(initialLang);
-    applyLanguage(initialLang);
+    applyTheme(theme);
+    applyLanguage(language);
 
     const keyHandler = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {

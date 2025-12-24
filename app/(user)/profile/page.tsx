@@ -20,7 +20,7 @@ export default function UserProfilePage() {
   const userEmail = userContext.profile?.email ?? null;
   const isUserInitialized = userContext.initialized;
   
-  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useAutoDismissMessage(2000);
@@ -42,9 +42,6 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const initialLang = getInitialLanguage();
-    setLanguage(initialLang);
 
     const handler = (event: Event) => {
       const custom = event as CustomEvent<{ language: AppLanguage }>;

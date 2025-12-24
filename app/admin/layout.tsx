@@ -44,21 +44,16 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   const initialized = adminContext?.initialized ?? false;
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<AppTheme>("light");
-  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [theme, setTheme] = useState<AppTheme>(() => getInitialTheme());
+  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const [searchValue, setSearchValue] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const messages = getAdminMessages(language);
 
   // 初始化主题 / 语言，并处理 Ctrl + K 聚焦搜索框
   useEffect(() => {
-    const initialTheme = getInitialTheme();
-    setTheme(initialTheme);
-    applyTheme(initialTheme);
-
-    const initialLang = getInitialLanguage();
-    setLanguage(initialLang);
-    applyLanguage(initialLang);
+    applyTheme(theme);
+    applyLanguage(language);
 
     const keyHandler = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {

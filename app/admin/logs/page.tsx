@@ -11,14 +11,11 @@ export default function AdminLogsPage() {
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
 
-  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const messages = getAdminMessages(language);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const initialLang = getInitialLanguage();
-    setLanguage(initialLang);
 
     const handler = (event: Event) => {
       const custom = event as CustomEvent<{ language: AppLanguage }>;

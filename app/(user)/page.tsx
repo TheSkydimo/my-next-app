@@ -13,13 +13,10 @@ export default function Home() {
   const displayName = userContext?.profile?.username ?? userContext?.profile?.email ?? null;
   const userEmail = userContext?.profile?.email ?? null;
 
-  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const initialLang = getInitialLanguage();
-    setLanguage(initialLang);
 
     const handler = (event: Event) => {
       const custom = event as CustomEvent<{ language: AppLanguage }>;
