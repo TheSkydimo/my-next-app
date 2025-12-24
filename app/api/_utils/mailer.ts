@@ -1,3 +1,4 @@
+import nodemailer from "nodemailer";
 import { getRuntimeEnvVar } from "./runtimeEnv";
 
 export type EmailSendOptions = {
@@ -6,7 +7,7 @@ export type EmailSendOptions = {
   text?: string;
   html?: string;
   /**
-   * Resend accepts either:
+   * Accepts:
    * - "email@example.com"
    * - "Display Name <email@example.com>"
    */
@@ -14,22 +15,63 @@ export type EmailSendOptions = {
   replyTo?: string;
 };
 
-type ResendConfig = {
-  provider: "resend";
-  apiKey: string;
-  defaultFrom: string;
+export type SmtpConfig = {
+  appName: string;
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  from: string;
+  encryption?: string;
 };
 
-function getResendConfig(env: unknown): ResendConfig | null {
-  const apiKey = (getRuntimeEnvVar(env, "RESEND_API_KEY") || "").trim();
-  if (!apiKey) return null;
+export function getSmtpConfig(env: unknown): SmtpConfig | null {
+  return getSmtpConfigWithPrefix(env, "SMTP_");
+}
 
-  // Prefer explicit EMAIL_FROM, otherwise reuse existing SMTP_FROM (historical).
-  const defaultFrom =
-    (getRuntimeEnvVar(env, "EMAIL_FROM") || getRuntimeEnvVar(env, "SMTP_FROM") || "").trim();
-  if (!defaultFrom) return null;
+/**
+ * Read SMTP config from env with an optional prefix.
+ * - Default SMTP: SMTP_HOST/SMTP_PORT/...
+ * - Feedback override: FEEDBACK_SMTP_HOST/FEEDBACK_SMTP_PORT/...
+ */
+export function getSmtpConfigWithPrefix(
+  env: unknown,
+  prefix: "SMTP_" | "FEEDBACK_SMTP_"
+): SmtpConfig | null {
+  const APP_NAME = getRuntimeEnvVar(env, "APP_NAME") || "应用";
+  const SMTP_HOST = getRuntimeEnvVar(env, `${prefix}HOST`);
+  const SMTP_PORT = getRuntimeEnvVar(env, `${prefix}PORT`);
+  const SMTP_USER = getRuntimeEnvVar(env, `${prefix}USER`);
+  const SMTP_PASS = getRuntimeEnvVar(env, `${prefix}PASS`);
+  const SMTP_ENCRYPTION = getRuntimeEnvVar(env, `${prefix}ENCRYPTION`);
+  const SMTP_FROM = getRuntimeEnvVar(env, `${prefix}FROM`);
 
-  return { provider: "resend", apiKey, defaultFrom };
+  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
+    return null;
+  }
+
+  return {
+    appName: APP_NAME,
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT),
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+    from: SMTP_FROM,
+    encryption: SMTP_ENCRYPTION,
+  };
+}
+
+export function createSmtpTransport(config: SmtpConfig) {
+  const secure = config.encryption === "ssl" || config.port === 465;
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+  });
 }
 
 function normalizeRecipients(to: string | string[]): string[] {
@@ -40,16 +82,16 @@ function normalizeRecipients(to: string | string[]): string[] {
     .filter(Boolean);
 }
 
-/**
- * Workers-safe email sending (HTTP) — no Node SMTP libraries.
- *
- * Provider: Resend (https://resend.com)
- * - Configure `RESEND_API_KEY` (secret) and `EMAIL_FROM` (text var).
- */
-export async function sendEmail(env: unknown, options: EmailSendOptions): Promise<void> {
-  const cfg = getResendConfig(env);
+export async function sendEmail(
+  env: unknown,
+  options: EmailSendOptions,
+  prefix: "SMTP_" | "FEEDBACK_SMTP_" = "SMTP_"
+): Promise<void> {
+  const cfg = getSmtpConfigWithPrefix(env, prefix);
   if (!cfg) {
-    throw new Error("Email service is not configured (missing RESEND_API_KEY/EMAIL_FROM).");
+    throw new Error(
+      "Email service is not configured (missing SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM)."
+    );
   }
 
   const to = normalizeRecipients(options.to);
@@ -57,33 +99,24 @@ export async function sendEmail(env: unknown, options: EmailSendOptions): Promis
     throw new Error("Email recipients missing.");
   }
 
-  const from = (options.from || cfg.defaultFrom).trim();
+  const from = (options.from || cfg.from).trim();
   if (!from) {
     throw new Error("Email sender missing.");
   }
 
-  const payload: Record<string, unknown> = {
+  const transport = createSmtpTransport(cfg);
+  try {
+    await transport.sendMail({
     from,
     to,
     subject: options.subject,
-  };
-  if (options.text) payload.text = options.text;
-  if (options.html) payload.html = options.html;
-  if (options.replyTo) payload.reply_to = options.replyTo;
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${cfg.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    const raw = await res.text().catch(() => "");
-    const snippet = raw.length > 300 ? `${raw.slice(0, 300)}…` : raw;
-    throw new Error(`Resend API error (${res.status}): ${snippet || "unknown error"}`);
+      text: options.text,
+      html: options.html,
+      replyTo: options.replyTo,
+    });
+  } finally {
+    // Best-effort; not all transports expose close().
+    (transport as unknown as { close?: () => void }).close?.();
   }
 }
 
@@ -93,5 +126,3 @@ export function formatFrom(options: { name?: string; email: string }): string {
   if (!name) return email;
   return `"${name.replaceAll('"', "")}" <${email}>`;
 }
-
-

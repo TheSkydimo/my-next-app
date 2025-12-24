@@ -5,15 +5,18 @@
 
 [vars]
 APP_NAME = "订阅管理"
-EMAIL_FROM = "noreply@skydimo.com"
-SMTP_FROM = "noreply@skydimo.com" # legacy fallback
+SMTP_HOST = "smtp.qiye.aliyun.com"
+SMTP_PORT = "465"
+SMTP_USER = "noreply@skydimo.com"
+SMTP_ENCRYPTION = "ssl"
+SMTP_FROM = "noreply@skydimo.com"
 FEEDBACK_NOTIFY_TO = "support@skydimo.com"
 
 MOLE_API_BASE_URL = "https://api.moleapi.com/v1"
 MOLE_AI_MODEL = "gpt-4o"
 
 # Secrets (DO NOT COMMIT)
-# - RESEND_API_KEY: set via `wrangler secret put RESEND_API_KEY`
+# - SMTP_PASS: set via `wrangler secret put SMTP_PASS`
 # - MOLE_API_KEY: set via `wrangler secret put MOLE_API_KEY`
 
 # Cloudflare Turnstile

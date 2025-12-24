@@ -76,14 +76,14 @@ For production, set the secret via `wrangler secret put TURNSTILE_SECRET_KEY` (d
 
 This repo expects the following **server-side secrets** (never commit them):
 
-- `RESEND_API_KEY` (email provider API key; required for verification emails)
+- `SMTP_PASS` (SMTP password/app password; required for verification emails)
 - `MOLE_API_KEY` (optional; used by `/api/user/orders`)
 
 For local preview on the Cloudflare runtime, put them in `.dev.vars`.
 For production, set them via:
 
 ```bash
-wrangler secret put RESEND_API_KEY
+wrangler secret put SMTP_PASS
 wrangler secret put MOLE_API_KEY
 ```
 
@@ -94,8 +94,8 @@ If these values were ever committed, treat them as **compromised** and rotate th
 When a logged-in user submits quick feedback, the server will **store it in D1** and (best-effort) **send an email to the support mailbox**.
 
 - **Required**: set `FEEDBACK_NOTIFY_TO` (support inbox recipients, comma-separated)
-- **Required sender**: `EMAIL_FROM` (or legacy `SMTP_FROM`)
-- **Optional sender override**: `FEEDBACK_EMAIL_FROM`
+- **Required sender**: `SMTP_FROM`
+- **Optional dedicated SMTP**: `FEEDBACK_SMTP_*` (override SMTP settings for feedback only)
 
 ## Remember login (Session Cookie)
 

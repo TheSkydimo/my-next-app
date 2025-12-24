@@ -12,14 +12,20 @@ declare namespace Cloudflare {
 		DEV_RETURN_EMAIL_CODE: "1";
 		NEXTJS_ENV: string;
 		APP_NAME: string;
-		/** Email provider (Resend) */
-		RESEND_API_KEY: string;
-		/** Sender identity (e.g. noreply@yourdomain.com) */
-		EMAIL_FROM: string;
-		/** Optional override sender for feedback notifications */
-		FEEDBACK_EMAIL_FROM: string;
-		/** Legacy fallback (kept for compatibility with existing dashboards) */
+		/** Email (SMTP): required for verification code emails */
+		SMTP_HOST: string;
+		SMTP_PORT: string;
+		SMTP_USER: string;
+		SMTP_PASS: string;
+		SMTP_ENCRYPTION: string;
 		SMTP_FROM: string;
+		/** Optional dedicated SMTP for feedback notifications */
+		FEEDBACK_SMTP_HOST: string;
+		FEEDBACK_SMTP_PORT: string;
+		FEEDBACK_SMTP_USER: string;
+		FEEDBACK_SMTP_PASS: string;
+		FEEDBACK_SMTP_ENCRYPTION: string;
+		FEEDBACK_SMTP_FROM: string;
 		MOLE_API_KEY: string;
 		MOLE_API_BASE_URL: string;
 		MOLE_AI_MODEL: string;
@@ -43,10 +49,18 @@ declare namespace NodeJS {
 			| "DEV_RETURN_EMAIL_CODE"
 			| "NEXTJS_ENV"
 			| "APP_NAME"
-			| "RESEND_API_KEY"
-			| "EMAIL_FROM"
-			| "FEEDBACK_EMAIL_FROM"
+			| "SMTP_HOST"
+			| "SMTP_PORT"
+			| "SMTP_USER"
+			| "SMTP_PASS"
+			| "SMTP_ENCRYPTION"
 			| "SMTP_FROM"
+			| "FEEDBACK_SMTP_HOST"
+			| "FEEDBACK_SMTP_PORT"
+			| "FEEDBACK_SMTP_USER"
+			| "FEEDBACK_SMTP_PASS"
+			| "FEEDBACK_SMTP_ENCRYPTION"
+			| "FEEDBACK_SMTP_FROM"
 			| "MOLE_API_KEY"
 			| "MOLE_API_BASE_URL"
 			| "MOLE_AI_MODEL"

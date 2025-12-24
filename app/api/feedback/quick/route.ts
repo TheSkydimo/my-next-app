@@ -1,7 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureUserFeedbackTables } from "../../_utils/userFeedbackTable";
 import { ensureUsersTable } from "../../_utils/usersTable";
-import { formatFrom, sendEmail } from "../../_utils/mailer";
+import { formatFrom, getSmtpConfigWithPrefix, sendEmail } from "../../_utils/mailer";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
@@ -115,26 +115,27 @@ ${cleanContent}
 此邮件由 ${appName} 自动发送。`.trim();
 
       try {
-        const fromEmail =
-          (getRuntimeEnvVar(env, "FEEDBACK_EMAIL_FROM") ||
-            getRuntimeEnvVar(env, "EMAIL_FROM") ||
-            getRuntimeEnvVar(env, "SMTP_FROM") ||
-            "").trim();
-        if (!fromEmail) {
-          throw new Error("邮件服务未配置（缺少 EMAIL_FROM/SMTP_FROM）");
+        const feedbackCfg = getSmtpConfigWithPrefix(env, "FEEDBACK_SMTP_");
+        const fallbackCfg = getSmtpConfigWithPrefix(env, "SMTP_");
+        const smtpCfg = feedbackCfg || fallbackCfg;
+        if (!smtpCfg) {
+          throw new Error("邮件服务未配置（缺少 SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM）");
         }
 
+        const prefix = feedbackCfg ? "FEEDBACK_SMTP_" : "SMTP_";
+
         await sendEmail(env, {
-          from: formatFrom({ name: `${appName} 用户反馈`, email: fromEmail }),
+          from: formatFrom({ name: `${appName} 用户反馈`, email: smtpCfg.from }),
           to: notifyTo,
           replyTo: email,
           subject: emailSubject,
           text: emailText,
           html: emailHtml,
-        });
+        }, prefix);
         adminEmailSent = true;
       } catch (e) {
-        console.error("发送反馈通知邮件失败:", e);
+        const err = e instanceof Error ? e.message : String(e);
+        console.error("发送反馈通知邮件失败:", err);
         emailError = "反馈已提交，但通知邮件发送失败";
       }
     }

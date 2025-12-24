@@ -8,7 +8,7 @@ import {
 } from "../../_utils/appLanguage";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
 import { ensureUsersIsAdminColumn } from "../../_utils/usersTable";
-import { sendEmail } from "../../_utils/mailer";
+import { getSmtpConfig, sendEmail } from "../../_utils/mailer";
 import {
   isDevBypassTurnstileEnabled,
   shouldReturnEmailCodeInResponse,
@@ -247,12 +247,17 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     return Response.json({ ok: true, devCode: code });
   }
 
+  // SMTP email service config must exist in production.
+  if (!getSmtpConfig(env)) {
+    return new Response(msg.smtpMissing, { status: 500 });
+  }
+
   try {
     const tpl = buildEmailTemplate({ lang, purpose, code });
-    // Workers: use HTTP email provider (Resend). Verification emails should NOT show app name.
     await sendEmail(env, { to: email, subject: tpl.subject, text: tpl.text, html: tpl.html });
   } catch (e) {
-    console.error("发送验证码邮件失败:", e);
+    const err = e instanceof Error ? e.message : String(e);
+    console.error("发送验证码邮件失败:", err);
     return new Response(msg.sendMailFailed, { status: 500 });
   }
 
