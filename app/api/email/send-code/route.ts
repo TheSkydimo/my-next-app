@@ -8,7 +8,7 @@ import {
 } from "../../_utils/appLanguage";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
 import { ensureUsersIsAdminColumn } from "../../_utils/usersTable";
-import { createSmtpTransport, getSmtpConfig } from "../../_utils/mailer";
+import { sendEmail } from "../../_utils/mailer";
 import {
   isDevBypassTurnstileEnabled,
   shouldReturnEmailCodeInResponse,
@@ -247,25 +247,10 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     return Response.json({ ok: true, devCode: code });
   }
 
-  // 仍保留 APP_NAME（其他非验证码邮件或未来用途可能会用到），但验证码邮件模板中不再展示
-  const smtp = getSmtpConfig(env);
-  if (!smtp) {
-    console.error("SMTP 配置缺失");
-    return new Response(msg.smtpMissing, { status: 500 });
-  }
-  const transporter = createSmtpTransport(smtp);
-
-  // 按需求：验证码邮件不要显示应用名；from 仅使用邮箱地址以避免“显示名=订阅管理”
-
   try {
     const tpl = buildEmailTemplate({ lang, purpose, code });
-    await transporter.sendMail({
-      from: smtp.from,
-      to: email,
-      subject: tpl.subject,
-      text: tpl.text,
-      html: tpl.html,
-    });
+    // Workers: use HTTP email provider (Resend). Verification emails should NOT show app name.
+    await sendEmail(env, { to: email, subject: tpl.subject, text: tpl.text, html: tpl.html });
   } catch (e) {
     console.error("发送验证码邮件失败:", e);
     return new Response(msg.sendMailFailed, { status: 500 });

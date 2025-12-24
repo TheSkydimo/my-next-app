@@ -12,11 +12,13 @@ declare namespace Cloudflare {
 		DEV_RETURN_EMAIL_CODE: "1";
 		NEXTJS_ENV: string;
 		APP_NAME: string;
-		SMTP_HOST: string;
-		SMTP_PORT: string;
-		SMTP_USER: string;
-		SMTP_PASS: string;
-		SMTP_ENCRYPTION: string;
+		/** Email provider (Resend) */
+		RESEND_API_KEY: string;
+		/** Sender identity (e.g. noreply@yourdomain.com) */
+		EMAIL_FROM: string;
+		/** Optional override sender for feedback notifications */
+		FEEDBACK_EMAIL_FROM: string;
+		/** Legacy fallback (kept for compatibility with existing dashboards) */
 		SMTP_FROM: string;
 		MOLE_API_KEY: string;
 		MOLE_API_BASE_URL: string;
@@ -32,7 +34,24 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "FEEDBACK_NOTIFY_TO" | "NEXT_PUBLIC_TURNSTILE_SITE_KEY" | "DEV_BYPASS_TURNSTILE" | "DEV_RETURN_EMAIL_CODE" | "NEXTJS_ENV" | "APP_NAME" | "SMTP_HOST" | "SMTP_PORT" | "SMTP_USER" | "SMTP_PASS" | "SMTP_ENCRYPTION" | "SMTP_FROM" | "MOLE_API_KEY" | "MOLE_API_BASE_URL" | "MOLE_AI_MODEL">> {}
+	interface ProcessEnv extends StringifyValues<
+		Pick<
+			Cloudflare.Env,
+			| "FEEDBACK_NOTIFY_TO"
+			| "NEXT_PUBLIC_TURNSTILE_SITE_KEY"
+			| "DEV_BYPASS_TURNSTILE"
+			| "DEV_RETURN_EMAIL_CODE"
+			| "NEXTJS_ENV"
+			| "APP_NAME"
+			| "RESEND_API_KEY"
+			| "EMAIL_FROM"
+			| "FEEDBACK_EMAIL_FROM"
+			| "SMTP_FROM"
+			| "MOLE_API_KEY"
+			| "MOLE_API_BASE_URL"
+			| "MOLE_AI_MODEL"
+		>
+	> {}
 }
 
 // Begin runtime types

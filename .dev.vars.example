@@ -10,12 +10,16 @@ TURNSTILE_SECRET_KEY=""
 SESSION_SECRET=""
 
 # Email (SMTP)
-SMTP_PASS=""
+# Cloudflare Workers cannot use SMTP directly (no outbound TCP). Use an HTTP email provider.
+# Resend (recommended): https://resend.com
+RESEND_API_KEY=""
+# Sender identity (must be verified at your provider). For Resend, this is usually "name@yourdomain.com"
+EMAIL_FROM="noreply@example.com"
 
 # Feedback (email notify)
 # - FEEDBACK_NOTIFY_TO: comma-separated recipients (e.g. "support@skydimo.com")
-# - Optional: use dedicated SMTP account for feedback:
-#   FEEDBACK_SMTP_HOST/FEEDBACK_SMTP_PORT/FEEDBACK_SMTP_USER/FEEDBACK_SMTP_PASS/FEEDBACK_SMTP_FROM/FEEDBACK_SMTP_ENCRYPTION
+# - Optional: override sender for feedback notifications
+FEEDBACK_EMAIL_FROM=""
 FEEDBACK_NOTIFY_TO=""
 
 # Mole API (optional, used by /api/user/orders)
@@ -27,8 +31,7 @@ NEXTJS_ENV=development
 # Sentry (Error Monitoring)
 # - Server/Edge SDK: SENTRY_DSN
 # - Client SDK: NEXT_PUBLIC_SENTRY_DSN
-SENTRY_DSN=""
-NEXT_PUBLIC_SENTRY_DSN=""
+# (Removed) Sentry is intentionally not bundled for Cloudflare Workers to keep script size under limits.
 
 # Log archive
 # - Optional: override log prefix key in R2 (default: "logs/")

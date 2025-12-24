@@ -1,11 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureUserFeedbackTables } from "../../_utils/userFeedbackTable";
 import { ensureUsersTable } from "../../_utils/usersTable";
-import {
-  createSmtpTransport,
-  getSmtpConfig,
-  getSmtpConfigWithPrefix,
-} from "../../_utils/mailer";
+import { formatFrom, sendEmail } from "../../_utils/mailer";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
@@ -48,9 +44,6 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       .run();
 
     // Email notification (best-effort): notify support mailbox (required via FEEDBACK_NOTIFY_TO).
-    // Optional: use a dedicated feedback SMTP account via FEEDBACK_SMTP_* (falls back to default SMTP_*).
-    const smtp =
-      getSmtpConfigWithPrefix(env, "FEEDBACK_SMTP_") ?? getSmtpConfig(env);
     const notifyTo = (getRuntimeEnvVar(env, "FEEDBACK_NOTIFY_TO") || "").trim();
 
     const userEmailSent = false;
@@ -59,11 +52,8 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
     if (!notifyTo) {
       emailError = "未配置反馈收件箱（FEEDBACK_NOTIFY_TO）";
-    } else if (!smtp) {
-      emailError = "邮件服务未配置";
     } else {
-      const transporter = createSmtpTransport(smtp);
-      const appName = smtp.appName || "应用";
+      const appName = getRuntimeEnvVar(env, "APP_NAME") || "应用";
       const cleanContent = content.trim();
 
       const now = new Date();
@@ -125,8 +115,17 @@ ${cleanContent}
 此邮件由 ${appName} 自动发送。`.trim();
 
       try {
-        await transporter.sendMail({
-          from: `"${appName} 用户反馈" <${smtp.from}>`,
+        const fromEmail =
+          (getRuntimeEnvVar(env, "FEEDBACK_EMAIL_FROM") ||
+            getRuntimeEnvVar(env, "EMAIL_FROM") ||
+            getRuntimeEnvVar(env, "SMTP_FROM") ||
+            "").trim();
+        if (!fromEmail) {
+          throw new Error("邮件服务未配置（缺少 EMAIL_FROM/SMTP_FROM）");
+        }
+
+        await sendEmail(env, {
+          from: formatFrom({ name: `${appName} 用户反馈`, email: fromEmail }),
           to: notifyTo,
           replyTo: email,
           subject: emailSubject,

@@ -41,18 +41,10 @@ npm run deploy
 
 ### Sentry (Error Monitoring)
 
-- **Server/Edge DSN**: `SENTRY_DSN` (recommended via Wrangler secret in production)
-- **Client DSN**: `NEXT_PUBLIC_SENTRY_DSN`
-
-Local preview on Cloudflare runtime:
-- copy `.dev.vars.example` → `.dev.vars` and fill in values
-
-Production:
-
-```bash
-wrangler secret put SENTRY_DSN
-wrangler secret put NEXT_PUBLIC_SENTRY_DSN
-```
+This project intentionally **does not bundle Sentry** for Cloudflare Workers to keep the Worker script under the free plan size limit.
+Instead, rely on:
+- structured console logs
+- R2 log archive (NDJSON)
 
 ### Structured logs → Cloudflare R2 (NDJSON)
 
@@ -84,14 +76,14 @@ For production, set the secret via `wrangler secret put TURNSTILE_SECRET_KEY` (d
 
 This repo expects the following **server-side secrets** (never commit them):
 
-- `SMTP_PASS` (SMTP password)
+- `RESEND_API_KEY` (email provider API key; required for verification emails)
 - `MOLE_API_KEY` (optional; used by `/api/user/orders`)
 
 For local preview on the Cloudflare runtime, put them in `.dev.vars`.
 For production, set them via:
 
 ```bash
-wrangler secret put SMTP_PASS
+wrangler secret put RESEND_API_KEY
 wrangler secret put MOLE_API_KEY
 ```
 
@@ -102,8 +94,8 @@ If these values were ever committed, treat them as **compromised** and rotate th
 When a logged-in user submits quick feedback, the server will **store it in D1** and (best-effort) **send an email to the support mailbox**.
 
 - **Required**: set `FEEDBACK_NOTIFY_TO` (support inbox recipients, comma-separated)
-- **Default SMTP**: uses `SMTP_*`
-- **Optional override**: use a dedicated feedback SMTP account via `FEEDBACK_SMTP_*` (same keys as `SMTP_*`, but prefixed with `FEEDBACK_`)
+- **Required sender**: `EMAIL_FROM` (or legacy `SMTP_FROM`)
+- **Optional sender override**: `FEEDBACK_EMAIL_FROM`
 
 ## Remember login (Session Cookie)
 

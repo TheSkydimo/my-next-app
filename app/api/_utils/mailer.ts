@@ -1,63 +1,97 @@
-import nodemailer from "nodemailer";
 import { getRuntimeEnvVar } from "./runtimeEnv";
 
-export type SmtpConfig = {
-  appName: string;
-  host: string;
-  port: number;
-  user: string;
-  pass: string;
-  from: string;
-  encryption?: string;
+export type EmailSendOptions = {
+  to: string | string[];
+  subject: string;
+  text?: string;
+  html?: string;
+  /**
+   * Resend accepts either:
+   * - "email@example.com"
+   * - "Display Name <email@example.com>"
+   */
+  from?: string;
+  replyTo?: string;
 };
 
-export function getSmtpConfig(env: unknown): SmtpConfig | null {
-  return getSmtpConfigWithPrefix(env, "SMTP_");
+type ResendConfig = {
+  provider: "resend";
+  apiKey: string;
+  defaultFrom: string;
+};
+
+function getResendConfig(env: unknown): ResendConfig | null {
+  const apiKey = (getRuntimeEnvVar(env, "RESEND_API_KEY") || "").trim();
+  if (!apiKey) return null;
+
+  // Prefer explicit EMAIL_FROM, otherwise reuse existing SMTP_FROM (historical).
+  const defaultFrom =
+    (getRuntimeEnvVar(env, "EMAIL_FROM") || getRuntimeEnvVar(env, "SMTP_FROM") || "").trim();
+  if (!defaultFrom) return null;
+
+  return { provider: "resend", apiKey, defaultFrom };
+}
+
+function normalizeRecipients(to: string | string[]): string[] {
+  const list = Array.isArray(to) ? to : [to];
+  return list
+    .flatMap((x) => String(x).split(","))
+    .map((x) => x.trim())
+    .filter(Boolean);
 }
 
 /**
- * Read SMTP config from env with an optional prefix.
- * - Default SMTP: SMTP_HOST/SMTP_PORT/...
- * - Feedback override: FEEDBACK_SMTP_HOST/FEEDBACK_SMTP_PORT/...
+ * Workers-safe email sending (HTTP) — no Node SMTP libraries.
+ *
+ * Provider: Resend (https://resend.com)
+ * - Configure `RESEND_API_KEY` (secret) and `EMAIL_FROM` (text var).
  */
-export function getSmtpConfigWithPrefix(
-  env: unknown,
-  prefix: "SMTP_" | "FEEDBACK_SMTP_"
-): SmtpConfig | null {
-  const APP_NAME = getRuntimeEnvVar(env, "APP_NAME") || "应用";
-  const SMTP_HOST = getRuntimeEnvVar(env, `${prefix}HOST`);
-  const SMTP_PORT = getRuntimeEnvVar(env, `${prefix}PORT`);
-  const SMTP_USER = getRuntimeEnvVar(env, `${prefix}USER`);
-  const SMTP_PASS = getRuntimeEnvVar(env, `${prefix}PASS`);
-  const SMTP_ENCRYPTION = getRuntimeEnvVar(env, `${prefix}ENCRYPTION`);
-  const SMTP_FROM = getRuntimeEnvVar(env, `${prefix}FROM`);
-
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-    return null;
+export async function sendEmail(env: unknown, options: EmailSendOptions): Promise<void> {
+  const cfg = getResendConfig(env);
+  if (!cfg) {
+    throw new Error("Email service is not configured (missing RESEND_API_KEY/EMAIL_FROM).");
   }
 
-  return {
-    appName: APP_NAME,
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    user: SMTP_USER,
-    pass: SMTP_PASS,
-    from: SMTP_FROM,
-    encryption: SMTP_ENCRYPTION,
+  const to = normalizeRecipients(options.to);
+  if (to.length === 0) {
+    throw new Error("Email recipients missing.");
+  }
+
+  const from = (options.from || cfg.defaultFrom).trim();
+  if (!from) {
+    throw new Error("Email sender missing.");
+  }
+
+  const payload: Record<string, unknown> = {
+    from,
+    to,
+    subject: options.subject,
   };
+  if (options.text) payload.text = options.text;
+  if (options.html) payload.html = options.html;
+  if (options.replyTo) payload.reply_to = options.replyTo;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${cfg.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const raw = await res.text().catch(() => "");
+    const snippet = raw.length > 300 ? `${raw.slice(0, 300)}…` : raw;
+    throw new Error(`Resend API error (${res.status}): ${snippet || "unknown error"}`);
+  }
 }
 
-export function createSmtpTransport(config: SmtpConfig) {
-  const secure = config.encryption === "ssl" || config.port === 465;
-  return nodemailer.createTransport({
-    host: config.host,
-    port: config.port,
-    secure,
-    auth: {
-      user: config.user,
-      pass: config.pass,
-    },
-  });
+export function formatFrom(options: { name?: string; email: string }): string {
+  const name = (options.name || "").trim();
+  const email = options.email.trim();
+  if (!name) return email;
+  return `"${name.replaceAll('"', "")}" <${email}>`;
 }
 
 

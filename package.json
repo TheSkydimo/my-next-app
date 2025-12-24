@@ -9,7 +9,7 @@
 		"start": "next start",
 		"lint": "next lint",
 		"clean:opennext": "node scripts/clean-open-next.mjs",
-		"deploy": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && wrangler deploy --config wrangler.jsonc --env=\"\"",
+		"deploy": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && echo y | wrangler deploy --config wrangler.jsonc --env=\"\" --keep-vars",
 		"upload": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload",
 		"preview": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare preview",
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
@@ -17,9 +17,7 @@
 	},
 	"dependencies": {
 		"@opennextjs/cloudflare": "^1.14.2",
-		"@sentry/nextjs": "^10.32.1",
 		"next": "15.5.9",
-		"nodemailer": "^7.0.11",
 		"react": "19.1.2",
 		"react-dom": "19.1.2"
 	},
@@ -27,7 +25,6 @@
 		"@eslint/eslintrc": "^3",
 		"@tailwindcss/postcss": "^4",
 		"@types/node": "^20.19.25",
-		"@types/nodemailer": "^7.0.4",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
 		"eslint": "^9",
