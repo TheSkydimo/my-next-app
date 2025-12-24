@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getRequestOrigin } from "../../_utils/requestOrigin";
 
 type AppLanguage = "zh-CN" | "en-US";
 
@@ -78,7 +79,8 @@ export function GET(request: NextRequest) {
     return resolveAppLanguageFromReferer(request.headers.get("referer"));
   })();
 
-  const res = NextResponse.redirect(new URL(nextPath, request.url), 307);
+  const origin = getRequestOrigin(request);
+  const res = NextResponse.redirect(new URL(nextPath, origin), 307);
   res.headers.set("Cache-Control", "no-store");
 
   // Language preference is not sensitive; keep it readable by client JS
