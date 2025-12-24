@@ -49,18 +49,21 @@ export async function GET(
     !Number.isNaN(new Date(row.vip_expires_at).getTime()) &&
     new Date(row.vip_expires_at).getTime() > Date.now();
 
-  return Response.json({
-    user: {
-      id: row.id,
-      username: row.username,
-      email: row.email,
-      isAdmin: !!row.is_admin,
-      avatarUrl: convertDbAvatarUrlToPublicUrl(row.avatar_url),
-      isVip,
-      vipExpiresAt: row.vip_expires_at,
-      createdAt: row.created_at,
+  return Response.json(
+    {
+      user: {
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        isAdmin: !!row.is_admin,
+        avatarUrl: convertDbAvatarUrlToPublicUrl(row.avatar_url),
+        isVip,
+        vipExpiresAt: row.vip_expires_at,
+        createdAt: row.created_at,
+      },
     },
-  });
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 

@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 import { requireAdminFromRequest } from "../_utils/adminSession";
+import { deleteUserCascade } from "../_utils/deleteUserCascade";
 
 type UserRow = {
   id: number;
@@ -86,15 +87,18 @@ export async function GET(request: Request) {
 
   const totalPages = Math.max(Math.ceil(total / pageSize), 1);
 
-  return Response.json({
-    users,
-    pagination: {
-      total,
-      page,
-      pageSize,
-      totalPages,
+  return Response.json(
+    {
+      users,
+      pagination: {
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
     },
-  });
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 type AdminActionBody = {
@@ -106,8 +110,14 @@ type AdminActionBody = {
 
 // 管理员操作用户：删除用户 / 设置为管理员
 export async function POST(request: Request) {
-  const { action, userEmail, vipExpiresAt } =
-    (await request.json()) as AdminActionBody;
+  let body: AdminActionBody;
+  try {
+    body = (await request.json()) as AdminActionBody;
+  } catch {
+    return new Response("请求体格式不正确", { status: 400 });
+  }
+
+  const { action, userEmail, vipExpiresAt } = body;
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -177,7 +187,19 @@ export async function POST(request: Request) {
 
   switch (action) {
     case "remove": {
-      await db.prepare("DELETE FROM users WHERE email = ?").bind(userEmail).run();
+      try {
+        await deleteUserCascade({ db, userId: target.id, userEmail });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        // Do not leak internal error details to clients.
+        if (msg.includes("FOREIGN KEY constraint failed")) {
+          return new Response("删除失败：该用户存在关联数据，已阻止删除", {
+            status: 409,
+          });
+        }
+        console.error("admin remove user failed:", { targetId: target.id });
+        return new Response("删除失败：服务器内部错误", { status: 500 });
+      }
       break;
     }
     case "set-admin": {
@@ -234,7 +256,7 @@ export async function POST(request: Request) {
       return new Response("不支持的操作类型", { status: 400 });
   }
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
 }
 
 
