@@ -1,7 +1,8 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { isValidEmail } from "../../_utils/auth";
+import { isValidEmail, sha256 } from "../../_utils/auth";
 import type { EmailCodePurpose } from "../../_utils/emailCode";
 import { ensureEmailCodeTable } from "../../_utils/emailCode";
+import { readJsonBody } from "../../_utils/body";
 import {
   normalizeAppLanguage,
   type AppLanguage,
@@ -13,6 +14,7 @@ import {
   isDevBypassTurnstileEnabled,
   shouldReturnEmailCodeInResponse,
 } from "../../_utils/runtimeEnv";
+import { consumeRateLimit } from "../../_utils/rateLimit";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 function generateCode(length = 6): string {
@@ -150,12 +152,16 @@ function buildEmailTemplate(options: {
 }
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
-  const { email, purpose, turnstileToken, language } = (await request.json()) as {
+  const parsed = await readJsonBody<{
     email: string;
     purpose: EmailCodePurpose;
     turnstileToken?: string;
     language?: AppLanguage;
-  };
+  }>(request);
+  if (!parsed.ok) {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+  const { email, purpose, turnstileToken, language } = parsed.value;
 
   const lang = resolveRequestLanguage({ request, bodyLanguage: language });
   const msg = getApiMessage(lang);
@@ -206,6 +212,34 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   // 创建验证码表（如果不存在）
   await ensureEmailCodeTable(db);
 
+  // Rate limit (abuse protection):
+  // - Per IP: limit the number of requests regardless of target email.
+  // - Per email hash: stricter limit for a single recipient.
+  const ip = (request.headers.get("CF-Connecting-IP") || "").trim() || "unknown";
+  const emailHash = await sha256(email.toLowerCase());
+  const ipKey = `email_send:${purpose}:ip:${ip}`;
+  const emailKey = `email_send:${purpose}:email:${emailHash}`;
+
+  const ipLimit = await consumeRateLimit({
+    db,
+    key: ipKey,
+    windowSeconds: 60,
+    limit: 10,
+  });
+  if (!ipLimit.allowed) {
+    return new Response(msg.codeTooFrequent, { status: 429 });
+  }
+
+  const emailLimit = await consumeRateLimit({
+    db,
+    key: emailKey,
+    windowSeconds: 60,
+    limit: 1,
+  });
+  if (!emailLimit.allowed) {
+    return new Response(msg.codeTooFrequent, { status: 429 });
+  }
+
   // 如果是管理员相关用途，先确认该邮箱为管理员账号
   if (purpose === "admin-login" || purpose === "admin-forgot") {
     await ensureUsersIsAdminColumn(db);
@@ -220,19 +254,6 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   }
 
   const code = generateCode(6);
-
-  // 简单的限制：同一邮箱 1 分钟内只允许发送一次
-  const recent = await db
-    .prepare(
-      `SELECT id FROM email_verification_codes
-       WHERE email = ? AND purpose = ? AND created_at > datetime('now', '-60 seconds')`
-    )
-    .bind(email, purpose)
-    .all();
-
-  if (recent.results && recent.results.length > 0) {
-    return new Response(msg.codeTooFrequent, { status: 429 });
-  }
 
   await db
     .prepare(
@@ -256,8 +277,8 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     const tpl = buildEmailTemplate({ lang, purpose, code });
     await sendEmail(env, { to: email, subject: tpl.subject, text: tpl.text, html: tpl.html });
   } catch (e) {
-    const err = e instanceof Error ? e.message : String(e);
-    console.error("发送验证码邮件失败:", err);
+    // Avoid leaking SMTP/provider details into logs (may include recipient / internal ids).
+    console.error("发送验证码邮件失败");
     return new Response(msg.sendMailFailed, { status: 500 });
   }
 

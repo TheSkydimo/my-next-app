@@ -4,17 +4,21 @@ import { verifyAndUseEmailCode } from "../_utils/emailCode";
 import { generateNumericUsername } from "../_utils/user";
 import { isDevBypassTurnstileEnabled } from "../_utils/runtimeEnv";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../_utils/turnstile";
+import { readJsonBody } from "../_utils/body";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
-  const { username, email, password, emailCode, turnstileToken } =
-    (await request.json()) as {
+  const parsed = await readJsonBody<{
     username?: string;
     email: string;
     password: string;
     emailCode?: string;
     turnstileToken?: string;
-  };
+  }>(request);
+  if (!parsed.ok) {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+  const { username, email, password, emailCode, turnstileToken } = parsed.value;
 
   if (!email || !password) {
     return new Response("邮箱和密码不能为空", { status: 400 });
@@ -30,6 +34,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   if (password.length < 6) {
     return new Response("密码长度不能少于 6 位", { status: 400 });
+  }
+  if (password.length > 256) {
+    return new Response("密码长度过长", { status: 400 });
   }
 
   const { env } = await getCloudflareContext();
@@ -119,7 +126,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       return new Response("邮箱已被注册", { status: 400 });
     }
 
-    console.error("注册用户失败:", e);
+    console.error("注册用户失败");
     return new Response("注册失败，请稍后再试", { status: 500 });
   }
 

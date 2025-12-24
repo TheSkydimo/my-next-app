@@ -3,6 +3,32 @@ import { archiveRequestLogsToR2, type LogEntry } from "@/server/logging/r2Archiv
 import { maskIp, safeUrlInfo } from "@/server/logging/redact";
 import { reportError } from "@/server/monitoring/reportError";
 
+function applySecurityAndCacheHeaders(request: Request, headers: Headers) {
+  // Security headers (safe defaults for APIs and most pages).
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "no-referrer");
+  headers.set("X-Frame-Options", "DENY");
+  headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+  );
+
+  // Cache policy:
+  // - Default: API responses are private/sensitive; do not store.
+  // - Allow specific handlers to explicitly override by setting Cache-Control themselves.
+  const pathname = (() => {
+    try {
+      return new URL(request.url).pathname;
+    } catch {
+      return "";
+    }
+  })();
+
+  if (pathname.startsWith("/api/") && !headers.has("Cache-Control")) {
+    headers.set("Cache-Control", "no-store");
+  }
+}
+
 function emitStructuredLog(entry: LogEntry) {
   // Keep console logs JSON so Cloudflare Observability / log drains can parse it.
   // Never include request bodies, cookies, auth headers, or verification codes here.
@@ -118,6 +144,7 @@ export function withApiMonitoring<TArgs extends readonly unknown[]>(
       // Surface request id for debugging (no sensitive content)
       const headers = new Headers(res.headers);
       headers.set("x-request-id", requestId);
+      applySecurityAndCacheHeaders(request, headers);
       return new Response(res.body, {
         status: res.status,
         statusText: res.statusText,
@@ -125,6 +152,43 @@ export function withApiMonitoring<TArgs extends readonly unknown[]>(
       });
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
+
+      const isInvalidJson =
+        err.name === "SyntaxError" &&
+        (err.message.toLowerCase().includes("json") ||
+          err.message.toLowerCase().includes("unexpected token"));
+
+      // Treat invalid JSON bodies as a client error (do not report to Sentry).
+      if (isInvalidJson) {
+        entries.push({
+          ts: new Date().toISOString(),
+          level: "warn",
+          message: "request.invalid_json",
+          event: "request.invalid_json",
+          requestId,
+          method: request.method,
+          pathname,
+          queryKeys,
+          durationMs: Date.now() - startedAt,
+        });
+        emitStructuredLog(entries[entries.length - 1]);
+
+        await archiveRequestLogsToR2({
+          bucket: env?.APP_LOGS,
+          ctx,
+          requestId,
+          entries,
+          prefix: logPrefixFromEnv ?? process.env.LOG_ARCHIVE_R2_PREFIX,
+        });
+
+        const headers = new Headers({
+          "Cache-Control": "no-store",
+          "x-request-id": requestId,
+        });
+        applySecurityAndCacheHeaders(request, headers);
+        return new Response("Invalid JSON", { status: 400, headers });
+      }
+
       reportError(err, { requestId, pathname, method: request.method }, { ctx, sentryDsn, runtime: "cloudflare-workers" });
 
       entries.push({
@@ -159,6 +223,11 @@ export function withApiMonitoring<TArgs extends readonly unknown[]>(
         headers: {
           "Cache-Control": "no-store",
           "x-request-id": requestId,
+          "X-Content-Type-Options": "nosniff",
+          "Referrer-Policy": "no-referrer",
+          "X-Frame-Options": "DENY",
+          "Permissions-Policy":
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
         },
       });
     }

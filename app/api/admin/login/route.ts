@@ -4,6 +4,7 @@ import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 import { verifyAndUseEmailCode } from "../../_utils/emailCode";
 import { createSessionToken, getSessionCookieName } from "../../_utils/session";
 import { serializeCookie } from "../../_utils/cookies";
+import { readJsonBody } from "../../_utils/body";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { isSecureRequest } from "../../_utils/request";
 import {
@@ -22,11 +23,15 @@ type AdminRow = {
 };
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
-  const { email, emailCode, remember } = (await request.json()) as {
+  const parsed = await readJsonBody<{
     email: string;
     emailCode: string;
     remember?: boolean;
-  };
+  }>(request);
+  if (!parsed.ok) {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+  const { email, emailCode, remember } = parsed.value;
 
   if (!email) {
     return new Response("邮箱不能为空", { status: 400 });
@@ -49,7 +54,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     await ensureUsersIsSuperAdminColumn(db);
     await ensureUsersAvatarUrlColumn(db);
   } catch (e) {
-    console.error("确保 users 表字段存在失败:", e);
+    console.error("确保 users 表字段存在失败");
     return new Response("服务器内部错误", { status: 500 });
   }
 

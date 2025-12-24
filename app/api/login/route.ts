@@ -5,6 +5,7 @@ import { verifyAndUseEmailCode } from "../_utils/emailCode";
 import { generateNumericUsername } from "../_utils/user";
 import { createSessionToken, getSessionCookieName } from "../_utils/session";
 import { serializeCookie } from "../_utils/cookies";
+import { readJsonBody } from "../_utils/body";
 import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../_utils/usersTable";
 import { getRuntimeEnvVar } from "../_utils/runtimeEnv";
 import { isSecureRequest } from "../_utils/request";
@@ -20,14 +21,22 @@ type UserRow = {
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
   // 解析请求体并显式标注类型，避免 request.json() 推断为 unknown
-  const { email, emailCode, remember } = (await request.json()) as {
+  const parsed = await readJsonBody<{
     email: string;
     emailCode: string;
     remember?: boolean;
-  };
+  }>(request);
+  if (!parsed.ok) {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+  const { email, emailCode, remember } = parsed.value;
 
   if (!email) {
     return new Response("邮箱不能为空", { status: 400 });
+  }
+
+  if (email.length > 320) {
+    return new Response("邮箱格式不正确", { status: 400 });
   }
 
   if (!isValidEmail(email)) {
@@ -38,6 +47,10 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     return new Response("邮箱验证码不能为空", { status: 400 });
   }
 
+  if (emailCode.length > 32) {
+    return new Response("邮箱验证码错误或已过期", { status: 400 });
+  }
+
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
@@ -46,7 +59,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     await ensureUsersIsAdminColumn(db);
     await ensureUsersAvatarUrlColumn(db);
   } catch (e) {
-    console.error("确保 users 表字段存在失败:", e);
+    console.error("确保 users 表字段存在失败");
     return new Response("服务器内部错误", { status: 500 });
   }
 
@@ -102,7 +115,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
           continue;
         }
 
-        console.error("创建用户失败:", e);
+        console.error("创建用户失败");
         return new Response("登录失败，请稍后再试", { status: 500 });
       }
     }

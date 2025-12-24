@@ -3,21 +3,21 @@ import { ensureUserFeedbackTables } from "../../_utils/userFeedbackTable";
 import { ensureUsersTable } from "../../_utils/usersTable";
 import { formatFrom, getSmtpConfigWithPrefix, sendEmail } from "../../_utils/mailer";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
+import { readJsonBody } from "../../_utils/body";
+import { consumeRateLimit } from "../../_utils/rateLimit";
+import { requireUserFromRequest } from "../../user/_utils/userSession";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
   try {
-    const { content, email } = (await request.json()) as {
-      content: string;
-      email?: string;
-    };
+    const parsed = await readJsonBody<{ content: string }>(request);
+    if (!parsed.ok) {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+    const { content } = parsed.value;
 
     if (!content || !content.trim()) {
       return new Response("反馈内容不能为空", { status: 400 });
-    }
-
-    if (!email) {
-      return new Response("请先登录后再提交反馈", { status: 401 });
     }
 
     const { env } = await getCloudflareContext();
@@ -26,13 +26,19 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     await ensureUsersTable(db);
     await ensureUserFeedbackTables(db);
 
-    const { results } = await db
-      .prepare("SELECT id FROM users WHERE email = ? LIMIT 1")
-      .bind(email)
-      .all<{ id: number }>();
-    const userId = results?.[0]?.id;
-    if (!userId) {
-      return new Response("请先登录后再提交反馈", { status: 401 });
+    const authed = await requireUserFromRequest({ request, env, db });
+    if (authed instanceof Response) return authed;
+    const { user } = authed;
+
+    // Abuse protection: per-user rate limit (avoid spamming support mailbox & DB).
+    const limit = await consumeRateLimit({
+      db,
+      key: `feedback_quick:user:${user.id}`,
+      windowSeconds: 60,
+      limit: 5,
+    });
+    if (!limit.allowed) {
+      return new Response("发送太频繁，请稍后再试", { status: 429 });
     }
 
     await db
@@ -40,7 +46,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
         `INSERT INTO user_feedback (user_id, type, content, status)
          VALUES (?, 'quick', ?, 'unread')`
       )
-      .bind(userId, content.trim())
+      .bind(user.id, content.trim())
       .run();
 
     // Email notification (best-effort): notify support mailbox (required via FEEDBACK_NOTIFY_TO).
@@ -67,7 +73,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
         second: "2-digit",
       });
 
-      const emailSubject = email;
+      const emailSubject = user.email;
 
       const emailHtml = `<!DOCTYPE html>
 <html>
@@ -89,7 +95,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   <div class="content">
     <p class="meta">📅 接收时间: ${escapeHtml(timestamp)}</p>
     <p class="meta">📧 用户邮箱: <span class="user-email">${escapeHtml(
-      email
+      user.email
     )}</span></p>
 
     <h3>反馈内容:</h3>
@@ -97,7 +103,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
     <p class="meta" style="margin-top: 20px;">
       此邮件由 ${escapeHtml(appName)} 自动发送，请勿直接回复此邮件。
-      如需回复用户，请发送邮件至 ${escapeHtml(email)}。
+      如需回复用户，请发送邮件至 ${escapeHtml(user.email)}。
     </p>
   </div>
 </body>
@@ -106,7 +112,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       const emailText = `用户反馈
 
 接收时间: ${timestamp}
-用户邮箱: ${email}
+用户邮箱: ${user.email}
 
 反馈内容:
 ${cleanContent}
@@ -127,16 +133,16 @@ ${cleanContent}
         await sendEmail(env, {
           from: formatFrom({ name: `${appName} 用户反馈`, email: smtpCfg.from }),
           to: notifyTo,
-          replyTo: email,
+          replyTo: user.email,
           subject: emailSubject,
           text: emailText,
           html: emailHtml,
         }, prefix);
         adminEmailSent = true;
       } catch (e) {
-        const err = e instanceof Error ? e.message : String(e);
-        console.error("发送反馈通知邮件失败:", err);
-        emailError = "反馈已提交，但通知邮件发送失败";
+        // Avoid leaking SMTP/provider details into logs.
+        console.error("发送反馈通知邮件失败");
+        emailError = "反馈已提交";
       }
     }
 
@@ -145,10 +151,11 @@ ${cleanContent}
       stored: true,
       userEmailSent,
       adminEmailSent,
-      emailError,
+      // Avoid returning internal config details; keep response minimal.
+      emailError: emailError ? "反馈已提交" : undefined,
     });
   } catch (error) {
-    console.error("提交反馈失败:", error);
+    console.error("提交反馈失败");
     return new Response("发送失败，请稍后再试", { status: 500 });
   }
 }, { name: "POST /api/feedback/quick" });
