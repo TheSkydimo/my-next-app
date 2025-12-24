@@ -79,6 +79,7 @@ export function withApiMonitoring<TArgs extends readonly unknown[]>(
       typeof envRecord?.LOG_ARCHIVE_R2_PREFIX === "string"
         ? (envRecord.LOG_ARCHIVE_R2_PREFIX as string)
         : undefined;
+    const sentryDsn = typeof envRecord?.SENTRY_DSN === "string" ? (envRecord.SENTRY_DSN as string) : undefined;
 
     try {
       const res = await handler(...args);
@@ -95,6 +96,15 @@ export function withApiMonitoring<TArgs extends readonly unknown[]>(
         durationMs: Date.now() - startedAt,
       });
       emitStructuredLog(entries[entries.length - 1]);
+
+      // Report only 5xx to Sentry (4xx are expected / user errors)
+      if (res.status >= 500) {
+        reportError(
+          new Error(`HTTP ${res.status}`),
+          { requestId, pathname, method: request.method, status: res.status },
+          { ctx, sentryDsn, runtime: "cloudflare-workers" }
+        );
+      }
 
       // Archive request logs to R2 (if bound)
       await archiveRequestLogsToR2({
@@ -115,7 +125,7 @@ export function withApiMonitoring<TArgs extends readonly unknown[]>(
       });
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
-      reportError(err, { requestId, pathname, method: request.method });
+      reportError(err, { requestId, pathname, method: request.method }, { ctx, sentryDsn, runtime: "cloudflare-workers" });
 
       entries.push({
         ts: new Date().toISOString(),
