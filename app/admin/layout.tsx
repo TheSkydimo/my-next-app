@@ -125,6 +125,10 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         href: "/admin/profile",
         keywords: ["信息", "资料", "profile", "account"],
       },
+      {
+        href: "/admin/logs",
+        keywords: ["日志", "logs", "log", "sentry"],
+      },
     ];
 
     const matched = routes.find((r) =>
@@ -264,6 +268,16 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
               }`}
             >
               {messages.layout.navUsers}
+            </Link>
+            <Link
+              href="/admin/logs"
+              className={`admin-layout__nav-link ${
+                isActive("/admin/logs")
+                  ? "admin-layout__nav-link--active"
+                  : ""
+              }`}
+            >
+              {messages.layout.navLogs}
             </Link>
             </nav>
         </aside>

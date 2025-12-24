@@ -37,6 +37,7 @@ export function TurnstileWidget({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
+  const [scriptFailed, setScriptFailed] = useState(false);
 
   // 回调用 ref 固定住，避免父组件重渲染导致 Turnstile widget 被销毁/重建（出现“勾不上”）
   const callbacksRef = useRef<{
@@ -48,6 +49,16 @@ export function TurnstileWidget({
   useEffect(() => {
     callbacksRef.current = { onToken, onError, onExpire };
   }, [onError, onExpire, onToken]);
+
+  // If Turnstile script is already present (e.g. component remount due to React key),
+  // Next.js <Script> may not fire onLoad again. In that case, mark ready immediately.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.turnstile?.render) {
+      setScriptReady(true);
+      setScriptFailed(false);
+    }
+  }, []);
 
   const options = useMemo(() => {
     return {
@@ -100,17 +111,27 @@ export function TurnstileWidget({
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
-        onLoad={() => setScriptReady(true)}
+        onLoad={() => {
+          setScriptReady(true);
+          setScriptFailed(false);
+        }}
         onError={() => {
           setScriptReady(false);
+          setScriptFailed(true);
           callbacksRef.current.onToken("");
           callbacksRef.current.onError?.();
         }}
       />
       {!siteKey ? (
-        <div style={{ fontSize: 13, opacity: 0.85 }}>Turnstile site key is missing.</div>
+        <div style={{ fontSize: 13, opacity: 0.85 }}>
+          Turnstile site key is missing.
+        </div>
+      ) : scriptFailed ? (
+        <div style={{ fontSize: 13, opacity: 0.85 }}>
+          Turnstile 加载失败，请检查网络/广告拦截器后刷新页面重试。
+        </div>
       ) : (
-      <div ref={containerRef} />
+        <div ref={containerRef} />
       )}
     </>
   );

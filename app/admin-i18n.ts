@@ -16,6 +16,7 @@ export type AdminMessages = {
     navAdmins: string;
     navUsers: string;
     navOrders: string;
+    navLogs: string;
     roleSuperAdmin: string;
     roleAdmin: string;
     unauthTitle: string;
@@ -153,6 +154,14 @@ export type AdminMessages = {
     tableNote: string;
     tableCreatedAt: string;
   };
+  logs: {
+    title: string;
+    desc: string;
+    openLogs: string;
+    urlLabel: string;
+    urlNotConfigured: string;
+    configureHint: string;
+  };
 };
 
 const zhCN: AdminMessages = {
@@ -169,6 +178,7 @@ const zhCN: AdminMessages = {
     navAdmins: "管理员管理",
     navUsers: "用户管理",
     navOrders: "订单截图",
+    navLogs: "日志",
     roleSuperAdmin: "超级管理员",
     roleAdmin: "管理员",
     unauthTitle: "管理后台",
@@ -176,7 +186,7 @@ const zhCN: AdminMessages = {
     unauthLoginLink: "去登录",
     searchPlaceholder: "搜索功能 / Ctrl + K",
     searchNotFound: "未找到相关功能，请尝试：",
-    searchNotFoundHint: "用户 / 管理员 / 信息 / 首页",
+    searchNotFoundHint: "用户 / 管理员 / 信息 / 日志 / 首页",
     userMenuNameFallback: "管理员",
     userMenuProfile: "个人中心",
     userMenuLogout: "退出登录",
@@ -312,6 +322,15 @@ const zhCN: AdminMessages = {
     tableNote: "备注",
     tableCreatedAt: "上传时间",
   },
+  logs: {
+    title: "日志",
+    desc: "打开日志系统查看最近的错误、告警与运行日志（通常需要已登录 Sentry 后才能访问）。",
+    openLogs: "打开日志系统",
+    urlLabel: "当前配置：",
+    urlNotConfigured: "未配置日志系统地址。",
+    configureHint:
+      "请在构建/运行环境中设置 NEXT_PUBLIC_ADMIN_LOGS_URL（例如指向 Sentry Logs 页面）。",
+  },
 };
 
 const enUS: AdminMessages = {
@@ -328,6 +347,7 @@ const enUS: AdminMessages = {
     navAdmins: "Admins",
     navUsers: "Users",
     navOrders: "Orders",
+    navLogs: "Logs",
     roleSuperAdmin: "Super Admin",
     roleAdmin: "Admin",
     unauthTitle: "Admin Console",
@@ -335,7 +355,7 @@ const enUS: AdminMessages = {
     unauthLoginLink: "Sign in",
     searchPlaceholder: "Search features / Ctrl + K",
     searchNotFound: "No matching feature found. Try: ",
-    searchNotFoundHint: "Users / Admins / Profile / Home",
+    searchNotFoundHint: "Users / Admins / Profile / Logs / Home",
     userMenuNameFallback: "Admin",
     userMenuProfile: "Profile",
     userMenuLogout: "Sign out",
@@ -474,6 +494,16 @@ const enUS: AdminMessages = {
     tableImage: "Screenshot",
     tableNote: "Note",
     tableCreatedAt: "Created at",
+  },
+  logs: {
+    title: "Logs",
+    desc:
+      "Open the log system to view recent errors, alerts, and runtime logs (usually requires being signed in to Sentry).",
+    openLogs: "Open log system",
+    urlLabel: "Configured URL: ",
+    urlNotConfigured: "Log system URL is not configured.",
+    configureHint:
+      "Set NEXT_PUBLIC_ADMIN_LOGS_URL in your build/runtime environment (e.g. the Sentry Logs page).",
   },
 };
 
