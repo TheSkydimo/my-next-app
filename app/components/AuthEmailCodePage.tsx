@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { TurnstileWidget } from "./TurnstileWidget";
-import { useAutoDismissMessage } from "../hooks/useAutoDismissMessage";
 import {
   applyLanguage,
   applyTheme,
@@ -21,7 +20,7 @@ type PrimaryColorKey =
   | "green"
   | "gray";
 type Lang = "zh-CN" | "en";
-type LoginStep = "email" | "turnstile" | "code";
+type LoginStep = "email" | "code";
 type AuthLayoutAlign = "left" | "center" | "right";
 
 type Variant = "user" | "admin";
@@ -49,7 +48,13 @@ const TEXTS: Record<
       loginError: string;
       errorEmailRequired: string;
       errorTurnstileLoadFailed: string;
+      errorTurnstileRequired: string;
       errorSendCode: string;
+      errorSendCodeHint: string;
+      retrySendCode: string;
+      reportIssue: string;
+      reporting: string;
+      reportSent: string;
       errorCodeRequired: string;
       alignLeft: string;
       alignCenter: string;
@@ -77,7 +82,13 @@ const TEXTS: Record<
       loginError: "登录失败，请检查验证码是否正确",
       errorEmailRequired: "请先填写邮箱",
       errorTurnstileLoadFailed: "人机验证加载失败，请刷新页面重试",
+      errorTurnstileRequired: "请先完成人机验证",
       errorSendCode: "发送邮箱验证码失败",
+      errorSendCodeHint: "你可以点击重试；若多次失败，可一键反馈给开发者以便尽快排查。",
+      retrySendCode: "重试",
+      reportIssue: "一键反馈",
+      reporting: "反馈中...",
+      reportSent: "反馈已提交，感谢！",
       errorCodeRequired: "请输入邮箱验证码",
       alignLeft: "居左",
       alignCenter: "居中",
@@ -104,7 +115,14 @@ const TEXTS: Record<
       errorEmailRequired: "Please enter your email first",
       errorTurnstileLoadFailed:
         "Verification failed to load. Please refresh and try again.",
+      errorTurnstileRequired: "Please complete the verification first.",
       errorSendCode: "Failed to send email code",
+      errorSendCodeHint:
+        "You can retry. If it still fails, send a quick report to help us diagnose the issue.",
+      retrySendCode: "Retry",
+      reportIssue: "Report",
+      reporting: "Reporting...",
+      reportSent: "Report submitted. Thanks!",
       errorCodeRequired: "Please enter the email code",
       alignLeft: "Left",
       alignCenter: "Center",
@@ -131,7 +149,13 @@ const TEXTS: Record<
       loginError: "登录失败，请检查验证码是否正确或账号是否为管理员",
       errorEmailRequired: "请先填写管理员邮箱",
       errorTurnstileLoadFailed: "人机验证加载失败，请刷新页面重试",
+      errorTurnstileRequired: "请先完成人机验证",
       errorSendCode: "发送邮箱验证码失败",
+      errorSendCodeHint: "你可以点击重试；若多次失败，可一键反馈给开发者以便尽快排查。",
+      retrySendCode: "重试",
+      reportIssue: "一键反馈",
+      reporting: "反馈中...",
+      reportSent: "反馈已提交，感谢！",
       errorCodeRequired: "请输入邮箱验证码",
       alignLeft: "居左",
       alignCenter: "居中",
@@ -157,7 +181,14 @@ const TEXTS: Record<
       errorEmailRequired: "Please enter admin email first",
       errorTurnstileLoadFailed:
         "Verification failed to load. Please refresh and try again.",
+      errorTurnstileRequired: "Please complete the verification first.",
       errorSendCode: "Failed to send email code",
+      errorSendCodeHint:
+        "You can retry. If it still fails, send a quick report to help us diagnose the issue.",
+      retrySendCode: "Retry",
+      reportIssue: "Report",
+      reporting: "Reporting...",
+      reportSent: "Report submitted. Thanks!",
       errorCodeRequired: "Please enter the email code",
       alignLeft: "Left",
       alignCenter: "Center",
@@ -208,8 +239,16 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
   const [turnstileRequired, setTurnstileRequired] = useState(true);
-  const [lastSentToken, setLastSentToken] = useState("");
-  const [error, setError] = useAutoDismissMessage(2000);
+  const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0);
+  const [error, setError] = useState("");
+  const [errorKind, setErrorKind] = useState<
+    "none" | "send-code" | "login" | "validation" | "turnstile" | "other"
+  >("none");
+  const [sendCodeFailedCount, setSendCodeFailedCount] = useState(0);
+  const [sendCodeRequestId, setSendCodeRequestId] = useState<string | null>(null);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reportOk, setReportOk] = useState(false);
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [primary, setPrimary] = useState<PrimaryColorKey>("charcoal");
   const [lang, setLang] = useState<Lang>("zh-CN");
@@ -226,6 +265,28 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const loginEndpoint = variant === "admin" ? "/api/admin/login" : "/api/login";
   const emailPurpose = variant === "admin" ? "admin-login" : "user-login";
   const postLoginRedirect = variant === "admin" ? "/admin" : "/";
+  const sendCodeStage = useMemo(() => {
+    if (variant === "admin") return "admin-login:send-code" as const;
+    return "user-login:send-code" as const;
+  }, [variant]);
+
+  const canShowReport = sendCodeFailedCount >= 2;
+  const emailPrimaryMode: "send" | "retry" | "report" = canShowReport
+    ? "report"
+    : sendCodeFailedCount >= 1
+      ? "retry"
+      : "send";
+
+  useEffect(() => {
+    // Reset "retry / report" state when switching recipient email.
+    setSendCodeFailedCount(0);
+    setSendCodeRequestId(null);
+    setReportOk(false);
+    if (errorKind === "send-code") {
+      setError("");
+      setErrorKind("none");
+    }
+  }, [email]);
 
   // 如果已经有有效 session（cookie），直接跳过邮箱验证
   useEffect(() => {
@@ -307,6 +368,12 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     })();
   }, []);
 
+  const resetTurnstile = () => {
+    setTurnstileToken("");
+    setTurnstileLoadFailed(false);
+    setTurnstileWidgetKey((k) => k + 1);
+  };
+
   const toggleTheme = () => {
     setTheme((prev) => {
       const next: AppTheme = prev === "dark" ? "light" : "dark";
@@ -343,19 +410,25 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const sendLoginEmailCode = useCallback(
     async (token?: string) => {
       setError("");
+      setErrorKind("none");
+      setReportOk(false);
       setDevEmailCode("");
       setEmailCodeChallengeId("");
+      setSendCodeRequestId(null);
 
       if (!email) {
         setError(t.errorEmailRequired);
+        setErrorKind("validation");
         return;
       }
 
       if (turnstileRequired && (turnstileLoadFailed || !turnstileSiteKey)) {
         setError(t.errorTurnstileLoadFailed);
+        setErrorKind("turnstile");
         return;
       }
 
+      setSendingCode(true);
       try {
         const res = await fetch("/api/email/send-code", {
           method: "POST",
@@ -368,10 +441,14 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
           }),
         });
 
+        const rid = res.headers.get("x-request-id");
+        setSendCodeRequestId(rid ? String(rid) : null);
+
         if (!res.ok) {
           const text = await res.text();
           setError(text || t.errorSendCode);
-          if (!turnstileRequired) setStep("email");
+          setErrorKind("send-code");
+          setSendCodeFailedCount((c) => c + 1);
           return;
         }
 
@@ -381,7 +458,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
 
         if (!data?.challengeId) {
           setError(t.errorSendCode);
-          if (!turnstileRequired) setStep("email");
+          setErrorKind("send-code");
+          setSendCodeFailedCount((c) => c + 1);
           return;
         }
 
@@ -392,17 +470,23 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
 
         // 不展示任何提示文案（按需求“无需提示”）
         setStep("code");
+        setSendCodeFailedCount(0);
       } catch (error) {
-        console.error(error);
+        // Avoid dumping raw errors that may include request internals; keep UI message friendly.
+        console.error("发送邮箱验证码失败");
         setError(t.errorSendCode);
-        if (!turnstileRequired) setStep("email");
+        setErrorKind("send-code");
+        setSendCodeFailedCount((c) => c + 1);
+      } finally {
+        setSendingCode(false);
+        // Turnstile tokens are single-use; force re-verify on next attempt.
+        if (turnstileRequired) resetTurnstile();
       }
     },
     [
       email,
       emailPurpose,
       lang,
-      setError,
       t.errorEmailRequired,
       t.errorSendCode,
       t.errorTurnstileLoadFailed,
@@ -412,64 +496,103 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     ]
   );
 
-  // Turnstile 成功后自动发送验证码（仅在 turnstile 步骤）
-  useEffect(() => {
-    if (step !== "turnstile") return;
-    if (!turnstileToken) return;
-    if (turnstileToken === lastSentToken) return;
-
-    setLastSentToken(turnstileToken);
-    void sendLoginEmailCode(turnstileToken);
-  }, [lastSentToken, sendLoginEmailCode, step, turnstileToken]);
-
   const resetToEmailStep = () => {
     setStep("email");
     setEmail("");
     setEmailCode("");
     setEmailCodeChallengeId("");
     setDevEmailCode("");
-    setTurnstileToken("");
-    setLastSentToken("");
     setTurnstileLoadFailed(false);
     setError("");
+    setErrorKind("none");
+    setSendCodeFailedCount(0);
+    setSendCodeRequestId(null);
+    setReportOk(false);
+    resetTurnstile();
   };
 
   const startVerification = () => {
     setError("");
+    setErrorKind("none");
     setEmailCode("");
     setEmailCodeChallengeId("");
     setDevEmailCode("");
 
     if (!email) {
       setError(t.errorEmailRequired);
+      setErrorKind("validation");
       return;
     }
 
     if (turnstileRequired && !turnstileSiteKey) {
       setError(t.errorTurnstileLoadFailed);
+      setErrorKind("turnstile");
       return;
     }
 
     if (!turnstileRequired) {
-      // 本地测试：跳过 Turnstile，直接发送验证码
+      // 本地测试：跳过 Turnstile，直接发送验证码（发送成功后再进入 code 步骤）
       void sendLoginEmailCode();
-      setStep("code");
       return;
     }
 
-    setTurnstileToken("");
-    setLastSentToken("");
-    setTurnstileLoadFailed(false);
-    setStep("turnstile");
+    if (!turnstileToken) {
+      setError(t.errorTurnstileRequired);
+      setErrorKind("turnstile");
+      return;
+    }
+
+    void sendLoginEmailCode(turnstileToken);
+  };
+
+  const submitAuthErrorReport = async () => {
+    if (reporting || !email) return;
+    setReporting(true);
+    setReportOk(false);
+    try {
+      const composed =
+        `用户在登录时验证码发送失败，请检查并修复。\n\n` +
+        `用户邮箱: ${email}\n` +
+        `阶段: ${sendCodeStage}\n` +
+        `页面: ${typeof window !== "undefined" ? window.location.pathname : ""}\n` +
+        `X-Request-Id: ${sendCodeRequestId || ""}\n` +
+        `错误信息: ${error || t.errorSendCode}\n` +
+        `时间: ${new Date().toISOString()}\n`;
+
+      const res = await fetch("/api/feedback/auth-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          stage: sendCodeStage,
+          message: composed,
+          requestId: sendCodeRequestId || undefined,
+          pagePath: typeof window !== "undefined" ? window.location.pathname : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "发送失败，请稍后再试");
+      }
+
+      setReportOk(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "发送失败，请稍后再试");
+    } finally {
+      setReporting(false);
+    }
   };
 
   const submitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setErrorKind("none");
 
     const normalizedCode = normalizeEmailCode(emailCode);
     if (!normalizedCode) {
       setError(t.errorCodeRequired);
+      setErrorKind("validation");
       return;
     }
 
@@ -488,6 +611,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       setError(text || t.loginError);
+      setErrorKind("login");
       return;
     }
 
@@ -528,6 +652,10 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     }
     e.preventDefault();
     if (step === "email") {
+      if (emailPrimaryMode === "report") {
+        void submitAuthErrorReport();
+        return;
+      }
       startVerification();
     }
   };
@@ -535,9 +663,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const headerTitle =
     step === "email"
       ? t.stepEmailTitle
-      : step === "turnstile"
-        ? t.stepTurnstileTitle
-        : t.stepCodeTitle;
+      : t.stepCodeTitle;
 
   return (
     <div
@@ -703,10 +829,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         </section>
         <section className="auth-page__panel">
           <div className="auth-plain">
-            {/* 邮箱 / 验证码页保留必要提示；人机验证页不提示 */}
-            {step !== "turnstile" && (
-              <h1 className="auth-plain__title">{headerTitle}</h1>
-            )}
+            <h1 className="auth-plain__title">{headerTitle}</h1>
 
             <form
               onSubmit={handleSubmit}
@@ -736,29 +859,65 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                     <span>{t.rememberMe}</span>
                   </label>
 
-                  <button type="submit" className="auth-card__submit-button">
-                    {t.continueButton}
-                  </button>
-                </>
-              )}
-
-              {step === "turnstile" && (
-                <>
-                  <div className="auth-card__field">
-                    <div className="auth-card__field-grow">
-                      <TurnstileWidget
-                        siteKey={turnstileSiteKey}
-                        onToken={(token) => {
-                          setTurnstileToken(token);
-                          setTurnstileLoadFailed(false);
-                        }}
-                        onError={() => setTurnstileLoadFailed(true)}
-                        onExpire={() => setTurnstileToken("")}
-                        theme={theme === "dark" ? "dark" : "light"}
-                        size="normal"
-                      />
+                  {turnstileRequired && (
+                    <div className="auth-card__field" style={{ marginTop: 8 }}>
+                      <div className="auth-card__field-grow">
+                        <TurnstileWidget
+                          key={turnstileWidgetKey}
+                          siteKey={turnstileSiteKey}
+                          onToken={(token) => {
+                            setTurnstileToken(token);
+                            setTurnstileLoadFailed(false);
+                            if (errorKind === "turnstile") {
+                              setError("");
+                              setErrorKind("none");
+                            }
+                          }}
+                          onError={() => setTurnstileLoadFailed(true)}
+                          onExpire={() => setTurnstileToken("")}
+                          theme={theme === "dark" ? "dark" : "light"}
+                          size="normal"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {error && (
+                    <div className="auth-card__error" role="alert" aria-live="polite">
+                      <div className="auth-card__error-title">{error}</div>
+                      {errorKind === "send-code" && (
+                        <>
+                          <div className="auth-card__error-hint">{t.errorSendCodeHint}</div>
+                          {sendCodeRequestId && (
+                            <div className="auth-card__error-meta">
+                              X-Request-Id: <code>{sendCodeRequestId}</code>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {reportOk && (
+                        <div className="auth-card__error-success">{t.reportSent}</div>
+                      )}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="auth-card__submit-button"
+                    disabled={sendingCode || reporting}
+                  >
+                    {emailPrimaryMode === "report"
+                      ? reporting
+                        ? t.reporting
+                        : t.reportIssue
+                      : emailPrimaryMode === "retry"
+                        ? sendingCode
+                          ? t.verifyLoading
+                          : t.retrySendCode
+                        : sendingCode
+                          ? t.verifyLoading
+                          : t.continueButton}
+                  </button>
                 </>
               )}
 
@@ -799,7 +958,12 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
               )}
             </form>
 
-            {error && <p className="auth-card__error">{error}</p>}
+            {/* code step: keep errors visible below the form */}
+            {step === "code" && error && (
+              <div className="auth-card__error" role="alert" aria-live="polite">
+                <div className="auth-card__error-title">{error}</div>
+              </div>
+            )}
           </div>
         </section>
       </div>
