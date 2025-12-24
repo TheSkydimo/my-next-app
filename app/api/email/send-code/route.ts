@@ -8,6 +8,7 @@ import {
   type AppLanguage,
 } from "../../_utils/appLanguage";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
+import { hasValidTurnstilePassCookie } from "../../_utils/turnstilePass";
 import { ensureUsersIsAdminColumn } from "../../_utils/usersTable";
 import { getSmtpConfig, sendEmail } from "../../_utils/mailer";
 import {
@@ -197,6 +198,12 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     purpose === "admin-forgot"
   ) {
     if (!bypassTurnstile) {
+      // Allow passing a short-lived server-verified cookie so the user can retry
+      // without being forced back to the Turnstile page.
+      const hasPass = await hasValidTurnstilePassCookie({ request, env });
+      if (hasPass) {
+        // ok
+      } else {
       const secret = getTurnstileSecretFromEnv(env);
       if (!secret) {
         return withHeaders(new Response(msg.turnstileNotConfigured, {
@@ -214,6 +221,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       });
       if (!okTurnstile) {
         return withHeaders(new Response(msg.turnstileFailed, { status: 400 }));
+      }
       }
     }
   }

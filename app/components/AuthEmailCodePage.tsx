@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { TurnstileWidget } from "./TurnstileWidget";
 import {
@@ -20,7 +20,7 @@ type PrimaryColorKey =
   | "green"
   | "gray";
 type Lang = "zh-CN" | "en";
-type LoginStep = "email" | "code";
+type LoginStep = "turnstile" | "email" | "code";
 type AuthLayoutAlign = "left" | "center" | "right";
 
 type Variant = "user" | "admin";
@@ -36,6 +36,7 @@ const TEXTS: Record<
       stepEmailTitle: string;
       stepTurnstileTitle: string;
       stepCodeTitle: string;
+      turnstileNotice: string;
       emailLabel: string;
       emailPlaceholder: string;
       emailCodeLabel: string;
@@ -68,8 +69,9 @@ const TEXTS: Record<
       heroTitleHighlight: "开始你的控制台之旅",
       heroSubtitle: "工程化 · 高性能 · 深色主题，为大型中后台系统而生。",
       stepEmailTitle: "登录 / 注册",
-      stepTurnstileTitle: "人机验证",
+      stepTurnstileTitle: "验证",
       stepCodeTitle: "输入验证码",
+      turnstileNotice: "您的连接需要被验证才能继续",
       emailLabel: "请输入您的邮箱进行登录或者创建账户",
       emailPlaceholder: "name@example.com",
       emailCodeLabel: "邮箱验证码",
@@ -81,8 +83,8 @@ const TEXTS: Record<
       rememberMe: "记住登录",
       loginError: "登录失败，请检查验证码是否正确",
       errorEmailRequired: "请先填写邮箱",
-      errorTurnstileLoadFailed: "人机验证加载失败，请刷新页面重试",
-      errorTurnstileRequired: "请先完成人机验证",
+      errorTurnstileLoadFailed: "验证加载失败，请刷新页面重试",
+      errorTurnstileRequired: "请先完成验证",
       errorSendCode: "发送邮箱验证码失败",
       errorSendCodeHint: "你可以点击重试；若多次失败，可一键反馈给开发者以便尽快排查。",
       retrySendCode: "重试",
@@ -102,6 +104,7 @@ const TEXTS: Record<
       stepEmailTitle: "Sign in / Sign up",
       stepTurnstileTitle: "Verification",
       stepCodeTitle: "Enter code",
+      turnstileNotice: "Your connection needs to be verified before you can proceed",
       emailLabel: "Please enter your email to login or create an account",
       emailPlaceholder: "name@example.com",
       emailCodeLabel: "Email code",
@@ -135,8 +138,9 @@ const TEXTS: Record<
       heroTitleHighlight: "进入后台管理",
       heroSubtitle: "同客户端一致：邮箱验证码登录 + Session Cookie。",
       stepEmailTitle: "管理员登录",
-      stepTurnstileTitle: "人机验证",
+      stepTurnstileTitle: "验证",
       stepCodeTitle: "输入验证码",
+      turnstileNotice: "您的连接需要被验证才能继续。",
       emailLabel: "请输入管理员邮箱获取验证码",
       emailPlaceholder: "admin@example.com",
       emailCodeLabel: "邮箱验证码",
@@ -148,8 +152,8 @@ const TEXTS: Record<
       rememberMe: "记住登录",
       loginError: "登录失败，请检查验证码是否正确或账号是否为管理员",
       errorEmailRequired: "请先填写管理员邮箱",
-      errorTurnstileLoadFailed: "人机验证加载失败，请刷新页面重试",
-      errorTurnstileRequired: "请先完成人机验证",
+      errorTurnstileLoadFailed: "验证加载失败，请刷新页面重试",
+      errorTurnstileRequired: "请先完成验证",
       errorSendCode: "发送邮箱验证码失败",
       errorSendCodeHint: "你可以点击重试；若多次失败，可一键反馈给开发者以便尽快排查。",
       retrySendCode: "重试",
@@ -168,6 +172,7 @@ const TEXTS: Record<
       stepEmailTitle: "Admin sign in",
       stepTurnstileTitle: "Verification",
       stepCodeTitle: "Enter code",
+      turnstileNotice: "Your connection needs to be verified before you can proceed",
       emailLabel: "Enter admin email to receive a sign-in code",
       emailPlaceholder: "admin@example.com",
       emailCodeLabel: "Email code",
@@ -239,7 +244,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
   const [turnstileRequired, setTurnstileRequired] = useState(true);
-  const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0);
+  const [turnstilePassed, setTurnstilePassed] = useState(false);
+  const [verifyingTurnstile, setVerifyingTurnstile] = useState(false);
   const [error, setError] = useState("");
   const [errorKind, setErrorKind] = useState<
     "none" | "send-code" | "login" | "validation" | "turnstile" | "other"
@@ -277,12 +283,17 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       ? "retry"
       : "send";
 
+  const errorKindRef = useRef(errorKind);
+  useEffect(() => {
+    errorKindRef.current = errorKind;
+  }, [errorKind]);
+
   useEffect(() => {
     // Reset "retry / report" state when switching recipient email.
     setSendCodeFailedCount(0);
     setSendCodeRequestId(null);
     setReportOk(false);
-    if (errorKind === "send-code") {
+    if (errorKindRef.current === "send-code") {
       setError("");
       setErrorKind("none");
     }
@@ -368,11 +379,16 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     })();
   }, []);
 
-  const resetTurnstile = () => {
-    setTurnstileToken("");
-    setTurnstileLoadFailed(false);
-    setTurnstileWidgetKey((k) => k + 1);
-  };
+  // Initial step: Turnstile (if required) -> Email -> Code
+  useEffect(() => {
+    // Wait for config to load (turnstileRequired defaults to true, so only switch
+    // once we have a decision).
+    if (turnstileRequired) {
+      setStep("turnstile");
+    } else {
+      setStep("email");
+    }
+  }, [turnstileRequired]);
 
   const toggleTheme = () => {
     setTheme((prev) => {
@@ -408,7 +424,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   };
 
   const sendLoginEmailCode = useCallback(
-    async (token?: string) => {
+    async () => {
       setError("");
       setErrorKind("none");
       setReportOk(false);
@@ -422,8 +438,10 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         return;
       }
 
-      if (turnstileRequired && (turnstileLoadFailed || !turnstileSiteKey)) {
-        setError(t.errorTurnstileLoadFailed);
+      if (turnstileRequired && !turnstilePassed) {
+        // Enforce flow: Turnstile -> Email -> Code (no skipping).
+        setStep("turnstile");
+        setError(t.errorTurnstileRequired);
         setErrorKind("turnstile");
         return;
       }
@@ -437,7 +455,6 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
             email,
             purpose: emailPurpose,
             language: lang === "en" ? "en-US" : "zh-CN",
-            ...(token ? { turnstileToken: token } : {}),
           }),
         });
 
@@ -471,7 +488,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         // 不展示任何提示文案（按需求“无需提示”）
         setStep("code");
         setSendCodeFailedCount(0);
-      } catch (error) {
+      } catch {
         // Avoid dumping raw errors that may include request internals; keep UI message friendly.
         console.error("发送邮箱验证码失败");
         setError(t.errorSendCode);
@@ -479,8 +496,6 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         setSendCodeFailedCount((c) => c + 1);
       } finally {
         setSendingCode(false);
-        // Turnstile tokens are single-use; force re-verify on next attempt.
-        if (turnstileRequired) resetTurnstile();
       }
     },
     [
@@ -489,10 +504,9 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       lang,
       t.errorEmailRequired,
       t.errorSendCode,
-      t.errorTurnstileLoadFailed,
-      turnstileLoadFailed,
       turnstileRequired,
-      turnstileSiteKey,
+      turnstilePassed,
+      t.errorTurnstileRequired,
     ]
   );
 
@@ -508,10 +522,11 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     setSendCodeFailedCount(0);
     setSendCodeRequestId(null);
     setReportOk(false);
-    resetTurnstile();
+    // Keep the "Turnstile passed" state: user may switch emails and retry without
+    // being forced back to the Turnstile page (human verification is done once).
   };
 
-  const startVerification = () => {
+  const startSendCode = () => {
     setError("");
     setErrorKind("none");
     setEmailCode("");
@@ -524,26 +539,90 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       return;
     }
 
-    if (turnstileRequired && !turnstileSiteKey) {
+    // Email step only: Turnstile is handled earlier (and only once).
+    void sendLoginEmailCode();
+  };
+
+  const verifyTurnstileAndContinue = useCallback(async (token: string) => {
+    setError("");
+    setErrorKind("none");
+
+    if (!turnstileRequired) {
+      setTurnstilePassed(true);
+      setStep("email");
+      return;
+    }
+
+    if (turnstileLoadFailed || !turnstileSiteKey) {
       setError(t.errorTurnstileLoadFailed);
       setErrorKind("turnstile");
       return;
     }
 
-    if (!turnstileRequired) {
-      // 本地测试：跳过 Turnstile，直接发送验证码（发送成功后再进入 code 步骤）
-      void sendLoginEmailCode();
-      return;
-    }
+    if (!token) return;
+    if (verifyingTurnstile || turnstilePassed) return;
 
-    if (!turnstileToken) {
+    setVerifyingTurnstile(true);
+    try {
+      const res = await fetch("/api/turnstile/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        setError(text || t.errorTurnstileRequired);
+        setErrorKind("turnstile");
+        return;
+      }
+
+      setTurnstilePassed(true);
+      // Do not reset Turnstile on success; user won't come back here unless they restart.
+      setStep("email");
+    } catch {
       setError(t.errorTurnstileRequired);
       setErrorKind("turnstile");
+    } finally {
+      setVerifyingTurnstile(false);
+    }
+  }, [
+    t.errorTurnstileLoadFailed,
+    t.errorTurnstileRequired,
+    turnstileLoadFailed,
+    turnstilePassed,
+    turnstileRequired,
+    turnstileSiteKey,
+    verifyingTurnstile,
+  ]);
+
+  // Auto continue: once the user checks Turnstile and we get a token, verify server-side
+  // and proceed to the email(login/register) step. No button required.
+  useEffect(() => {
+    if (step !== "turnstile") return;
+
+    if (!turnstileRequired) {
+      if (!turnstilePassed) setTurnstilePassed(true);
+      setStep("email");
       return;
     }
 
-    void sendLoginEmailCode(turnstileToken);
-  };
+    if (!turnstileToken) return;
+    if (turnstileLoadFailed || !turnstileSiteKey) return;
+    if (verifyingTurnstile || turnstilePassed) return;
+
+    void verifyTurnstileAndContinue(turnstileToken);
+  }, [
+    step,
+    turnstileRequired,
+    turnstileToken,
+    turnstileLoadFailed,
+    turnstileSiteKey,
+    verifyingTurnstile,
+    turnstilePassed,
+    verifyTurnstileAndContinue,
+  ]);
 
   const submitAuthErrorReport = async () => {
     if (reporting || !email) return;
@@ -656,14 +735,17 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         void submitAuthErrorReport();
         return;
       }
-      startVerification();
+      startSendCode();
     }
   };
 
+  // Turnstile step: do not show a big title.
   const headerTitle =
-    step === "email"
-      ? t.stepEmailTitle
-      : t.stepCodeTitle;
+    step === "turnstile"
+      ? ""
+      : step === "email"
+        ? t.stepEmailTitle
+        : t.stepCodeTitle;
 
   return (
     <div
@@ -829,13 +911,64 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         </section>
         <section className="auth-page__panel">
           <div className="auth-plain">
-            <h1 className="auth-plain__title">{headerTitle}</h1>
+            {!!headerTitle && <h1 className="auth-plain__title">{headerTitle}</h1>}
 
             <form
               onSubmit={handleSubmit}
               className="auth-card__form"
               aria-label={headerTitle}
             >
+              {step === "turnstile" && (
+                <>
+                  <div
+                    className="auth-plain__hint"
+                    style={{
+                      fontSize: 16,
+                      fontWeight: 600,
+                      letterSpacing: 0.2,
+                    }}
+                  >
+                    {t.turnstileNotice}
+                  </div>
+
+                  {turnstileRequired && (
+                    <div className="auth-card__field" style={{ marginTop: 8 }}>
+                      <div className="auth-card__field-grow">
+                        <TurnstileWidget
+                          siteKey={turnstileSiteKey}
+                          onToken={(token) => {
+                            setTurnstileToken(token);
+                            setTurnstileLoadFailed(false);
+                            if (errorKind === "turnstile") {
+                              setError("");
+                              setErrorKind("none");
+                            }
+                          }}
+                          onError={() => setTurnstileLoadFailed(true)}
+                          onExpire={() => setTurnstileToken("")}
+                          theme={theme === "dark" ? "dark" : "light"}
+                          size="normal"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="auth-card__error" role="alert" aria-live="polite">
+                      <div className="auth-card__error-title">{error}</div>
+                    </div>
+                  )}
+                  {verifyingTurnstile && (
+                    <div
+                      className="auth-plain__hint"
+                      style={{ marginTop: 10, fontSize: 16, fontWeight: 600 }}
+                    >
+                      Verifying…
+                    </div>
+                  )}
+                </>
+              )}
+
               {step === "email" && (
                 <>
                   <div className="auth-plain__hint">{t.emailLabel}</div>
@@ -858,29 +991,6 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                     />
                     <span>{t.rememberMe}</span>
                   </label>
-
-                  {turnstileRequired && (
-                    <div className="auth-card__field" style={{ marginTop: 8 }}>
-                      <div className="auth-card__field-grow">
-                        <TurnstileWidget
-                          key={turnstileWidgetKey}
-                          siteKey={turnstileSiteKey}
-                          onToken={(token) => {
-                            setTurnstileToken(token);
-                            setTurnstileLoadFailed(false);
-                            if (errorKind === "turnstile") {
-                              setError("");
-                              setErrorKind("none");
-                            }
-                          }}
-                          onError={() => setTurnstileLoadFailed(true)}
-                          onExpire={() => setTurnstileToken("")}
-                          theme={theme === "dark" ? "dark" : "light"}
-                          size="normal"
-                        />
-                      </div>
-                    </div>
-                  )}
 
                   {error && (
                     <div className="auth-card__error" role="alert" aria-live="polite">
