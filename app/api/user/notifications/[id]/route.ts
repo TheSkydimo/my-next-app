@@ -1,8 +1,12 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireUserFromRequest } from "../../_utils/userSession";
 import { markUserNotificationRead } from "../../../_utils/userNotifications";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
-export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const PATCH = withApiMonitoring(async function PATCH(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
   const notifId = Number.parseInt(id, 10);
   if (!Number.isFinite(notifId) || notifId <= 0) {
@@ -17,6 +21,6 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
 
   await markUserNotificationRead({ db, userId: authed.user.id, id: notifId });
   return Response.json({ ok: true });
-}
+}, { name: "PATCH /api/user/notifications/[id]" });
 
 

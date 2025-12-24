@@ -11,6 +11,7 @@ import {
 import { buildScriptShareCoverR2Key, decodeScriptTextPreview, generateScriptShareCoverSvg } from "../../_utils/scriptShareCover";
 import { requireUserFromRequest } from "../_utils/userSession";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type ScriptShareListItem = {
   id: string;
@@ -40,7 +41,7 @@ function clampInt(value: string | null, def: number, min: number, max: number): 
   return Math.min(max, Math.max(min, n));
 }
 
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
@@ -133,9 +134,9 @@ export async function GET(request: Request) {
   }));
 
   return Response.json({ items, total, page, pageSize });
-}
+}, { name: "GET /api/user/script-shares" });
 
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;
@@ -302,6 +303,6 @@ export async function POST(request: Request) {
     likeCanUndo: false,
     likeLocked: false,
   } satisfies ScriptShareListItem);
-}
+}, { name: "POST /api/user/script-shares" });
 
 

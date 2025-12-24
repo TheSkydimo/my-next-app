@@ -7,6 +7,7 @@ import {
   makeR2SchemeUrl,
   r2KeyFromSchemeUrl,
 } from "../../_utils/r2ObjectUrls";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
   id: number;
@@ -30,7 +31,7 @@ async function ensureAvatarUrlColumn(db: D1Database) {
 }
 
 // 获取用户个人信息
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
@@ -65,7 +66,7 @@ export async function GET(request: Request) {
     avatarUrl: convertDbAvatarUrlToPublicUrl(user.avatar_url),
     createdAt: user.created_at,
   });
-}
+}, { name: "GET /api/user/profile" });
 
 function normalizeAvatarDbUrl(input: string): string {
   // 兼容：如果有人把 /api/avatar/image?key=... 直接写进数据库，转回 r2://{key}
@@ -88,7 +89,7 @@ function isOwnedAvatarR2KeyForUser(userId: number, key: string): boolean {
 }
 
 // 更新用户个人信息
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const body = (await request.json()) as {
     username?: string;
     oldPassword?: string;
@@ -276,6 +277,6 @@ export async function POST(request: Request) {
   }
 
   return Response.json({ ok: true });
-}
+}, { name: "POST /api/user/profile" });
 
 

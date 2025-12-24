@@ -12,6 +12,7 @@ import { requireAdminFromRequest } from "../_utils/adminSession";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
 import { getOfficialPublicNickname } from "../../../_utils/officialPublicNickname";
 import { writeAdminAuditLog } from "../../_utils/adminAuditLogs";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 function clampInt(
   value: string | null,
@@ -24,7 +25,7 @@ function clampInt(
   return Math.min(max, Math.max(min, n));
 }
 
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
@@ -153,7 +154,7 @@ export async function GET(request: Request) {
   }
 
   return Response.json({ items, total, page, pageSize });
-}
+}, { name: "GET /api/admin/script-shares" });
 
 /**
  * Admin upload: always public.
@@ -163,7 +164,7 @@ export async function GET(request: Request) {
  * - lang (required: zh-CN / en-US; defaults to zh-CN)
  * - file (.skmode)
  */
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;
@@ -295,6 +296,6 @@ export async function POST(request: Request) {
     createdAt: nowIso,
     updatedAt: nowIso,
   });
-}
+}, { name: "POST /api/admin/script-shares" });
 
 

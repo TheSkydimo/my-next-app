@@ -17,6 +17,7 @@ import {
   ensureScriptShareInteractionsTables,
 } from "../../../_utils/scriptShareInteractionsTable";
 import { createUserNotification } from "../../../_utils/userNotifications";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type DbRow = {
   id: string;
@@ -46,7 +47,10 @@ async function loadShareById(db: D1Database, id: string): Promise<DbRow | null> 
   return results?.[0] ?? null;
 }
 
-export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const PATCH = withApiMonitoring(async function PATCH(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -89,9 +93,12 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     publicUsername: nextPublic,
     updatedAt: new Date().toISOString(),
   });
-}
+}, { name: "PATCH /api/user/script-shares/[id]" });
 
-export async function PUT(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const PUT = withApiMonitoring(async function PUT(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -245,9 +252,12 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
     if (newCoverKey) await r2.delete(newCoverKey).catch(() => {});
     return new Response("重新上传失败", { status: 500 });
   }
-}
+}, { name: "PUT /api/user/script-shares/[id]" });
 
-export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const DELETE = withApiMonitoring(async function DELETE(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -309,6 +319,6 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
   if (row.cover_r2_key) await r2.delete(row.cover_r2_key).catch(() => {});
 
   return Response.json({ ok: true });
-}
+}, { name: "DELETE /api/user/script-shares/[id]" });
 
 

@@ -23,3 +23,13 @@ MOLE_API_KEY=""
 
 # Load .env.development* files when running `wrangler dev`
 NEXTJS_ENV=development
+
+# Sentry (Error Monitoring)
+# - Server/Edge SDK: SENTRY_DSN
+# - Client SDK: NEXT_PUBLIC_SENTRY_DSN
+SENTRY_DSN=""
+NEXT_PUBLIC_SENTRY_DSN=""
+
+# Log archive
+# - Optional: override log prefix key in R2 (default: "logs/")
+LOG_ARCHIVE_R2_PREFIX="logs/"

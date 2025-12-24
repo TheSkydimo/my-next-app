@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireAdminFromRequest } from "../../_utils/adminSession";
 import { convertDbAvatarUrlToPublicUrl } from "../../../_utils/r2ObjectUrls";
 import { ensureUsersAvatarUrlColumn } from "../../../_utils/usersTable";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
   id: number;
@@ -13,7 +14,7 @@ type UserRow = {
   created_at: string;
 };
 
-export async function GET(
+export const GET = withApiMonitoring(async function GET(
   request: Request,
   ctx: { params: Promise<{ email?: string }> }
 ) {
@@ -64,6 +65,6 @@ export async function GET(
     },
     { headers: { "Cache-Control": "no-store" } }
   );
-}
+}, { name: "GET /api/admin/users/[email]" });
 
 

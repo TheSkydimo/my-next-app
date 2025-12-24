@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type OrderRow = {
   id: number;
@@ -338,7 +339,7 @@ function convertImageUrl(dbUrl: string): string {
 }
 
 // 获取当前用户的订单截图列表（按设备可选过滤）
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const email = searchParams.get("email");
   const deviceId = searchParams.get("deviceId");
@@ -404,7 +405,7 @@ export async function GET(request: Request) {
     })) ?? [];
 
   return Response.json({ items });
-}
+}, { name: "GET /api/user/orders" });
 
 /**
  * 为 R2 对象 Key 做安全化，避免非法字符导致路径穿越/编码问题。
@@ -430,7 +431,7 @@ function generateR2KeyByOrderNo(orderNo: string, mimeType: string): string {
 }
 
 // 上传订单截图（图片存储到 R2，数据库只保存 R2 Key）
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const lang = detectApiLanguage(request);
   const t = getUserOrderApiMessages(lang);
 
@@ -582,10 +583,10 @@ export async function POST(request: Request) {
     // 前端展示用时间，真实入库时间仍由数据库默认值生成
     createdAt: new Date().toISOString(),
   });
-}
+}, { name: "POST /api/user/orders" });
 
 // 删除指定订单截图（仅允许删除当前用户自己的记录，同时删除 R2 中的图片）
-export async function DELETE(request: Request) {
+export const DELETE = withApiMonitoring(async function DELETE(request: Request) {
   const lang = detectApiLanguage(request);
   const t = getUserOrderApiMessages(lang);
 
@@ -653,5 +654,5 @@ export async function DELETE(request: Request) {
   }
 
   return Response.json({ success: true });
-}
+}, { name: "DELETE /api/user/orders" });
 

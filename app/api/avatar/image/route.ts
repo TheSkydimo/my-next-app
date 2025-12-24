@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 /**
  * 从 R2 存储中读取头像图片
@@ -6,7 +7,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
  * 查询参数：
  * - key: R2 对象的 key（必需，必须以 avatars/ 开头）
  */
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
 
@@ -36,6 +37,6 @@ export async function GET(request: Request) {
   headers.set("Cache-Control", "public, max-age=31536000, immutable");
 
   return new Response(object.body, { headers });
-}
+}, { name: "GET /api/avatar/image" });
 
 

@@ -37,6 +37,39 @@ npm run deploy
 # or similar package manager command
 ```
 
+## Observability (Sentry + R2 Log Archive)
+
+### Sentry (Error Monitoring)
+
+- **Server/Edge DSN**: `SENTRY_DSN` (recommended via Wrangler secret in production)
+- **Client DSN**: `NEXT_PUBLIC_SENTRY_DSN`
+
+Local preview on Cloudflare runtime:
+- copy `.dev.vars.example` → `.dev.vars` and fill in values
+
+Production:
+
+```bash
+wrangler secret put SENTRY_DSN
+wrangler secret put NEXT_PUBLIC_SENTRY_DSN
+```
+
+### Structured logs → Cloudflare R2 (NDJSON)
+
+All `/api/*` routes are wrapped with a monitoring layer that:
+- logs **structured JSON** to console (no cookies/auth/body)
+- archives per-request logs as **NDJSON** objects into R2 (`APP_LOGS`)
+
+- **Bucket binding**: `APP_LOGS` (see `wrangler.jsonc`)
+- **Key format**: `logs/YYYY/MM/DD/HH/{requestId}.ndjson`
+- **Optional prefix override**: `LOG_ARCHIVE_R2_PREFIX` (defaults to `logs/`)
+
+Create the bucket (example):
+
+```bash
+wrangler r2 bucket create app-logs
+```
+
 ## Cloudflare Turnstile (Register)
 
 This project uses **Cloudflare Turnstile** on the register page.

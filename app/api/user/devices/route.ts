@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type DeviceRow = {
   id: number;
@@ -7,7 +8,7 @@ type DeviceRow = {
 };
 
 // 获取用户设备列表
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const email = searchParams.get("email");
   const rawPage = searchParams.get("page");
@@ -116,10 +117,10 @@ export async function GET(request: Request) {
     })) ?? [];
 
   return Response.json(devices);
-}
+}, { name: "GET /api/user/devices" });
 
 // 添加用户设备
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const body = (await request.json()) as {
     email?: string;
     deviceId?: string;
@@ -212,10 +213,10 @@ export async function POST(request: Request) {
     deviceId: deviceId.trim(),
     warrantyExpiresAt: warrantyExpiresIso,
   });
-}
+}, { name: "POST /api/user/devices" });
 
 // 删除用户设备
-export async function DELETE(request: Request) {
+export const DELETE = withApiMonitoring(async function DELETE(request: Request) {
   const body = (await request.json()) as {
     email?: string;
     id?: number;
@@ -289,5 +290,5 @@ export async function DELETE(request: Request) {
   }
 
   return Response.json({ success: true });
-}
+}, { name: "DELETE /api/user/devices" });
 

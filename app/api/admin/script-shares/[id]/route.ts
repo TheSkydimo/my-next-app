@@ -14,6 +14,7 @@ import {
   deleteScriptShareInteractions,
   ensureScriptShareInteractionsTables,
 } from "../../../_utils/scriptShareInteractionsTable";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type DbRow = {
   id: string;
@@ -37,7 +38,10 @@ async function loadById(db: D1Database, id: string): Promise<DbRow | null> {
   return results?.[0] ?? null;
 }
 
-export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const DELETE = withApiMonitoring(async function DELETE(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -87,12 +91,15 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
   }).catch(() => {});
 
   return Response.json({ ok: true });
-}
+}, { name: "DELETE /api/admin/script-shares/[id]" });
 
 /**
  * Admin reupload file for an existing share (still .skmode).
  */
-export async function PUT(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const PUT = withApiMonitoring(async function PUT(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -137,12 +144,15 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
     .run();
 
   return Response.json({ ok: true, id, updatedAt: new Date().toISOString() });
-}
+}, { name: "PUT /api/admin/script-shares/[id]" });
 
 /**
  * Admin edit metadata / visibility.
  */
-export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const PATCH = withApiMonitoring(async function PATCH(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -240,6 +250,6 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     pinnedAt: updated?.pinned_at ?? null,
     updatedAt: new Date().toISOString(),
   });
-}
+}, { name: "PATCH /api/admin/script-shares/[id]" });
 
 

@@ -1,8 +1,9 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isValidEmail, sha256 } from "../_utils/auth";
 import { verifyAndUseEmailCode } from "../_utils/emailCode";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const { email, password, emailCode } = (await request.json()) as {
     email: string;
     password: string;
@@ -56,5 +57,5 @@ export async function POST(request: Request) {
     .run();
 
   return Response.json({ ok: true });
-}
+}, { name: "POST /api/forgot-password" });
 

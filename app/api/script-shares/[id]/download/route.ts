@@ -4,6 +4,7 @@ import { SCRIPT_SHARE_R2_PREFIX, safeDownloadFilename } from "../../../_utils/sc
 import { requireUserFromRequest } from "../../../user/_utils/userSession";
 import { requireAdminFromRequest } from "../../../admin/_utils/adminSession";
 import { writeAdminAuditLog } from "../../../_utils/adminAuditLogs";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type DbRow = {
   id: string;
@@ -14,7 +15,10 @@ type DbRow = {
   updated_at: string;
 };
 
-export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const GET = withApiMonitoring(async function GET(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
 
   const { env } = await getCloudflareContext();
@@ -74,6 +78,6 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   headers.set("Content-Disposition", `attachment; filename="${safeDownloadFilename(row.effect_name)}"`);
 
   return new Response(obj.body, { headers });
-}
+}, { name: "GET /api/script-shares/[id]/download" });
 
 

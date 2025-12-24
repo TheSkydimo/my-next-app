@@ -4,13 +4,14 @@ import {
   makeR2SchemeUrl,
 } from "../../_utils/r2ObjectUrls";
 import { requireUserFromRequest } from "../../user/_utils/userSession";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 /**
  * 上传头像到 R2（对象存储），并返回：
  * - dbUrl: r2://{key}   (建议写入数据库)
  * - publicUrl: /api/avatar/image?key=...  (前端可直接展示)
  */
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const contentType = request.headers.get("content-type") || "";
 
   // 与前端保持一致：最大 2MB（移动端相册/相机图片通常会超过 300KB）
@@ -121,6 +122,6 @@ export async function POST(request: Request) {
     dbUrl: makeR2SchemeUrl(r2Key),
     publicUrl: makeAvatarImageApiUrlFromR2Key(r2Key),
   });
-}
+}, { name: "POST /api/avatar/upload" });
 
 

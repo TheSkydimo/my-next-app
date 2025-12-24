@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 import { requireAdminFromRequest } from "../_utils/adminSession";
 import { deleteUserCascade } from "../_utils/deleteUserCascade";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
   id: number;
@@ -16,7 +17,7 @@ type UserRow = {
 };
 
 // 获取用户列表（仅管理员）
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const role = searchParams.get("role"); // admin | user | null
   const pageParam = searchParams.get("page");
@@ -99,7 +100,7 @@ export async function GET(request: Request) {
     },
     { headers: { "Cache-Control": "no-store" } }
   );
-}
+}, { name: "GET /api/admin/users" });
 
 type AdminActionBody = {
   action?: "remove" | "set-admin" | "unset-admin" | "set-vip";
@@ -109,7 +110,7 @@ type AdminActionBody = {
 };
 
 // 管理员操作用户：删除用户 / 设置为管理员
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   let body: AdminActionBody;
   try {
     body = (await request.json()) as AdminActionBody;
@@ -257,6 +258,6 @@ export async function POST(request: Request) {
   }
 
   return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
-}
+}, { name: "POST /api/admin/users" });
 
 

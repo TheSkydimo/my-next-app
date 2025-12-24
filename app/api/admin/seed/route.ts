@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { sha256 } from "../../_utils/auth";
 import { ensureUsersTable } from "../../_utils/usersTable";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 // 简单的初始化脚本：
 // 1. 为 users 表增加 is_admin 字段（如果不存在）
@@ -27,7 +28,7 @@ function assertSeedAllowed(env: unknown): Response | null {
   return null;
 }
 
-export async function POST() {
+async function runSeed(): Promise<Response> {
   const { env } = await getCloudflareContext();
 
   const notAllowed = assertSeedAllowed(env);
@@ -135,8 +136,13 @@ export async function POST() {
   });
 }
 
+export const POST = withApiMonitoring(async function POST() {
+  return await runSeed();
+}, { name: "POST /api/admin/seed" });
+
 // 方便直接在浏览器里访问 URL 完成初始化
-export async function GET() {
-  return POST();
-}
+export const GET = withApiMonitoring(async function GET(request: Request) {
+  void request;
+  return await runSeed();
+}, { name: "GET /api/admin/seed" });
 

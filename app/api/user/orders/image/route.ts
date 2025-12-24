@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireUserFromRequest } from "../../_utils/userSession";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 /**
  * 从 R2 存储中读取订单图片
@@ -11,7 +12,7 @@ import { requireUserFromRequest } from "../../_utils/userSession";
  * - 图片二进制流，带正确的 Content-Type
  * - 设置缓存头以提高性能
  */
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
 
@@ -89,5 +90,5 @@ export async function GET(request: Request) {
   headers.set("Cache-Control", "private, max-age=86400, stale-while-revalidate=3600");
 
   return new Response(object.body, { headers });
-}
+}, { name: "GET /api/user/orders/image" });
 

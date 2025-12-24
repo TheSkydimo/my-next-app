@@ -8,6 +8,7 @@ import { serializeCookie } from "../_utils/cookies";
 import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../_utils/usersTable";
 import { getRuntimeEnvVar } from "../_utils/runtimeEnv";
 import { isSecureRequest } from "../_utils/request";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
   id: number;
@@ -17,7 +18,7 @@ type UserRow = {
   is_admin: number;
 };
 
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   // 解析请求体并显式标注类型，避免 request.json() 推断为 unknown
   const { email, emailCode, remember } = (await request.json()) as {
     email: string;
@@ -159,4 +160,4 @@ export async function POST(request: Request) {
       isAdmin: !!row.is_admin,
     },
   }, { headers });
-}
+}, { name: "POST /api/login" });

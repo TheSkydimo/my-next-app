@@ -1,7 +1,8 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isDevBypassTurnstileEnabled } from "../_utils/runtimeEnv";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
-export async function GET() {
+export const GET = withApiMonitoring(async function GET() {
   const { env } = await getCloudflareContext();
   const siteKey = String(
     (env as unknown as { NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string })
@@ -23,6 +24,6 @@ export async function GET() {
       },
     }
   );
-}
+}, { name: "GET /api/public-config" });
 
 

@@ -6,8 +6,9 @@ import {
   markAllUserNotificationsRead,
   parseNotificationsPaging,
 } from "../../_utils/userNotifications";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
@@ -24,10 +25,10 @@ export async function GET(request: Request) {
   });
   const unreadCount = await getUserUnreadNotificationCount(db, authed.user.id);
   return Response.json({ ...list, unreadCount });
-}
+}, { name: "GET /api/user/notifications" });
 
 // Mark all as read
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
@@ -37,6 +38,6 @@ export async function POST(request: Request) {
   await markAllUserNotificationsRead(db, authed.user.id);
   const unreadCount = await getUserUnreadNotificationCount(db, authed.user.id);
   return Response.json({ ok: true, unreadCount });
-}
+}, { name: "POST /api/user/notifications" });
 
 

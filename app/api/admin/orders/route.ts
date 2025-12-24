@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireAdminFromRequest } from "../_utils/adminSession";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type OrderRowWithUser = {
   id: number;
@@ -67,7 +68,7 @@ async function ensureOrderTable(db: D1Database) {
 }
 
 // 管理端查看所有用户的订单截图（可按邮箱 / 设备 ID 过滤，最多返回最近 200 条）
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const userEmail = searchParams.get("userEmail");
   const deviceId = searchParams.get("deviceId");
@@ -136,6 +137,6 @@ export async function GET(request: Request) {
     })) ?? [];
 
   return Response.json({ items });
-}
+}, { name: "GET /api/admin/orders" });
 
 

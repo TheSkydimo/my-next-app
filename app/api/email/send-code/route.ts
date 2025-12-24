@@ -10,10 +10,10 @@ import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/tu
 import { ensureUsersIsAdminColumn } from "../../_utils/usersTable";
 import { createSmtpTransport, getSmtpConfig } from "../../_utils/mailer";
 import {
-  getRuntimeEnvVar,
   isDevBypassTurnstileEnabled,
   shouldReturnEmailCodeInResponse,
 } from "../../_utils/runtimeEnv";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 function generateCode(length = 6): string {
   let code = "";
@@ -149,7 +149,7 @@ function buildEmailTemplate(options: {
   return { subject, text, html };
 }
 
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const { email, purpose, turnstileToken, language } = (await request.json()) as {
     email: string;
     purpose: EmailCodePurpose;
@@ -244,14 +244,10 @@ export async function POST(request: Request) {
 
   // 本地开发：允许直接返回验证码，便于手动测试（仍写入数据库）
   if (returnCodeInResponse) {
-    console.log(
-      `[DEV] email code generated: email=${email}, purpose=${purpose}, code=${code}`
-    );
     return Response.json({ ok: true, devCode: code });
   }
 
   // 仍保留 APP_NAME（其他非验证码邮件或未来用途可能会用到），但验证码邮件模板中不再展示
-  const APP_NAME = getRuntimeEnvVar(env, "APP_NAME");
   const smtp = getSmtpConfig(env);
   if (!smtp) {
     console.error("SMTP 配置缺失");
@@ -276,6 +272,6 @@ export async function POST(request: Request) {
   }
 
   return Response.json({ ok: true });
-}
+}, { name: "POST /api/email/send-code" });
 
 

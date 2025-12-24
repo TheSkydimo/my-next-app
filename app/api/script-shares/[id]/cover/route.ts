@@ -10,6 +10,7 @@ import {
 import { requireUserFromRequest } from "../../../user/_utils/userSession";
 import { requireAdminFromRequest } from "../../../admin/_utils/adminSession";
 import { writeAdminAuditLog } from "../../../_utils/adminAuditLogs";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type DbRow = {
   id: string;
@@ -23,7 +24,10 @@ type DbRow = {
   cover_mime_type: string | null;
 };
 
-export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const GET = withApiMonitoring(async function GET(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
 
   const { env } = await getCloudflareContext();
@@ -125,6 +129,6 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   headers.set("Content-Type", `${mimeType}; charset=utf-8`);
   headers.set("Cache-Control", cacheControl);
   return new Response(svg, { headers });
-}
+}, { name: "GET /api/script-shares/[id]/cover" });
 
 

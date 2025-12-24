@@ -5,6 +5,7 @@ import {
   getScriptShareInteractionStats,
 } from "../../../../_utils/scriptShareInteractionsTable";
 import { requireUserFromRequest } from "../../../_utils/userSession";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 async function ensureShareVisibleToUser(options: {
   db: D1Database;
@@ -22,7 +23,10 @@ async function ensureShareVisibleToUser(options: {
   return row.owner_user_id === userId;
 }
 
-export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
+export const POST = withApiMonitoring(async function POST(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -75,6 +79,6 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   });
 
   return Response.json({ ok: true, id, ...stats });
-}
+}, { name: "POST /api/user/script-shares/[id]/like" });
 
 

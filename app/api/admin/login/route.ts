@@ -11,6 +11,7 @@ import {
   ensureUsersIsAdminColumn,
   ensureUsersIsSuperAdminColumn,
 } from "../../_utils/usersTable";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type AdminRow = {
   id: number;
@@ -20,7 +21,7 @@ type AdminRow = {
   is_super_admin: number;
 };
 
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const { email, emailCode, remember } = (await request.json()) as {
     email: string;
     emailCode: string;
@@ -131,6 +132,6 @@ export async function POST(request: Request) {
       role,
     },
   }, { headers });
-}
+}, { name: "POST /api/admin/login" });
 
 

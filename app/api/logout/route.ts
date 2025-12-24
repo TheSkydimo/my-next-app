@@ -2,8 +2,9 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { serializeCookie } from "../_utils/cookies";
 import { getSessionCookieName } from "../_utils/session";
 import { isSecureRequest } from "../_utils/request";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   // 仅清理 cookie；不依赖 DB
   const { env } = await getCloudflareContext();
   const secure = isSecureRequest(request);
@@ -20,6 +21,6 @@ export async function POST(request: Request) {
   void env;
 
   return Response.json({ ok: true }, { headers: { "Set-Cookie": cookie } });
-}
+}, { name: "POST /api/logout" });
 
 

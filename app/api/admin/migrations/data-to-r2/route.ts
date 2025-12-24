@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireSuperAdminFromRequest } from "../../_utils/adminSession";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type DataUrlParseResult =
   | { ok: true; mimeType: string; base64: string }
@@ -81,7 +82,7 @@ type MigrationBody = {
  * - 仅管理员可调用；建议仅超级管理员执行
  * - R2 上传使用 onlyIf.etagDoesNotMatch="*"，避免覆盖
  */
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as MigrationBody;
   const limit = Math.max(Math.min(Number(body.limit) || 50, 200), 1);
   const dryRun = !!body.dryRun;
@@ -231,6 +232,6 @@ export async function POST(request: Request) {
         "重复调用直到 remaining 为 0；完成后即可关闭 data: 兼容逻辑，强制只走 R2。",
     },
   });
-}
+}, { name: "POST /api/admin/migrations/data-to-r2" });
 
 

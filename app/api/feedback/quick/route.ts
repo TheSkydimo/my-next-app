@@ -7,8 +7,9 @@ import {
   getSmtpConfigWithPrefix,
 } from "../../_utils/mailer";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   try {
     const { content, email } = (await request.json()) as {
       content: string;
@@ -150,7 +151,7 @@ ${cleanContent}
     console.error("提交反馈失败:", error);
     return new Response("发送失败，请稍后再试", { status: 500 });
   }
-}
+}, { name: "POST /api/feedback/quick" });
 
 function escapeHtml(input: string): string {
   return input

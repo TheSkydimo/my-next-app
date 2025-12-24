@@ -6,7 +6,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "my-next-app",
 	"main": ".open-next/worker.js",
-	"compatibility_date": "2025-03-01",
+	"compatibility_date": "2025-08-16",
 	"compatibility_flags": [
 		"nodejs_compat",
 		"global_fetch_strictly_public"
@@ -30,6 +30,11 @@
 		{
 			"binding": "ORDER_IMAGES",
 			"bucket_name": "order-images"
+		},
+		{
+			// Structured log archive (NDJSON). Create this bucket in Cloudflare R2.
+			"binding": "APP_LOGS",
+			"bucket_name": "app-logs"
 		}
 	],
 	"vars": {
@@ -61,6 +66,10 @@
 				{
 					"binding": "ORDER_IMAGES",
 					"bucket_name": "order-images"
+				},
+				{
+					"binding": "APP_LOGS",
+					"bucket_name": "app-logs"
 				}
 			],
 			"vars": {

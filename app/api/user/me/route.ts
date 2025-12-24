@@ -4,6 +4,7 @@ import { getSessionCookieName, verifySessionToken } from "../../_utils/session";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../../_utils/usersTable";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
   id: number;
@@ -14,7 +15,7 @@ type UserRow = {
   created_at: string;
 };
 
-export async function GET(request: Request) {
+export const GET = withApiMonitoring(async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   const sessionSecret = String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "");
   if (!sessionSecret) {
@@ -60,6 +61,6 @@ export async function GET(request: Request) {
     avatarUrl: convertDbAvatarUrlToPublicUrl(user.avatar_url),
     createdAt: user.created_at,
   });
-}
+}, { name: "GET /api/user/me" });
 
 

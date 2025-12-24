@@ -4,8 +4,9 @@ import { verifyAndUseEmailCode } from "../_utils/emailCode";
 import { generateNumericUsername } from "../_utils/user";
 import { isDevBypassTurnstileEnabled } from "../_utils/runtimeEnv";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../_utils/turnstile";
+import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
-export async function POST(request: Request) {
+export const POST = withApiMonitoring(async function POST(request: Request) {
   const { username, email, password, emailCode, turnstileToken } =
     (await request.json()) as {
     username?: string;
@@ -123,4 +124,4 @@ export async function POST(request: Request) {
   }
 
   return Response.json({ ok: true });
-}
+}, { name: "POST /api/register" });

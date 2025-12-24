@@ -391,6 +391,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     [
       email,
       emailPurpose,
+      lang,
       setError,
       t.errorEmailRequired,
       t.errorSendCode,
