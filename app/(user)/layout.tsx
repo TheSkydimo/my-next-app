@@ -297,6 +297,8 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
       token: {
         colorPrimary: "#1677ff",
         borderRadius: 6,
+        // 确保用户端（AntD）字体与管理端一致（全局 body 也是这套）
+        fontFamily: "Arial, Helvetica, sans-serif",
       },
     }
   };
@@ -440,6 +442,7 @@ function AppLayout({
             openKeys={openKeys}
             onOpenChange={(keys) => setOpenKeys(keys as string[])}
             items={menuItems}
+            className="user-adminlike-menu"
             style={{ 
               background: "transparent",
               borderRight: 0 
@@ -463,6 +466,7 @@ function AppLayout({
           openKeys={openKeys}
           onOpenChange={(keys) => setOpenKeys(keys as string[])}
           items={menuItems}
+          className="user-adminlike-menu"
           style={{ borderRight: 0 }}
         />
       </Drawer>

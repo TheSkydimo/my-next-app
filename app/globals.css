@@ -1353,6 +1353,103 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	font-weight: 500;
 }
 
+/* =========================================================
+   用户端（Ant Design Menu）菜单按钮：对齐管理端菜单按钮风格
+   - 用户端当前使用 AntD <Menu />，不是 .user-layout__nav-link 那套自定义菜单
+   - 这里把 AntD Menu Item 的“按钮观感”做成与 .admin-layout__nav-link 一致
+   ========================================================= */
+
+.user-adminlike-menu.ant-menu {
+	background: transparent !important;
+	border-inline-end: 0 !important;
+}
+
+.user-adminlike-menu.ant-menu .ant-menu-item,
+.user-adminlike-menu.ant-menu .ant-menu-submenu-title {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px !important;
+	margin: 0 0 8px 0 !important;
+	border-radius: 10px !important;
+	border: 1px solid transparent;
+	background: transparent;
+	font-size: 14px;
+	font-weight: 400;
+	letter-spacing: 0.02em;
+	color: #e5e7eb;
+	transition:
+		background-color 140ms ease-out,
+		color 140ms ease-out,
+		transform 140ms ease-out,
+		box-shadow 140ms ease-out,
+		border-color 140ms ease-out;
+}
+
+.user-adminlike-menu.ant-menu .ant-menu-item:hover,
+.user-adminlike-menu.ant-menu .ant-menu-submenu-title:hover {
+	transform: translateX(2px);
+	background: rgba(148, 163, 184, 0.12);
+	border-color: rgba(148, 163, 184, 0.18);
+	color: #e5e7eb;
+	box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+}
+
+.user-adminlike-menu.ant-menu .ant-menu-item-selected,
+.user-adminlike-menu.ant-menu .ant-menu-submenu-selected > .ant-menu-submenu-title {
+	background: rgba(148, 163, 184, 0.16) !important;
+	border-color: rgba(148, 163, 184, 0.28) !important;
+	font-weight: 600;
+	color: #f9fafb !important;
+	box-shadow:
+		0 0 0 1px rgba(148, 163, 184, 0.16),
+		0 14px 28px rgba(0, 0, 0, 0.35);
+}
+
+.user-adminlike-menu.ant-menu .ant-menu-item-selected:hover,
+.user-adminlike-menu.ant-menu .ant-menu-submenu-selected > .ant-menu-submenu-title:hover {
+	transform: translateX(2px);
+	border-color: rgba(148, 163, 184, 0.45) !important;
+	color: #ffffff !important;
+	box-shadow:
+		0 0 0 1px rgba(148, 163, 184, 0.2),
+		0 0 18px rgba(148, 163, 184, 0.18),
+		0 18px 34px rgba(0, 0, 0, 0.4);
+}
+
+/* 去掉 AntD 默认选中高亮条/背景算法，避免与“管理端按钮风格”冲突 */
+.user-adminlike-menu.ant-menu .ant-menu-item::after {
+	border-right: 0 !important;
+}
+
+/* 亮色主题：对齐管理端浅色主题的菜单对比度 */
+:root[data-theme="light"] .user-adminlike-menu.ant-menu .ant-menu-item,
+:root[data-theme="light"] .user-adminlike-menu.ant-menu .ant-menu-submenu-title {
+	color: #111827;
+}
+
+:root[data-theme="light"] .user-adminlike-menu.ant-menu .ant-menu-item:hover,
+:root[data-theme="light"] .user-adminlike-menu.ant-menu .ant-menu-submenu-title:hover {
+	background: rgba(148, 163, 184, 0.16);
+	border-color: rgba(148, 163, 184, 0.28);
+	color: #0f172a;
+	box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme="light"] .user-adminlike-menu.ant-menu .ant-menu-item-selected,
+:root[data-theme="light"]
+	.user-adminlike-menu.ant-menu
+	.ant-menu-submenu-selected
+	> .ant-menu-submenu-title {
+	background: rgba(148, 163, 184, 0.18) !important;
+	border-color: rgba(148, 163, 184, 0.35) !important;
+	color: #0f172a !important;
+	box-shadow:
+		0 0 0 1px rgba(148, 163, 184, 0.16),
+		0 12px 22px rgba(15, 23, 42, 0.16);
+}
+
 /* 亮色主题下，左侧子菜单使用更深的文字颜色，保证清晰可见 */
 :root[data-theme="light"] .user-layout__nav-sub-link {
 	color: #1f2937;
