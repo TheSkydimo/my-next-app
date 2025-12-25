@@ -16,6 +16,7 @@ export type AdminMessages = {
     navAdmins: string;
     navUsers: string;
     navOrders: string;
+    navNotifications: string;
     navLogs: string;
     roleSuperAdmin: string;
     roleAdmin: string;
@@ -162,6 +163,31 @@ export type AdminMessages = {
     urlNotConfigured: string;
     configureHint: string;
   };
+  notifications: {
+    title: string;
+    desc: string;
+    scopeLabel: string;
+    scopeValueAll: string;
+    levelLabel: string;
+    levelInfo: string;
+    levelWarn: string;
+    levelCritical: string;
+    typeLabel: string;
+    titleZhLabel: string;
+    titleZhPlaceholder: string;
+    bodyZhLabel: string;
+    bodyZhPlaceholder: string;
+    titleEnLabel: string;
+    titleEnPlaceholder: string;
+    bodyEnLabel: string;
+    bodyEnPlaceholder: string;
+    linkUrlLabel: string;
+    linkUrlPlaceholder: string;
+    sendButton: string;
+    errorTitleRequired: string;
+    errorBodyRequired: string;
+    successSent: string;
+  };
 };
 
 const zhCN: AdminMessages = {
@@ -178,6 +204,7 @@ const zhCN: AdminMessages = {
     navAdmins: "管理员管理",
     navUsers: "用户管理",
     navOrders: "订单截图",
+    navNotifications: "通知",
     navLogs: "日志",
     roleSuperAdmin: "超级管理员",
     roleAdmin: "管理员",
@@ -186,7 +213,7 @@ const zhCN: AdminMessages = {
     unauthLoginLink: "去登录",
     searchPlaceholder: "搜索功能 / Ctrl + K",
     searchNotFound: "未找到相关功能，请尝试：",
-    searchNotFoundHint: "用户 / 管理员 / 信息 / 日志 / 首页",
+    searchNotFoundHint: "用户 / 管理员 / 通知 / 信息 / 日志 / 首页",
     userMenuNameFallback: "管理员",
     userMenuProfile: "个人中心",
     userMenuLogout: "退出登录",
@@ -331,6 +358,31 @@ const zhCN: AdminMessages = {
     configureHint:
       "请在构建/运行环境中设置 NEXT_PUBLIC_ADMIN_LOGS_URL（例如指向 Sentry Logs 页面）。",
   },
+  notifications: {
+    title: "发送通知",
+    desc: "向所有用户广播站内通知（用户端右上角 🔔 可接收并标记已读）。",
+    scopeLabel: "发送范围",
+    scopeValueAll: "全部用户（广播）",
+    levelLabel: "等级",
+    levelInfo: "信息",
+    levelWarn: "警告",
+    levelCritical: "严重",
+    typeLabel: "类型（可选）",
+    titleZhLabel: "标题（中文 zh-CN）",
+    titleZhPlaceholder: "例如：系统维护通知",
+    bodyZhLabel: "内容（中文 zh-CN）",
+    bodyZhPlaceholder: "请输入通知内容（纯文本）",
+    titleEnLabel: "Title (English en-US)",
+    titleEnPlaceholder: "e.g. Maintenance notice",
+    bodyEnLabel: "Body (English en-US)",
+    bodyEnPlaceholder: "Enter notification content (plain text)",
+    linkUrlLabel: "跳转链接（可选）",
+    linkUrlPlaceholder: "例如：/profile 或 https://example.com",
+    sendButton: "发送通知",
+    errorTitleRequired: "请填写通知标题",
+    errorBodyRequired: "请填写通知内容",
+    successSent: "通知已发送",
+  },
 };
 
 const enUS: AdminMessages = {
@@ -347,6 +399,7 @@ const enUS: AdminMessages = {
     navAdmins: "Admins",
     navUsers: "Users",
     navOrders: "Orders",
+    navNotifications: "Notifications",
     navLogs: "Logs",
     roleSuperAdmin: "Super Admin",
     roleAdmin: "Admin",
@@ -355,7 +408,7 @@ const enUS: AdminMessages = {
     unauthLoginLink: "Sign in",
     searchPlaceholder: "Search features / Ctrl + K",
     searchNotFound: "No matching feature found. Try: ",
-    searchNotFoundHint: "Users / Admins / Profile / Logs / Home",
+    searchNotFoundHint: "Users / Admins / Notifications / Profile / Logs / Home",
     userMenuNameFallback: "Admin",
     userMenuProfile: "Profile",
     userMenuLogout: "Sign out",
@@ -504,6 +557,31 @@ const enUS: AdminMessages = {
     urlNotConfigured: "Log system URL is not configured.",
     configureHint:
       "Set NEXT_PUBLIC_ADMIN_LOGS_URL in your build/runtime environment (e.g. the Sentry Logs page).",
+  },
+  notifications: {
+    title: "Send notification",
+    desc: "Broadcast an in-app notification to all users (users receive it via the 🔔 bell).",
+    scopeLabel: "Scope",
+    scopeValueAll: "All users (broadcast)",
+    levelLabel: "Level",
+    levelInfo: "Info",
+    levelWarn: "Warning",
+    levelCritical: "Critical",
+    typeLabel: "Type (optional)",
+    titleZhLabel: "Title (Chinese zh-CN)",
+    titleZhPlaceholder: "e.g. 系统维护通知",
+    bodyZhLabel: "Body (Chinese zh-CN)",
+    bodyZhPlaceholder: "请输入通知内容（纯文本）",
+    titleEnLabel: "Title (English en-US)",
+    titleEnPlaceholder: "e.g. Maintenance notice",
+    bodyEnLabel: "Body (English en-US)",
+    bodyEnPlaceholder: "Enter notification content (plain text)",
+    linkUrlLabel: "Link URL (optional)",
+    linkUrlPlaceholder: "e.g. /profile or https://example.com",
+    sendButton: "Send",
+    errorTitleRequired: "Please enter a title",
+    errorBodyRequired: "Please enter a body",
+    successSent: "Notification sent",
   },
 };
 

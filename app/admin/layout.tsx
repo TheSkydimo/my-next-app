@@ -118,6 +118,10 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         keywords: ["管理员", "admin", "admins"],
       },
       {
+        href: "/admin/notifications",
+        keywords: ["通知", "消息", "站内信", "notification", "notifications", "message"],
+      },
+      {
         href: "/admin/profile",
         keywords: ["信息", "资料", "profile", "account"],
       },
@@ -264,6 +268,16 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
               }`}
             >
               {messages.layout.navUsers}
+            </Link>
+            <Link
+              href="/admin/notifications"
+              className={`admin-layout__nav-link ${
+                isActive("/admin/notifications")
+                  ? "admin-layout__nav-link--active"
+                  : ""
+              }`}
+            >
+              {messages.layout.navNotifications}
             </Link>
             <Link
               href="/admin/logs"

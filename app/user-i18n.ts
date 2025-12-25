@@ -127,6 +127,16 @@ export type UserMessages = {
     showPassword: string;
     hidePassword: string;
   };
+  notifications: {
+    ariaLabel: string;
+    panelAriaLabel: string;
+    title: string;
+    refresh: string;
+    markAllRead: string;
+    loadingText: string;
+    emptyText: string;
+    loadFailed: string;
+  };
 };
 
 const zhCN: UserMessages = {
@@ -253,6 +263,16 @@ const zhCN: UserMessages = {
     successEmailUpdated: "邮箱已修改，请使用新邮箱登录",
     showPassword: "显示",
     hidePassword: "隐藏",
+  },
+  notifications: {
+    ariaLabel: "通知",
+    panelAriaLabel: "通知面板",
+    title: "通知",
+    refresh: "刷新",
+    markAllRead: "全部已读",
+    loadingText: "加载中...",
+    emptyText: "暂无通知",
+    loadFailed: "加载失败",
   },
 };
 
@@ -388,6 +408,16 @@ const enUS: UserMessages = {
     successEmailUpdated: "Email updated, please login with the new email",
     showPassword: "Show",
     hidePassword: "Hide",
+  },
+  notifications: {
+    ariaLabel: "Notifications",
+    panelAriaLabel: "Notifications panel",
+    title: "Notifications",
+    refresh: "Refresh",
+    markAllRead: "Mark all read",
+    loadingText: "Loading...",
+    emptyText: "No notifications",
+    loadFailed: "Failed to load",
   },
 };
 

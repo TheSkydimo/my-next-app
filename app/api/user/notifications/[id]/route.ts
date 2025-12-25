@@ -20,7 +20,7 @@ export const PATCH = withApiMonitoring(async function PATCH(
   if (authed instanceof Response) return authed;
 
   await markUserNotificationRead({ db, userId: authed.user.id, id: notifId });
-  return Response.json({ ok: true });
+  return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
 }, { name: "PATCH /api/user/notifications/[id]" });
 
 

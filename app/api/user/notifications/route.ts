@@ -7,6 +7,7 @@ import {
   parseNotificationsPaging,
 } from "../../_utils/userNotifications";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { normalizeAppLanguage } from "../../_utils/appLanguage";
 
 export const GET = withApiMonitoring(async function GET(request: Request) {
   const { env } = await getCloudflareContext();
@@ -16,15 +17,21 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   if (authed instanceof Response) return authed;
 
   const { page, pageSize, unreadOnly } = parseNotificationsPaging(request.url);
+  const url = new URL(request.url);
+  const lang = normalizeAppLanguage(url.searchParams.get("lang"));
   const list = await listUserNotifications({
     db,
     userId: authed.user.id,
     page,
     pageSize,
     unreadOnly,
+    lang,
   });
   const unreadCount = await getUserUnreadNotificationCount(db, authed.user.id);
-  return Response.json({ ...list, unreadCount });
+  return Response.json(
+    { ...list, unreadCount },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }, { name: "GET /api/user/notifications" });
 
 // Mark all as read
@@ -37,7 +44,10 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   await markAllUserNotificationsRead(db, authed.user.id);
   const unreadCount = await getUserUnreadNotificationCount(db, authed.user.id);
-  return Response.json({ ok: true, unreadCount });
+  return Response.json(
+    { ok: true, unreadCount },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }, { name: "POST /api/user/notifications" });
 
 

@@ -3,6 +3,9 @@ import {
   type UserNotificationLevel,
   type UserNotificationRow,
 } from "./userNotificationsTable";
+import { ensureUsersTable } from "./usersTable";
+import type { AppLanguage } from "./appLanguage";
+import { normalizeAppLanguage } from "./appLanguage";
 
 function clampInt(value: string | null, def: number, min: number, max: number): number {
   const n = Number.parseInt(String(value ?? ""), 10);
@@ -62,6 +65,55 @@ export async function createUserNotification(options: {
     .run();
 }
 
+export async function createBroadcastUserNotification(options: {
+  db: D1Database;
+  type: string;
+  level?: UserNotificationLevel;
+  titleZh: string;
+  bodyZh: string;
+  titleEn: string;
+  bodyEn: string;
+  linkUrl?: string | null;
+  meta?: unknown;
+}) {
+  const { db } = options;
+  await ensureUsersTable(db);
+  await ensureUserNotificationsTable(db);
+
+  const metaJson =
+    options.meta == null
+      ? null
+      : (() => {
+          try {
+            return JSON.stringify(options.meta);
+          } catch {
+            return JSON.stringify({ meta: "unserializable" });
+          }
+        })();
+
+  // One row per user. Use a single SQL statement for efficiency.
+  await db
+    .prepare(
+      `INSERT INTO user_notifications
+       (user_id, type, level, title, body, title_zh, body_zh, title_en, body_en, link_url, meta_json, is_read)
+       SELECT id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0 FROM users`
+    )
+    .bind(
+      options.type,
+      options.level ?? "info",
+      // Keep legacy title/body populated (use zh as default)
+      options.titleZh,
+      options.bodyZh,
+      options.titleZh,
+      options.bodyZh,
+      options.titleEn,
+      options.bodyEn,
+      options.linkUrl ?? null,
+      metaJson
+    )
+    .run();
+}
+
 export async function getUserUnreadNotificationCount(db: D1Database, userId: number) {
   await ensureUserNotificationsTable(db);
   const { results } = await db
@@ -79,12 +131,14 @@ export async function listUserNotifications(options: {
   page: number;
   pageSize: number;
   unreadOnly?: boolean;
+  lang?: AppLanguage;
 }) {
   const { db, userId, page, pageSize } = options;
   await ensureUserNotificationsTable(db);
 
   const offset = (page - 1) * pageSize;
   const where = options.unreadOnly ? "AND is_read = 0" : "";
+  const lang = normalizeAppLanguage(options.lang);
 
   const countRes = await db
     .prepare(
@@ -98,7 +152,7 @@ export async function listUserNotifications(options: {
 
   const { results } = await db
     .prepare(
-      `SELECT id, user_id, type, level, title, body, link_url, meta_json, is_read, created_at, read_at
+      `SELECT id, user_id, type, level, title, body, title_zh, body_zh, title_en, body_en, link_url, meta_json, is_read, created_at, read_at
        FROM user_notifications
        WHERE user_id = ? ${where}
        ORDER BY created_at DESC, id DESC
@@ -111,8 +165,8 @@ export async function listUserNotifications(options: {
     id: r.id,
     type: r.type,
     level: r.level,
-    title: r.title,
-    body: r.body,
+    title: lang === "en-US" ? (r.title_en ?? r.title) : (r.title_zh ?? r.title),
+    body: lang === "en-US" ? (r.body_en ?? r.body) : (r.body_zh ?? r.body),
     linkUrl: r.link_url,
     isRead: !!r.is_read,
     createdAt: r.created_at,

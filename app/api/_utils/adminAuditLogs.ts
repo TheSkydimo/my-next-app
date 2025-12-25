@@ -20,7 +20,7 @@ export async function writeAdminAuditLog(options: {
   request: Request;
   actor: AdminAuditActor;
   action: string;
-  targetType: "script_share";
+  targetType: "script_share" | "user_notification";
   targetId: string;
   targetOwnerUserId?: number | null;
   reason?: string | null;

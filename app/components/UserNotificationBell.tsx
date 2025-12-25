@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AppLanguage } from "../client-prefs";
+import { getInitialLanguage } from "../client-prefs";
+import { getUserMessages } from "../user-i18n";
 
 type NotificationItem = {
   id: number;
@@ -27,6 +30,8 @@ export default function UserNotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
+  const messages = useMemo(() => getUserMessages(language), [language]);
 
   const badgeText = useMemo(() => {
     if (unreadCount <= 0) return "";
@@ -38,7 +43,12 @@ export default function UserNotificationBell() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/user/notifications?page=1&pageSize=20", {
+      const params = new URLSearchParams({
+        page: "1",
+        pageSize: "20",
+        lang: language,
+      });
+      const res = await fetch(`/api/user/notifications?${params.toString()}`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -49,11 +59,11 @@ export default function UserNotificationBell() {
       setItems(data.items ?? []);
       setUnreadCount(Number(data.unreadCount ?? 0));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      setError(e instanceof Error ? e.message : messages.notifications.loadFailed);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [language, messages.notifications.loadFailed]);
 
   const markRead = async (id: number) => {
     try {
@@ -81,11 +91,21 @@ export default function UserNotificationBell() {
       setItems((prev) => prev.map((x) => ({ ...x, isRead: true })));
       setUnreadCount(0);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
+      setError(e instanceof Error ? e.message : messages.common.unknownError);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ language: AppLanguage }>;
+      if (custom.detail?.language) setLanguage(custom.detail.language);
+    };
+    window.addEventListener("app-language-changed", handler as EventListener);
+    return () => window.removeEventListener("app-language-changed", handler as EventListener);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -116,8 +136,8 @@ export default function UserNotificationBell() {
       <button
         type="button"
         className="user-topbar__icon-btn user-notif__btn"
-        aria-label="通知"
-        title="通知"
+        aria-label={messages.notifications.ariaLabel}
+        title={messages.notifications.ariaLabel}
         onClick={() => setOpen((v) => !v)}
       >
         <span className="user-notif__icon">🔔</span>
@@ -125,12 +145,16 @@ export default function UserNotificationBell() {
       </button>
 
       {open && (
-        <div className="user-notif__panel" role="dialog" aria-label="通知面板">
+        <div
+          className="user-notif__panel"
+          role="dialog"
+          aria-label={messages.notifications.panelAriaLabel}
+        >
           <div className="user-notif__header">
-            <div className="user-notif__title">通知</div>
+            <div className="user-notif__title">{messages.notifications.title}</div>
             <div className="user-notif__header-actions">
               <button type="button" className="user-notif__link" onClick={() => void fetchList()}>
-                刷新
+                {messages.notifications.refresh}
               </button>
               <button
                 type="button"
@@ -138,7 +162,7 @@ export default function UserNotificationBell() {
                 disabled={loading || unreadCount <= 0}
                 onClick={() => void markAllRead()}
               >
-                全部已读
+                {messages.notifications.markAllRead}
               </button>
             </div>
           </div>
@@ -146,9 +170,9 @@ export default function UserNotificationBell() {
           {error && <div className="user-notif__error">{error}</div>}
 
           {loading ? (
-            <div className="user-notif__empty">加载中...</div>
+            <div className="user-notif__empty">{messages.notifications.loadingText}</div>
           ) : items.length === 0 ? (
-            <div className="user-notif__empty">暂无通知</div>
+            <div className="user-notif__empty">{messages.notifications.emptyText}</div>
           ) : (
             <div className="user-notif__list">
               {items.map((it) => (
