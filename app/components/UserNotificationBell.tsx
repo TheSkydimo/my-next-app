@@ -1,9 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { 
+  Badge, 
+  Button, 
+  Popover, 
+  List, 
+  Typography, 
+  Spin, 
+  Empty, 
+  Space, 
+  Tag, 
+  theme 
+} from "antd";
+import { 
+  BellOutlined, 
+  CheckOutlined, 
+  ReloadOutlined 
+} from "@ant-design/icons";
 import type { AppLanguage } from "../client-prefs";
 import { getInitialLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
+
+const { Text } = Typography;
+const { useToken } = theme;
 
 type NotificationItem = {
   id: number;
@@ -28,16 +48,12 @@ export default function UserNotificationBell() {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
+  
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const messages = useMemo(() => getUserMessages(language), [language]);
-
-  const badgeText = useMemo(() => {
-    if (unreadCount <= 0) return "";
-    if (unreadCount > 99) return "99+";
-    return String(unreadCount);
-  }, [unreadCount]);
+  const { token } = useToken();
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -109,98 +125,120 @@ export default function UserNotificationBell() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // 初次加载未读数/列表（轻量：直接拉一次 list）
     void fetchList();
   }, [fetchList]);
 
+  // 当面板打开时，重新拉取一次
   useEffect(() => {
-    if (!open) return;
-    void fetchList();
+    if (open) {
+      void fetchList();
+    }
   }, [open, fetchList]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      const el = panelRef.current;
-      if (!el) return;
-      const target = e.target as Node | null;
-      if (target && el.contains(target)) return;
-      setOpen(false);
-    };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [open]);
+  const getLevelColor = (level: string) => {
+    switch (level) {
+      case 'critical': return 'error';
+      case 'warn': return 'warning';
+      case 'info': return 'processing';
+      default: return 'default';
+    }
+  };
 
-  return (
-    <div className="user-notif" ref={panelRef}>
-      <button
-        type="button"
-        className="user-topbar__icon-btn user-notif__btn"
-        aria-label={messages.notifications.ariaLabel}
-        title={messages.notifications.ariaLabel}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="user-notif__icon">🔔</span>
-        {badgeText && <span className="user-notif__badge">{badgeText}</span>}
-      </button>
+  const content = (
+    <div style={{ width: 360, maxHeight: 500, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        padding: '8px 16px',
+        borderBottom: `1px solid ${token.colorBorderSecondary}`
+      }}>
+        <Text strong>{messages.notifications.title}</Text>
+        <Space>
+          <Button 
+            type="text" 
+            size="small" 
+            icon={<ReloadOutlined />} 
+            onClick={() => void fetchList()}
+            title={messages.notifications.refresh}
+          />
+          <Button 
+            type="text" 
+            size="small" 
+            icon={<CheckOutlined />} 
+            disabled={unreadCount <= 0}
+            onClick={() => void markAllRead()}
+            title={messages.notifications.markAllRead}
+          >
+             {messages.notifications.markAllRead}
+          </Button>
+        </Space>
+      </div>
 
-      {open && (
-        <div
-          className="user-notif__panel"
-          role="dialog"
-          aria-label={messages.notifications.panelAriaLabel}
-        >
-          <div className="user-notif__header">
-            <div className="user-notif__title">{messages.notifications.title}</div>
-            <div className="user-notif__header-actions">
-              <button type="button" className="user-notif__link" onClick={() => void fetchList()}>
-                {messages.notifications.refresh}
-              </button>
-              <button
-                type="button"
-                className="user-notif__link"
-                disabled={loading || unreadCount <= 0}
-                onClick={() => void markAllRead()}
-              >
-                {messages.notifications.markAllRead}
-              </button>
-            </div>
+      <div style={{ flex: 1, overflowY: 'auto', maxHeight: 400 }}>
+        {loading && items.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center' }}>
+            <Spin />
           </div>
-
-          {error && <div className="user-notif__error">{error}</div>}
-
-          {loading ? (
-            <div className="user-notif__empty">{messages.notifications.loadingText}</div>
-          ) : items.length === 0 ? (
-            <div className="user-notif__empty">{messages.notifications.emptyText}</div>
-          ) : (
-            <div className="user-notif__list">
-              {items.map((it) => (
-                <button
-                  key={it.id}
-                  type="button"
-                  className={`user-notif__item ${it.isRead ? "user-notif__item--read" : ""} user-notif__item--${it.level}`}
-                  onClick={() => {
-                    if (!it.isRead) void markRead(it.id);
-                    if (it.linkUrl) window.location.href = it.linkUrl;
-                  }}
-                >
-                  <div className="user-notif__item-top">
-                    <div className="user-notif__item-title">
-                      {!it.isRead && <span className="user-notif__dot" aria-hidden="true" />}
-                      {it.title}
-                    </div>
-                    <div className="user-notif__item-time">{formatTime(it.createdAt)}</div>
+        ) : items.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={messages.notifications.emptyText} />
+        ) : (
+          <List
+            dataSource={items}
+            renderItem={(item) => (
+              <List.Item 
+                style={{ 
+                  padding: '12px 16px',
+                  cursor: 'pointer',
+                  backgroundColor: item.isRead ? 'transparent' : token.colorBgLayout,
+                  transition: 'background 0.3s',
+                }}
+                className="hover:bg-black/5 dark:hover:bg-white/5"
+                onClick={() => {
+                  if (!item.isRead) void markRead(item.id);
+                  if (item.linkUrl) window.location.href = item.linkUrl;
+                }}
+              >
+                <div style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text strong={!item.isRead}>
+                      {!item.isRead && <Badge status="processing" style={{ marginRight: 8 }} />}
+                      {item.title}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(item.createdAt)}</Text>
                   </div>
-                  <div className="user-notif__item-body">{it.body}</div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                  <div style={{ marginBottom: 4 }}>
+                    <Text type="secondary" ellipsis={{ tooltip: item.body }}>{item.body}</Text>
+                  </div>
+                  {item.level !== 'info' && (
+                    <Tag color={getLevelColor(item.level)} bordered={false} style={{ fontSize: 10, lineHeight: '18px' }}>
+                      {item.level.toUpperCase()}
+                    </Tag>
+                  )}
+                </div>
+              </List.Item>
+            )}
+          />
+        )}
+      </div>
     </div>
   );
+
+  return (
+    <Popover
+      content={content}
+      trigger="click"
+      open={open}
+      onOpenChange={setOpen}
+      placement="bottomRight"
+      overlayInnerStyle={{ padding: 0 }}
+      arrow={false}
+    >
+      <Button type="text" style={{ width: 40, height: 40 }}>
+        <Badge count={unreadCount} overflowCount={99} size="small">
+          <BellOutlined style={{ fontSize: 18 }} />
+        </Badge>
+      </Button>
+    </Popover>
+  );
 }
-
-

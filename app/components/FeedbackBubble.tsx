@@ -1,8 +1,23 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { AppLanguage, AppTheme } from "../client-prefs";
-import { getInitialLanguage, getInitialTheme } from "../client-prefs";
+import { 
+  FloatButton, 
+  Popover, 
+  Input, 
+  Button, 
+  Typography 
+} from "antd";
+import { 
+  MessageOutlined, 
+  CloseOutlined, 
+  SendOutlined 
+} from "@ant-design/icons";
+import type { AppLanguage } from "../client-prefs";
+import { getInitialLanguage } from "../client-prefs";
+
+const { TextArea } = Input;
+const { Text } = Typography;
 
 type FeedbackBubbleMessages = {
   title: string;
@@ -43,17 +58,11 @@ export default function FeedbackBubble() {
   const [content, setContent] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sending, setSending] = useState(false);
-  const [status, setStatus] = useState<
-    "idle" | "success" | "warning" | "error"
-  >("idle");
-  const [errorMsg, setErrorMsg] = useState("");
+  
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
-  const [theme, setTheme] = useState<AppTheme>(() => getInitialTheme());
-  const panelRef = useRef<HTMLDivElement>(null);
-  const isSendingRef = useRef(false); // 防止重复发送
+  const isSendingRef = useRef(false);
 
   const msg = messages[language];
-  const isLight = theme === "light";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -70,49 +79,18 @@ export default function FeedbackBubble() {
       }
     };
 
-    // 监听主题切换事件
-    const themeHandler = (e: Event) => {
-      const custom = e as CustomEvent<{ theme: AppTheme }>;
-      if (custom.detail?.theme) {
-        setTheme(custom.detail.theme);
-      }
-    };
-
     window.addEventListener("app-language-changed", langHandler);
-    window.addEventListener("app-theme-changed", themeHandler);
-
     return () => {
       window.removeEventListener("app-language-changed", langHandler);
-      window.removeEventListener("app-theme-changed", themeHandler);
     };
   }, []);
 
-  // 点击外部关闭面板
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
-
   const handleSend = async () => {
-    // 防止重复发送
     if (!content.trim() || isSendingRef.current) return;
 
     isSendingRef.current = true;
     setSending(true);
-    setStatus("idle");
-    setErrorMsg("");
 
-    // 直接从 localStorage 读取用户邮箱，确保能获取到
     const userEmail = typeof window !== "undefined" 
       ? window.localStorage.getItem("loggedInUserEmail") 
       : null;
@@ -128,15 +106,11 @@ export default function FeedbackBubble() {
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || msg.errorMessage);
+        throw new Error(await res.text() || msg.errorMessage);
       }
 
       type FeedbackQuickResponse = {
         ok: boolean;
-        stored?: boolean;
-        userEmailSent?: boolean;
-        adminEmailSent?: boolean;
         emailError?: string;
       };
 
@@ -147,222 +121,76 @@ export default function FeedbackBubble() {
         // ignore
       }
 
-      if (data?.emailError) {
-        setStatus("warning");
-        setErrorMsg(String(data.emailError || msg.warningMessage));
-      } else {
-        setStatus("success");
-      }
+      // 这里可以使用 Ant Design 的 message 或 notification 组件提示，但为了简单保持在 Popover 内或使用 alert
+      // 由于这是客户端组件，最好使用 App 包裹后的 message，或者简单的状态切换
+      // 为了用户体验，我们清空并关闭
       setContent("");
+      setIsOpen(false);
+      
+      if (data?.emailError) {
+        console.warn(data.emailError);
+      }
 
-      // 3秒后自动关闭成功提示
-      setTimeout(() => {
-        setStatus("idle");
-        setIsOpen(false);
-      }, 3000);
     } catch (err) {
-      setStatus("error");
-      setErrorMsg(err instanceof Error ? err.message : msg.errorMessage);
+      console.error(err);
     } finally {
       isSendingRef.current = false;
       setSending(false);
     }
   };
 
-  const colors = {
-    bubbleBg: isLight
-      ? "linear-gradient(135deg, #3b82f6, #1d4ed8)"
-      : "linear-gradient(135deg, #3b82f6, #6366f1)",
-    panelBg: isLight ? "#ffffff" : "#0f172a",
-    panelBorder: isLight ? "#e5e7eb" : "#334155",
-    text: isLight ? "#111827" : "#e5e7eb",
-    textMuted: isLight ? "#6b7280" : "#94a3b8",
-    inputBg: isLight ? "#f9fafb" : "#1e293b",
-    inputBorder: isLight ? "#d1d5db" : "#475569",
-    btnBg: isLight
-      ? "linear-gradient(135deg, #3b82f6, #1d4ed8)"
-      : "linear-gradient(135deg, #3b82f6, #6366f1)",
-    successBg: isLight
-      ? "linear-gradient(135deg, #10b981, #059669)"
-      : "linear-gradient(135deg, #10b981, #059669)",
-    warningBg: isLight
-      ? "linear-gradient(135deg, #f59e0b, #d97706)"
-      : "linear-gradient(135deg, #f59e0b, #d97706)",
-    errorBg: isLight
-      ? "linear-gradient(135deg, #ef4444, #dc2626)"
-      : "linear-gradient(135deg, #ef4444, #dc2626)",
-  };
-
-  // 未登录用户不显示反馈气泡
   if (!isLoggedIn) {
     return null;
   }
 
-  return (
-    <>
-      {/* 气泡按钮 */}
-      <button
-        type="button"
-        className="feedback-bubble__trigger"
-        onClick={() => {
-          setIsOpen(!isOpen);
-          setStatus("idle");
-        }}
-        style={{
-          background: colors.bubbleBg,
-        }}
-        aria-label={msg.title}
-      >
-        {isOpen ? (
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        ) : (
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        )}
-      </button>
-
-      {/* 反馈面板 */}
-      {isOpen && (
-        <div
-          ref={panelRef}
-          className="feedback-bubble__panel"
-          style={{
-            background: colors.panelBg,
-            borderColor: colors.panelBorder,
-            color: colors.text,
-          }}
+  const popoverContent = (
+    <div style={{ width: 300 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' }}>
+        <Text strong>{msg.title}</Text>
+        <Button 
+          type="text" 
+          size="small" 
+          icon={<CloseOutlined />} 
+          onClick={() => setIsOpen(false)} 
+        />
+      </div>
+      <TextArea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={msg.placeholder}
+        rows={4}
+        style={{ marginBottom: 12, resize: 'none' }}
+        disabled={sending}
+      />
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button 
+          type="primary" 
+          icon={<SendOutlined />} 
+          loading={sending}
+          onClick={handleSend}
+          disabled={!content.trim()}
         >
-          {status === "success" || status === "warning" ? (
-            <div className="feedback-bubble__success">
-              <div
-                className="feedback-bubble__success-icon"
-                style={{
-                  background:
-                    status === "warning" ? colors.warningBg : colors.successBg,
-                }}
-              >
-                <svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
-              <h4 className="feedback-bubble__success-title">
-                {msg.successTitle}
-              </h4>
-              <p
-                className="feedback-bubble__success-message"
-                style={{ color: colors.textMuted }}
-              >
-                {msg.successMessage}
-              </p>
-              {status === "warning" && (
-                <p
-                  className="feedback-bubble__success-message"
-                  style={{ color: colors.textMuted, marginTop: 8 }}
-                >
-                  {errorMsg || msg.warningMessage}
-                </p>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="feedback-bubble__header">
-                <h3 className="feedback-bubble__title">{msg.title}</h3>
-                <button
-                  type="button"
-                  className="feedback-bubble__close"
-                  onClick={() => setIsOpen(false)}
-                  style={{ color: colors.textMuted }}
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
+          {sending ? msg.sending : msg.send}
+        </Button>
+      </div>
+    </div>
+  );
 
-              <div className="feedback-bubble__body">
-                <textarea
-                  className="feedback-bubble__textarea"
-                  placeholder={msg.placeholder}
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  style={{
-                    background: colors.inputBg,
-                    borderColor: colors.inputBorder,
-                    color: colors.text,
-                  }}
-                  rows={4}
-                />
-
-                {status === "error" && (
-                  <div
-                    className="feedback-bubble__error"
-                    style={{ color: "#ef4444" }}
-                  >
-                    {errorMsg}
-                  </div>
-                )}
-              </div>
-
-              <div className="feedback-bubble__footer">
-                <button
-                  type="button"
-                  className="feedback-bubble__send"
-                  onClick={handleSend}
-                  disabled={sending || !content.trim()}
-                  style={{
-                    background: colors.btnBg,
-                    opacity: sending || !content.trim() ? 0.6 : 1,
-                  }}
-                >
-                  {sending ? msg.sending : msg.send}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </>
+  return (
+    <Popover
+      content={popoverContent}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      trigger="click"
+      placement="topRight"
+    >
+      <FloatButton
+        type="primary"
+        icon={<MessageOutlined />}
+        style={{ right: 24, bottom: 24 }}
+        tooltip={msg.title}
+        onClick={() => setIsOpen(!isOpen)}
+      />
+    </Popover>
   );
 }
-
