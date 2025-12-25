@@ -1,12 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import type { AppLanguage } from "../../client-prefs";
-import { getInitialLanguage } from "../../client-prefs";
+import { useEffect, useMemo, useState } from "react";
+import type { ColumnsType } from "antd/es/table";
+import type { AppLanguage, AppTheme } from "../../client-prefs";
+import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
-import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
+import {
+  Alert,
+  Button,
+  Card,
+  ConfigProvider,
+  Input,
+  Popconfirm,
+  Result,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  notification,
+  theme as antdTheme,
+} from "antd";
+import { UserVipEditorModal } from "./_components/UserVipEditorModal";
 
 type UserItem = {
   id: number;
@@ -25,444 +41,402 @@ type Pagination = {
   totalPages: number;
 };
 
+function formatDateTime(input: string) {
+  const t = new Date(input);
+  if (Number.isNaN(t.getTime())) return input;
+  return t.toLocaleString();
+}
+
+function safeErrorFromResponse(res: Response, text: string, fallback: string) {
+  if (res.status >= 500) return fallback;
+  const msg = (text || fallback).slice(0, 300);
+  return msg || fallback;
+}
+
 export default function AdminUsersPage() {
-  // 使用 AdminContext 获取预加载的管理员信息
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
   const isSuperAdmin = adminContext.profile?.isSuperAdmin ?? false;
 
-  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
+  const [appTheme, setAppTheme] = useState<AppTheme>(() => getInitialTheme());
+  const messages = getAdminMessages(language);
+
   const [users, setUsers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useAutoDismissMessage(2000);
-  const [keyword, setKeyword] = useState("");
   const [pagination, setPagination] = useState<Pagination | null>(null);
-  const [page, setPage] = useState(1);
+  const [keyword, setKeyword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  const [vipModalOpen, setVipModalOpen] = useState(false);
+  const [vipTarget, setVipTarget] = useState<UserItem | null>(null);
+
+  const [api, contextHolder] = notification.useNotification({
+    placement: "topRight",
+    showProgress: true,
+    pauseOnHover: true,
+    maxCount: 3,
+  });
+
+  const themeConfig = useMemo(() => {
+    return {
+      algorithm: appTheme === "dark" ? antdTheme.darkAlgorithm : undefined,
+    };
+  }, [appTheme]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const initialLang = getInitialLanguage();
-    setLanguage(initialLang);
-
     const handler = (event: Event) => {
       const custom = event as CustomEvent<{ language: AppLanguage }>;
-      if (custom.detail?.language) {
-        setLanguage(custom.detail.language);
-      }
+      if (custom.detail?.language) setLanguage(custom.detail.language);
     };
-
     window.addEventListener("app-language-changed", handler as EventListener);
-    return () => {
-      window.removeEventListener(
-        "app-language-changed",
-        handler as EventListener
-      );
-    };
+    return () =>
+      window.removeEventListener("app-language-changed", handler as EventListener);
   }, []);
 
-  const messages = getAdminMessages(language);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ theme: AppTheme }>;
+      if (custom.detail?.theme) setAppTheme(custom.detail.theme);
+    };
+    window.addEventListener("app-theme-changed", handler as EventListener);
+    return () =>
+      window.removeEventListener("app-theme-changed", handler as EventListener);
+  }, []);
 
-  const fetchUsers = useCallback(
-    async (opts?: { q?: string; page?: number }) => {
-      if (!adminEmail) return;
-      const { q, page: pageArg } = opts ?? {};
-      const pageToUse = pageArg ?? page;
-      setLoading(true);
-      setError("");
-      try {
-        const params = new URLSearchParams({
-          role: "user",
-          page: String(pageToUse),
-          pageSize: "15",
-        });
-        if (q) {
-          params.set("q", q);
-        }
-        const res = await fetch(`/api/admin/users?${params.toString()}`);
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || messages.users.fetchFailed);
-        }
-        const data = (await res.json()) as {
-          users: UserItem[];
-          pagination: Pagination;
-        };
-        setUsers(data.users);
-        setPagination(data.pagination);
-        setPage(data.pagination.page);
-      } catch (e) {
-        setError(
-          e instanceof Error ? e.message : messages.users.fetchFailed
-        );
-      } finally {
-        setLoading(false);
+  const fetchUsers = async (opts?: { q?: string; page?: number; pageSize?: number }) => {
+    if (!adminEmail) return;
+    const q = (opts?.q ?? keyword).trim();
+    const page = opts?.page ?? pagination?.page ?? 1;
+    const pageSize = opts?.pageSize ?? pagination?.pageSize ?? 15;
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({
+        role: "user",
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      if (q) params.set("q", q);
+      const res = await fetch(`/api/admin/users?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(safeErrorFromResponse(res, text, messages.common.unknownError));
       }
-    },
-    [adminEmail, page, messages.users.fetchFailed, setError]
-  );
+      const data = (await res.json()) as { users: UserItem[]; pagination: Pagination };
+      setUsers(data.users ?? []);
+      setPagination(data.pagination);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : messages.common.unknownError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (adminEmail) {
-      fetchUsers();
-    }
-  }, [adminEmail, fetchUsers]);
+    if (adminEmail) void fetchUsers({ q: "", page: 1, pageSize: 15 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminEmail]);
 
-  const doAction = async (action: "remove" | "set-admin", user: UserItem) => {
+  const doAdminAction = async (body: {
+    action: "remove" | "set-admin" | "unset-admin" | "set-vip";
+    userEmail: string;
+    vipExpiresAt?: string | null;
+  }) => {
     if (!adminEmail) return;
+    setActionLoading(true);
     setError("");
-
-    if (action === "remove") {
-      const ok = window.confirm(
-        messages.users.deleteConfirm(user.username)
-      );
-      if (!ok) return;
-    }
-
     try {
       const res = await fetch("/api/admin/users", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          userEmail: user.email,
-        }),
+        body: JSON.stringify(body),
       });
-
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || messages.users.actionFailed);
+        const text = await res.text().catch(() => "");
+        throw new Error(safeErrorFromResponse(res, text, messages.common.unknownError));
       }
-
-      await fetchUsers({ q: keyword });
+      api.success({
+        title: language === "zh-CN" ? "操作成功" : "Success",
+        description: language === "zh-CN" ? "已完成管理操作" : "Admin action completed",
+        duration: 3,
+      });
+      await fetchUsers();
+      setVipModalOpen(false);
+      setVipTarget(null);
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : messages.users.actionFailed
-      );
+      const msg = e instanceof Error ? e.message : messages.common.unknownError;
+      api.error({
+        title: messages.common.unknownError,
+        description: msg,
+        duration: 4.5,
+      });
+      setError(msg);
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const setVipForUser = async (user: UserItem) => {
-    if (!adminEmail) return;
-    setError("");
-
-    const currentDateText = user.vipExpiresAt
-      ? user.vipExpiresAt.slice(0, 10)
-      : "";
-    const input = window.prompt(
-      messages.users.setVipPrompt(currentDateText),
-      currentDateText
-    );
-    if (input === null) return;
-
-    const trimmed = input.trim();
-    let vipExpiresAt: string | null = null;
-    if (trimmed) {
-      // 简单拼一个 UTC 的结束时间，后端会做格式校验
-      vipExpiresAt = `${trimmed}T23:59:59.999Z`;
-    }
-
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "set-vip",
-          userEmail: user.email,
-          vipExpiresAt,
-        }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || messages.users.setVipFailed);
-      }
-
-      await fetchUsers({ q: keyword });
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : messages.users.setVipFailed
-      );
-    }
-  };
+  const columns: ColumnsType<UserItem> = useMemo(() => {
+    return [
+      {
+        title: language === "zh-CN" ? "序号" : "#",
+        dataIndex: "id",
+        key: "index",
+        width: 72,
+        align: "center",
+        render: (_: unknown, __: UserItem, index: number) => {
+          const base = pagination ? (pagination.page - 1) * pagination.pageSize : 0;
+          return base + index + 1;
+        },
+      },
+      {
+        title: language === "zh-CN" ? "用户名" : "Username",
+        dataIndex: "username",
+        key: "username",
+        width: 160,
+        render: (v: string) => v || "-",
+      },
+      {
+        title: language === "zh-CN" ? "邮箱" : "Email",
+        dataIndex: "email",
+        key: "email",
+        render: (email: string) => (
+          <Link href={`/admin/users/${encodeURIComponent(email)}`}>
+            <Typography.Link>{email}</Typography.Link>
+          </Link>
+        ),
+      },
+      {
+        title: language === "zh-CN" ? "角色" : "Role",
+        dataIndex: "isAdmin",
+        key: "role",
+        width: 120,
+        align: "center",
+        render: (isAdmin: boolean) =>
+          isAdmin ? (
+            <Tag color="blue">{language === "zh-CN" ? "管理员" : "Admin"}</Tag>
+          ) : (
+            <Tag>{language === "zh-CN" ? "用户" : "User"}</Tag>
+          ),
+      },
+      {
+        title: language === "zh-CN" ? "会员" : "VIP",
+        dataIndex: "isVip",
+        key: "vip",
+        width: 120,
+        align: "center",
+        render: (isVip: boolean) =>
+          isVip ? (
+            <Tag color="green">{language === "zh-CN" ? "会员" : "VIP"}</Tag>
+          ) : (
+            <Tag>{language === "zh-CN" ? "非会员" : "Non‑VIP"}</Tag>
+          ),
+      },
+      {
+        title: language === "zh-CN" ? "到期时间" : "Expires",
+        dataIndex: "vipExpiresAt",
+        key: "vipExpiresAt",
+        width: 180,
+        render: (v: string | null) => (
+          <Typography.Text type="secondary">{v ? formatDateTime(v) : "-"}</Typography.Text>
+        ),
+      },
+      {
+        title: language === "zh-CN" ? "注册时间" : "Created",
+        dataIndex: "createdAt",
+        key: "createdAt",
+        width: 180,
+        render: (v: string) => (
+          <Typography.Text type="secondary">{formatDateTime(v)}</Typography.Text>
+        ),
+      },
+      {
+        title: language === "zh-CN" ? "操作" : "Actions",
+        key: "actions",
+        width: 360,
+        render: (_: unknown, row: UserItem) => {
+          const canSetAdmin = isSuperAdmin && !row.isAdmin;
+          const canDelete = row.email !== adminEmail && !row.isVip;
+          return (
+            <Space wrap size={8}>
+              <Button
+                type="primary"
+                size="small"
+                onClick={() => {
+                  setVipTarget(row);
+                  setVipModalOpen(true);
+                }}
+                disabled={actionLoading}
+              >
+                {language === "zh-CN" ? "设置会员" : "Set VIP"}
+              </Button>
+              <Button
+                size="small"
+                onClick={() =>
+                  void doAdminAction({
+                    action: "set-vip",
+                    userEmail: row.email,
+                    vipExpiresAt: null,
+                  })
+                }
+                disabled={actionLoading}
+              >
+                {language === "zh-CN" ? "取消会员" : "Cancel VIP"}
+              </Button>
+              {canSetAdmin ? (
+                <Popconfirm
+                  title={language === "zh-CN" ? "确认设为管理员？" : "Make this user admin?"}
+                  onConfirm={() =>
+                    void doAdminAction({ action: "set-admin", userEmail: row.email })
+                  }
+                  okText={language === "zh-CN" ? "确认" : "OK"}
+                  cancelText={language === "zh-CN" ? "取消" : "Cancel"}
+                >
+                  <Button size="small" disabled={actionLoading}>
+                    {language === "zh-CN" ? "设为管理员" : "Make admin"}
+                  </Button>
+                </Popconfirm>
+              ) : null}
+              <Popconfirm
+                title={language === "zh-CN" ? "确认删除该用户？" : "Delete this user?"}
+                description={
+                  language === "zh-CN"
+                    ? "该操作不可撤销。会员未到期用户无法删除。"
+                    : "This action cannot be undone. Active VIP users cannot be deleted."
+                }
+                onConfirm={() => void doAdminAction({ action: "remove", userEmail: row.email })}
+                okText={language === "zh-CN" ? "删除" : "Delete"}
+                cancelText={language === "zh-CN" ? "取消" : "Cancel"}
+                okButtonProps={{ danger: true }}
+                disabled={!canDelete}
+              >
+                <Button danger size="small" disabled={!canDelete} loading={actionLoading}>
+                  {language === "zh-CN" ? "删除" : "Delete"}
+                </Button>
+              </Popconfirm>
+            </Space>
+          );
+        },
+      },
+    ];
+  }, [actionLoading, adminEmail, doAdminAction, isSuperAdmin, language, pagination]);
 
   if (!adminEmail) {
     return (
-      <div className="vben-page">
-        <div className="vben-page__header">
-          <h1 className="vben-page__title">{messages.users.title}</h1>
+      <ConfigProvider theme={themeConfig}>
+        <div className="vben-page">
+          <Card style={{ maxWidth: 820 }}>
+            <Result status="403" title={messages.common.adminLoginRequired} />
+            <div style={{ marginTop: 12 }}>
+              <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
+            </div>
+          </Card>
         </div>
-        <p>{messages.common.adminLoginRequired}</p>
-        <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
-      </div>
+      </ConfigProvider>
     );
   }
 
   return (
-    <div className="vben-page">
-      <div className="vben-page__header">
-        <div className="vben-row vben-row--between vben-row--center">
-          <div>
-            <h1 className="vben-page__title">{messages.users.title}</h1>
-            <p className="vben-page__subtitle">
-              {messages.users.adminLabelPrefix}
-              {adminEmail}
-            </p>
-          </div>
-          <Link href="/admin" className="btn btn-secondary btn-sm">{messages.users.backToHome}</Link>
-        </div>
-      </div>
+    <ConfigProvider theme={themeConfig}>
+      {contextHolder}
+      <div className="vben-page">
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          <Space
+            align="start"
+            style={{ width: "100%", justifyContent: "space-between" }}
+            wrap
+          >
+            <div>
+              <Typography.Title level={4} style={{ margin: 0 }}>
+                {messages.users.title}
+              </Typography.Title>
+              <Typography.Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0 }}>
+                {messages.users.adminLabelPrefix}
+                {adminEmail}
+              </Typography.Paragraph>
+            </div>
+            <Button href="/admin">{messages.users.backToHome}</Button>
+          </Space>
 
-      <div
-        className="admin-users__search-row"
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <input
-          placeholder={messages.users.searchPlaceholder}
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          style={{ flex: 1 }}
-        />
-        <button
-          onClick={() => fetchUsers({ q: keyword, page: 1 })}
-          disabled={loading}
-        >
-          {messages.users.searchButton}
-        </button>
-        <button
-          onClick={() => {
-            setKeyword("");
-            fetchUsers({ q: "", page: 1 });
-          }}
-          disabled={loading}
-        >
-          {messages.users.resetButton}
-        </button>
-      </div>
+          <Card>
+            <Space wrap style={{ width: "100%", justifyContent: "space-between" }}>
+              <Input.Search
+                style={{ maxWidth: 520 }}
+                placeholder={messages.users.searchPlaceholder}
+                allowClear
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onSearch={(v) => void fetchUsers({ q: v, page: 1 })}
+                enterButton={messages.users.searchButton}
+                disabled={loading}
+              />
+              <Space wrap>
+                <Button
+                  onClick={() => {
+                    setKeyword("");
+                    void fetchUsers({ q: "", page: 1 });
+                  }}
+                  disabled={loading}
+                >
+                  {messages.users.resetButton}
+                </Button>
+                <Button onClick={() => void fetchUsers()} loading={loading}>
+                  {language === "zh-CN" ? "刷新" : "Refresh"}
+                </Button>
+              </Space>
+            </Space>
+          </Card>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+          {error ? <Alert type="error" showIcon message={error} /> : null}
 
-      {loading ? (
-        <p>{messages.common.loading}</p>
-      ) : users.length === 0 ? (
-        <p>{messages.users.emptyText}</p>
-      ) : (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: 14,
-          }}
-        >
-          <thead>
-            <tr>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                {messages.users.tableIndex}
-              </th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                {messages.users.tableUsername}
-              </th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                {messages.users.tableEmail}
-              </th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                {messages.users.tableRole}
-              </th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                {messages.users.tableVipStatus}
-              </th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                {messages.users.tableVipExpiresAt}
-              </th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                {messages.users.tableCreatedAt}
-              </th>
-              <th style={{ borderBottom: "1px solid #e5e7eb", padding: 8 }}>
-                {messages.users.tableActions}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u, index) => (
-              <tr key={u.id}>
-                <td
-                  style={{
-                    borderBottom: "1px solid #f3f4f6",
-                    padding: 8,
-                    textAlign: "center",
-                  }}
-                >
-                  {pagination
-                    ? (pagination.page - 1) * pagination.pageSize + index + 1
-                    : index + 1}
-                </td>
-                <td
-                  style={{
-                    borderBottom: "1px solid #f3f4f6",
-                    padding: 8,
-                  }}
-                >
-                  {u.username}
-                </td>
-                <td
-                  style={{
-                    borderBottom: "1px solid #f3f4f6",
-                    padding: 8,
-                  }}
-                >
-                  <Link
-                    href={`/admin/users/${encodeURIComponent(u.email)}`}
-                    style={{ color: "#2563eb", textDecoration: "underline" }}
-                    title={
-                      language === "zh-CN"
-                        ? "查看该用户详情与订单截图"
-                        : "View user details and order screenshots"
+          <Card style={{ width: "100%" }} bodyStyle={{ paddingTop: 12 }}>
+            <Table<UserItem>
+              rowKey="id"
+              dataSource={users}
+              columns={columns}
+              loading={loading}
+              pagination={
+                pagination
+                  ? {
+                      current: pagination.page,
+                      pageSize: pagination.pageSize,
+                      total: pagination.total,
+                      showSizeChanger: true,
+                      onChange: (p, ps) => void fetchUsers({ page: p, pageSize: ps }),
                     }
-                  >
-                    {u.email}
-                  </Link>
-                </td>
-                <td
-                  style={{
-                    borderBottom: "1px solid #f3f4f6",
-                    padding: 8,
-                    textAlign: "center",
-                  }}
-                >
-                  {u.isAdmin
-                    ? messages.users.roleAdmin
-                    : messages.users.roleUser}
-                </td>
-                <td
-                  style={{
-                    borderBottom: "1px solid #f3f4f6",
-                    padding: 8,
-                    textAlign: "center",
-                    color: u.isVip ? "#16a34a" : "#6b7280",
-                  }}
-                >
-                  {u.isVip ? messages.users.vipOn : messages.users.vipOff}
-                </td>
-                <td
-                  style={{
-                    borderBottom: "1px solid #f3f4f6",
-                    padding: 8,
-                    fontSize: 12,
-                    color: "#6b7280",
-                  }}
-                >
-                  {u.vipExpiresAt
-                    ? new Date(u.vipExpiresAt).toLocaleString()
-                    : "-"}
-                </td>
-                <td
-                  style={{
-                    borderBottom: "1px solid #f3f4f6",
-                    padding: 8,
-                    fontSize: 12,
-                    color: "#6b7280",
-                  }}
-                >
-                  {u.createdAt}
-                </td>
-                <td
-                  style={{
-                    borderBottom: "1px solid #f3f4f6",
-                    padding: 8,
-                    display: "flex",
-                    gap: 8,
-                    justifyContent: "center",
-                  }}
-                >
-                  <button
-                    onClick={() => setVipForUser(u)}
-                    style={{
-                      background: "#0ea5e9",
-                      borderColor: "#0ea5e9",
-                      color: "#fff",
-                      padding: "4px 8px",
-                    }}
-                  >
-                    {messages.users.btnSetVip}
-                  </button>
-                  {!u.isAdmin && isSuperAdmin && (
-                    <button
-                      onClick={() => doAction("set-admin", u)}
-                      style={{
-                        background: "#10b981",
-                        borderColor: "#10b981",
-                        color: "#fff",
-                        padding: "4px 8px",
-                      }}
-                    >
-                      {messages.users.btnSetAdmin}
-                    </button>
-                  )}
-                  {u.email !== adminEmail && !u.isVip && (
-                    <button
-                      onClick={() => doAction("remove", u)}
-                      style={{
-                        background: "#ef4444",
-                        borderColor: "#ef4444",
-                        color: "#fff",
-                        padding: "4px 8px",
-                      }}
-                    >
-                      {messages.users.btnDelete}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+                  : false
+              }
+            />
+          </Card>
+        </Space>
+      </div>
 
-      {pagination && pagination.totalPages > 1 && (
-        <div
-          style={{
-            marginTop: 16,
-            display: "flex",
-            justifyContent: "center",
-            gap: 12,
-            alignItems: "center",
-            fontSize: 14,
-          }}
-        >
-          <button
-            onClick={() =>
-              fetchUsers({ q: keyword, page: Math.max(page - 1, 1) })
-            }
-            disabled={page <= 1 || loading}
-          >
-            {messages.users.pagerPrev}
-          </button>
-          <span>
-            {messages.users.pagerText(
-              page,
-              pagination.totalPages,
-              pagination.total
-            )}
-          </span>
-          <button
-            onClick={() =>
-              fetchUsers({
-                q: keyword,
-                page: Math.min(page + 1, pagination.totalPages),
-              })
-            }
-            disabled={page >= pagination.totalPages || loading}
-          >
-            {messages.users.pagerNext}
-          </button>
-        </div>
-      )}
-    </div>
+      <UserVipEditorModal
+        open={vipModalOpen}
+        language={language}
+        currentVipExpiresAt={vipTarget?.vipExpiresAt ?? null}
+        loading={actionLoading}
+        onCancel={() => {
+          setVipModalOpen(false);
+          setVipTarget(null);
+        }}
+        onSubmit={async (vipExpiresAt) => {
+          if (!vipTarget) return;
+          await doAdminAction({
+            action: "set-vip",
+            userEmail: vipTarget.email,
+            vipExpiresAt,
+          });
+        }}
+      />
+    </ConfigProvider>
   );
 }
 

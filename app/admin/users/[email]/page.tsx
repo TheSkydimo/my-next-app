@@ -1,34 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { AppLanguage } from "../../../client-prefs";
-import { getInitialLanguage } from "../../../client-prefs";
+import { useEffect, useMemo, useState } from "react";
+import type { AppLanguage, AppTheme } from "../../../client-prefs";
+import { getInitialLanguage, getInitialTheme } from "../../../client-prefs";
 import { getAdminMessages } from "../../../admin-i18n";
 import { useAdmin } from "../../../contexts/AdminContext";
-import { useAutoDismissMessage } from "../../../hooks/useAutoDismissMessage";
-
-type UserDetail = {
-  username: string;
-  email: string;
-  avatarUrl: string | null;
-  isAdmin: boolean;
-  isVip: boolean;
-  vipExpiresAt: string | null;
-  createdAt: string;
-};
-
-type AdminOrderItem = {
-  id: number;
-  userEmail: string;
-  deviceId: string;
-  imageUrl: string;
-  note: string | null;
-  createdAt: string;
-  orderNo?: string | null;
-  orderCreatedTime?: string | null;
-  orderPaidTime?: string | null;
-};
+import {
+  Alert,
+  Button,
+  Card,
+  ConfigProvider,
+  Result,
+  Space,
+  Tabs,
+  Typography,
+  notification,
+  theme as antdTheme,
+  Popconfirm,
+} from "antd";
+import { UserOverviewCard, type UserDetail } from "./_components/UserOverviewCard";
+import { UserVipEditorModal } from "../_components/UserVipEditorModal";
+import { UserOrdersTable, type AdminOrderItem } from "./_components/UserOrdersTable";
 
 type SegmentParams = {
   [key: string]: string | string[] | undefined;
@@ -38,49 +31,70 @@ type AdminUserDetailPageProps = {
   params?: Promise<SegmentParams>;
 };
 
-export default function AdminUserDetailPage({
-  params,
-}: AdminUserDetailPageProps) {
-  // 使用 AdminContext 获取预加载的管理员信息
+function safeErrorFromResponse(
+  res: Response,
+  text: string,
+  fallback: string
+) {
+  if (res.status >= 500) return fallback;
+  const msg = (text || fallback).slice(0, 300);
+  return msg || fallback;
+}
+
+export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps) {
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
+  const isSuperAdmin = adminContext.profile?.isSuperAdmin ?? false;
 
-  const [language, setLanguage] = useState<AppLanguage>("zh-CN");
+  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
+  const [appTheme, setAppTheme] = useState<AppTheme>(() => getInitialTheme());
+  const messages = getAdminMessages(language);
+
+  const [userEmail, setUserEmail] = useState<string>("");
   const [user, setUser] = useState<UserDetail | null>(null);
   const [orders, setOrders] = useState<AdminOrderItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useAutoDismissMessage(2000);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string>("");
-  const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [vipModalOpen, setVipModalOpen] = useState(false);
 
-  const messages = getAdminMessages(language);
+  const [api, contextHolder] = notification.useNotification({
+    placement: "topRight",
+    showProgress: true,
+    pauseOnHover: true,
+    maxCount: 3,
+  });
+
+  const themeConfig = useMemo(() => {
+    return {
+      algorithm: appTheme === "dark" ? antdTheme.darkAlgorithm : undefined,
+    };
+  }, [appTheme]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const initialLang = getInitialLanguage();
-    setLanguage(initialLang);
-
     const handler = (event: Event) => {
       const custom = event as CustomEvent<{ language: AppLanguage }>;
-      if (custom.detail?.language) {
-        setLanguage(custom.detail.language);
-      }
+      if (custom.detail?.language) setLanguage(custom.detail.language);
     };
-
     window.addEventListener("app-language-changed", handler as EventListener);
-    return () => {
-      window.removeEventListener(
-        "app-language-changed",
-        handler as EventListener
-      );
+    return () =>
+      window.removeEventListener("app-language-changed", handler as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ theme: AppTheme }>;
+      if (custom.detail?.theme) setAppTheme(custom.detail.theme);
     };
+    window.addEventListener("app-theme-changed", handler as EventListener);
+    return () =>
+      window.removeEventListener("app-theme-changed", handler as EventListener);
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-
     const resolveParams = async () => {
       if (!params) return;
       const raw = await params;
@@ -88,472 +102,296 @@ export default function AdminUserDetailPage({
       const emailValue = Array.isArray(rawEmailValue)
         ? rawEmailValue[0] ?? ""
         : rawEmailValue ?? "";
-
-      if (!emailValue || cancelled) {
-        return;
-      }
-
+      if (!emailValue || cancelled) return;
       const decoded = decodeURIComponent(emailValue);
-      if (!cancelled) {
-        setUserEmail(decoded);
-      }
+      if (!cancelled) setUserEmail(decoded);
     };
-
     void resolveParams();
-
     return () => {
       cancelled = true;
     };
   }, [params]);
 
+  const load = async (opts?: { signal?: AbortSignal }) => {
+    if (!adminEmail || !userEmail) return;
+    setLoading(true);
+    setError("");
+    try {
+      const userRes = await fetch(
+        `/api/admin/users/${encodeURIComponent(userEmail)}`,
+        { signal: opts?.signal, credentials: "include" }
+      );
+      if (!userRes.ok) {
+        const text = await userRes.text().catch(() => "");
+        throw new Error(
+          safeErrorFromResponse(userRes, text, messages.common.unknownError)
+        );
+      }
+      const userData = (await userRes.json()) as { user: UserDetail };
+      setUser(userData.user);
+
+      const orderParams = new URLSearchParams({ userEmail });
+      const ordersRes = await fetch(`/api/admin/orders?${orderParams.toString()}`, {
+        signal: opts?.signal,
+        credentials: "include",
+      });
+      if (!ordersRes.ok) {
+        const text = await ordersRes.text().catch(() => "");
+        throw new Error(
+          safeErrorFromResponse(ordersRes, text, messages.common.unknownError)
+        );
+      }
+      const ordersData = (await ordersRes.json()) as { items: AdminOrderItem[] };
+      setOrders(ordersData.items ?? []);
+    } catch (e) {
+      if ((e as { name?: string } | null)?.name === "AbortError") return;
+      setError(e instanceof Error ? e.message : messages.common.unknownError);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!adminEmail || !userEmail) return;
-
     const controller = new AbortController();
-    let active = true;
+    void load({ signal: controller.signal });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminEmail, userEmail]);
 
-    const loadData = async () => {
-      setLoading(true);
-      setError("");
-      setUser(null);
-      setOrders([]);
-      try {
-        // 获取用户基础信息（精确查询，避免复用列表接口造成 LIMIT/模糊匹配问题）
-        const userRes = await fetch(
-          `/api/admin/users/${encodeURIComponent(userEmail)}`,
-          { signal: controller.signal }
-        );
-        if (!userRes.ok) {
-          const text = await userRes.text();
-          throw new Error(text || messages.users.fetchFailed);
-        }
-        const userData = (await userRes.json()) as { user: UserDetail };
-        if (!active) return;
-        setUser(userData.user);
-
-        // 获取该用户的订单截图（通过 /api/admin/orders 接口按邮箱过滤）
-        const orderParams = new URLSearchParams({
-          userEmail: userEmail,
-        });
-        const ordersRes = await fetch(
-          `/api/admin/orders?${orderParams.toString()}`,
-          { signal: controller.signal }
-        );
-        if (!ordersRes.ok) {
-          const text = await ordersRes.text();
-          throw new Error(text || messages.orders.fetchFailed);
-        }
-        const ordersData = (await ordersRes.json()) as {
-          items: AdminOrderItem[];
-        };
-        if (!active) return;
-        setOrders(ordersData.items);
-      } catch (e) {
-        // Ignore aborted requests to prevent stale errors.
-        if ((e as { name?: string } | null)?.name === "AbortError") return;
-        if (!active) return;
-        setError(e instanceof Error ? e.message : messages.common.unknownError);
-      } finally {
-        if (!active) return;
-        setLoading(false);
+  const doAdminAction = async (body: {
+    action: "remove" | "set-admin" | "unset-admin" | "set-vip";
+    userEmail: string;
+    vipExpiresAt?: string | null;
+  }) => {
+    if (!adminEmail) return;
+    setActionLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(safeErrorFromResponse(res, text, messages.common.unknownError));
       }
-    };
+      api.success({
+        title: language === "zh-CN" ? "操作成功" : "Success",
+        description: language === "zh-CN" ? "已完成管理操作" : "Admin action completed",
+        duration: 3,
+      });
+      await load();
+      setVipModalOpen(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : messages.common.unknownError;
+      api.error({
+        title: messages.common.unknownError,
+        description: msg,
+        duration: 4.5,
+      });
+      setError(msg);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-    void loadData();
+  const canDelete =
+    !!user &&
+    user.email !== adminEmail &&
+    !user.isVip;
 
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [
-    adminEmail,
-    language,
-    messages.common.unknownError,
-    messages.orders.fetchFailed,
-    messages.users.fetchFailed,
-    setError,
-    userEmail,
-  ]);
+  const canSetAdmin = !!user && !user.isAdmin && isSuperAdmin;
+  const canUnsetAdmin =
+    !!user && user.isAdmin && isSuperAdmin && user.email !== adminEmail;
+
+  const copyEmail = async () => {
+    if (!userEmail) return;
+    try {
+      await navigator.clipboard.writeText(userEmail);
+      api.success({
+        title: language === "zh-CN" ? "已复制" : "Copied",
+        description: userEmail,
+        duration: 2,
+      });
+    } catch {
+      api.warning({
+        title: language === "zh-CN" ? "复制失败" : "Copy failed",
+        description: language === "zh-CN" ? "请手动复制邮箱" : "Please copy manually",
+        duration: 3,
+      });
+    }
+  };
 
   if (!adminEmail) {
     return (
-      <div className="vben-page">
-        <div className="vben-page__header">
-          <h1 className="vben-page__title">{messages.users.title}</h1>
+      <ConfigProvider theme={themeConfig}>
+        <div className="vben-page">
+          <Card style={{ maxWidth: 820 }}>
+            <Result status="403" title={messages.common.adminLoginRequired} />
+            <div style={{ marginTop: 12 }}>
+              <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
+            </div>
+          </Card>
         </div>
-        <p>{messages.common.adminLoginRequired}</p>
-        <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
-      </div>
+      </ConfigProvider>
     );
   }
 
   return (
-    <div className="vben-page">
-      <div className="vben-page__header">
-        <div className="vben-row vben-row--between vben-row--center">
-          <div>
-            <h1 className="vben-page__title">
-              {language === "zh-CN" ? "用户详情" : "User Detail"} -{" "}
-              {user?.username || userEmail}
-            </h1>
-            <p className="vben-page__subtitle">{userEmail}</p>
-          </div>
-          <Link href="/admin/users" className="btn btn-secondary btn-sm">
-            {language === "zh-CN" ? "返回用户列表" : "Back to users"}
-          </Link>
-        </div>
+    <ConfigProvider theme={themeConfig}>
+      {contextHolder}
+      <div className="vben-page">
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          <Space
+            align="start"
+            style={{ width: "100%", justifyContent: "space-between" }}
+            wrap
+          >
+            <div>
+              <Typography.Title level={4} style={{ margin: 0 }}>
+                {language === "zh-CN" ? "用户详情" : "User Detail"}
+              </Typography.Title>
+              <Typography.Paragraph
+                type="secondary"
+                style={{ marginTop: 6, marginBottom: 0 }}
+              >
+                {user?.username || userEmail || "-"}
+              </Typography.Paragraph>
+            </div>
+            <Space wrap>
+              <Button onClick={() => void copyEmail()} disabled={!userEmail}>
+                {language === "zh-CN" ? "复制邮箱" : "Copy email"}
+              </Button>
+              <Button href="/admin/users">
+                {language === "zh-CN" ? "返回用户列表" : "Back to users"}
+              </Button>
+            </Space>
+          </Space>
+
+          {error ? (
+            <Alert type="error" showIcon message={error} />
+          ) : null}
+
+          {user ? (
+            <UserOverviewCard user={user} language={language} />
+          ) : (
+            <Card loading={loading} />
+          )}
+
+          <Card
+            title={language === "zh-CN" ? "管理操作" : "Admin Actions"}
+            style={{ width: "100%" }}
+          >
+            <Space wrap>
+              <Button
+                type="primary"
+                onClick={() => setVipModalOpen(true)}
+                loading={actionLoading}
+                disabled={!user}
+              >
+                {language === "zh-CN" ? "设置会员" : "Set VIP"}
+              </Button>
+
+              <Button
+                onClick={() =>
+                  user ? void doAdminAction({ action: "set-vip", userEmail: user.email, vipExpiresAt: null }) : undefined
+                }
+                loading={actionLoading}
+                disabled={!user || actionLoading}
+              >
+                {language === "zh-CN" ? "取消会员" : "Cancel VIP"}
+              </Button>
+
+              <Button
+                onClick={() =>
+                  user ? void doAdminAction({ action: "set-admin", userEmail: user.email }) : undefined
+                }
+                loading={actionLoading}
+                disabled={!canSetAdmin}
+              >
+                {language === "zh-CN" ? "设为管理员" : "Make admin"}
+              </Button>
+
+              <Button
+                onClick={() =>
+                  user ? void doAdminAction({ action: "unset-admin", userEmail: user.email }) : undefined
+                }
+                loading={actionLoading}
+                disabled={!canUnsetAdmin}
+              >
+                {language === "zh-CN" ? "取消管理员" : "Revoke admin"}
+              </Button>
+
+              <Popconfirm
+                title={language === "zh-CN" ? "确认删除该用户？" : "Delete this user?"}
+                description={
+                  language === "zh-CN"
+                    ? "该操作不可撤销。会员未到期用户无法删除。"
+                    : "This action cannot be undone. Active VIP users cannot be deleted."
+                }
+                onConfirm={() =>
+                  user ? void doAdminAction({ action: "remove", userEmail: user.email }) : undefined
+                }
+                okText={language === "zh-CN" ? "删除" : "Delete"}
+                cancelText={language === "zh-CN" ? "取消" : "Cancel"}
+                okButtonProps={{ danger: true }}
+                disabled={!canDelete}
+              >
+                <Button danger disabled={!canDelete} loading={actionLoading}>
+                  {language === "zh-CN" ? "删除用户" : "Delete user"}
+                </Button>
+              </Popconfirm>
+            </Space>
+
+            {user && user.isVip ? (
+              <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
+                {language === "zh-CN"
+                  ? "提示：会员未到期用户不能删除（后端会阻止删除）。"
+                  : "Note: Active VIP users cannot be deleted (enforced by backend)."}
+              </Typography.Paragraph>
+            ) : null}
+          </Card>
+
+          <Card style={{ width: "100%" }} bodyStyle={{ paddingTop: 12 }}>
+            <Tabs
+              items={[
+                {
+                  key: "orders",
+                  label:
+                    language === "zh-CN"
+                      ? `订单截图（${orders.length}）`
+                      : `Order Screenshots (${orders.length})`,
+                  children: (
+                    <UserOrdersTable
+                      items={orders}
+                      language={language}
+                    />
+                  ),
+                },
+              ]}
+            />
+          </Card>
+        </Space>
       </div>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-      {loading && <p>{messages.common.loading}</p>}
-
-      {user && (
-        <section className="vben-card vben-card--simple" style={{ marginBottom: 16 }}>
-          <div className="vben-card__header">
-            <h2 className="vben-card__title">
-              {language === "zh-CN" ? "基础信息" : "Basic Info"}
-            </h2>
-          </div>
-          <div style={{ fontSize: 14, lineHeight: 1.9 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 10,
-              }}
-            >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: "9999px",
-                  overflow: "hidden",
-                  border: "1px solid rgba(148, 163, 184, 0.35)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "rgba(15, 23, 42, 0.35)",
-                  color: "#e2e8f0",
-                  fontWeight: 600,
-                }}
-                title={user.username || user.email}
-              >
-                {user.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={user.avatarUrl}
-                    alt="avatar"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                ) : (
-                  <span>
-                    {(user.username || user.email || "U")
-                      .trim()
-                      .charAt(0)
-                      .toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                  {user.username}
-                </div>
-                <div style={{ fontSize: 12, color: "#64748b" }}>{user.email}</div>
-              </div>
-            </div>
-            <div>
-              <strong>
-                {language === "zh-CN" ? "用户名：" : "Username: "}
-              </strong>
-              {user.username}
-            </div>
-            <div>
-              <strong>{language === "zh-CN" ? "邮箱：" : "Email: "}</strong>
-              {user.email}
-            </div>
-            <div>
-              <strong>{language === "zh-CN" ? "角色：" : "Role: "}</strong>
-              {user.isAdmin
-                ? messages.users.roleAdmin
-                : messages.users.roleUser}
-            </div>
-            <div>
-              <strong>
-                {language === "zh-CN" ? "会员状态：" : "VIP status: "}
-              </strong>
-              {user.isVip ? messages.users.vipOn : messages.users.vipOff}
-              {user.vipExpiresAt && (
-                <span style={{ marginLeft: 8, color: "#9ca3af", fontSize: 12 }}>
-                  {new Date(user.vipExpiresAt).toLocaleString()}
-                </span>
-              )}
-            </div>
-            <div>
-              <strong>
-                {language === "zh-CN" ? "注册时间：" : "Created at: "}
-              </strong>
-              {user.createdAt}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="vben-card vben-card--simple">
-        <div className="vben-card__header">
-          <h2 className="vben-card__title">{messages.orders.title}</h2>
-        </div>
-        {orders.length === 0 ? (
-          <p style={{ fontSize: 14, color: "#9ca3af" }}>
-            {messages.orders.emptyText}
-          </p>
-        ) : (
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: 14,
-            }}
-          >
-            <thead>
-              <tr>
-                <th
-                  style={{
-                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
-                    padding: 10,
-                    textAlign: "center",
-                  }}
-                >
-                  {messages.orders.tableIndex}
-                </th>
-                <th
-                  style={{
-                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
-                    padding: 10,
-                  }}
-                >
-                  {messages.orders.tableDeviceId}
-                </th>
-                <th
-                  style={{
-                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
-                    padding: 10,
-                  }}
-                >
-                  {messages.orders.tableImage}
-                </th>
-                <th
-                  style={{
-                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
-                    padding: 10,
-                  }}
-                >
-                  {messages.orders.tableNote}
-                </th>
-                <th
-                  style={{
-                    borderBottom: "1px solid rgba(148, 163, 184, 0.25)",
-                    padding: 10,
-                  }}
-                >
-                  {messages.orders.tableCreatedAt}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o, index) => (
-                <tr key={o.id}>
-                  <td
-                    style={{
-                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
-                      padding: 10,
-                      textAlign: "center",
-                    }}
-                  >
-                    {index + 1}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
-                      padding: 10,
-                      fontSize: 12,
-                      color: "#cbd5e1",
-                    }}
-                  >
-                    {o.deviceId}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
-                      padding: 10,
-                    }}
-                  >
-                    {brokenImages[o.id] ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <div style={{ fontSize: 12, color: "#9ca3af" }}>
-                          {language === "zh-CN"
-                            ? "截图无法预览（可能是不支持的格式，如 HEIC）"
-                            : "Preview unavailable (possibly an unsupported format such as HEIC)"}
-                        </div>
-                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                          <a
-                            href={o.imageUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ color: "#60a5fa", textDecoration: "underline", fontSize: 12 }}
-                          >
-                            {language === "zh-CN" ? "打开截图" : "Open"}
-                          </a>
-                          <a
-                            href={o.imageUrl}
-                            download
-                            style={{ color: "#a78bfa", textDecoration: "underline", fontSize: 12 }}
-                          >
-                            {language === "zh-CN" ? "下载" : "Download"}
-                          </a>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setPreviewUrl(o.imageUrl)}
-                        style={{
-                          padding: 0,
-                          border: "none",
-                          background: "transparent",
-                          cursor: "zoom-in",
-                        }}
-                        aria-label={
-                          language === "zh-CN" ? "预览订单截图" : "Preview order image"
-                        }
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={o.imageUrl}
-                          alt="order"
-                          onError={() =>
-                            setBrokenImages((prev) => ({ ...prev, [o.id]: true }))
-                          }
-                          style={{
-                            width: 84,
-                            height: 84,
-                            objectFit: "cover",
-                            borderRadius: 10,
-                            border: "1px solid rgba(148, 163, 184, 0.25)",
-                            background: "rgba(15, 23, 42, 0.35)",
-                          }}
-                        />
-                      </button>
-                    )}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
-                      padding: 10,
-                      fontSize: 12,
-                      color: "#cbd5e1",
-                      maxWidth: 200,
-                    }}
-                  >
-                    {o.note || "-"}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
-                      padding: 10,
-                      fontSize: 12,
-                      color: "#9ca3af",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    <div>{new Date(o.createdAt).toLocaleString()}</div>
-                    {o.orderCreatedTime && (
-                      <div>
-                        {language === "zh-CN"
-                          ? `创建时间：${o.orderCreatedTime}`
-                          : `Created: ${o.orderCreatedTime}`}
-                      </div>
-                    )}
-                    {o.orderPaidTime && (
-                      <div>
-                        {language === "zh-CN"
-                          ? `付款时间：${o.orderPaidTime}`
-                          : `Paid: ${o.orderPaidTime}`}
-                      </div>
-                    )}
-                    {o.orderNo && (
-                      <div>
-                        {language === "zh-CN"
-                          ? `订单号：${o.orderNo}`
-                          : `Order No: ${o.orderNo}`}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      {previewUrl && (
-        <div
-          onClick={() => setPreviewUrl(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 50,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-              backgroundColor: "#111827",
-              padding: 12,
-              borderRadius: 8,
-              boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setPreviewUrl(null)}
-              style={{
-                display: "block",
-                marginLeft: "auto",
-                marginBottom: 8,
-                background: "transparent",
-                border: "none",
-                color: "#e5e7eb",
-                fontSize: 20,
-                cursor: "pointer",
-              }}
-              aria-label="关闭预览"
-            >
-              ×
-            </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="order-preview"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "80vh",
-                objectFit: "contain",
-                borderRadius: 6,
-              }}
-            />
-          </div>
-        </div>
-      )}
-    </div>
+      <UserVipEditorModal
+        open={vipModalOpen}
+        language={language}
+        currentVipExpiresAt={user?.vipExpiresAt ?? null}
+        loading={actionLoading}
+        onCancel={() => setVipModalOpen(false)}
+        onSubmit={async (vipExpiresAt) => {
+          if (!user) return;
+          await doAdminAction({
+            action: "set-vip",
+            userEmail: user.email,
+            vipExpiresAt,
+          });
+        }}
+      />
+    </ConfigProvider>
   );
 }
-
-
