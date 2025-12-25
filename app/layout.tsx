@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,8 +29,10 @@ export default function RootLayout({
 			<head>
 				<link rel="icon" href="/favicon.png" type="image/png" />
 			</head>
-			<Script id="init-app-theme" strategy="beforeInteractive">
-				{`(() => {
+			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+				<AntdRegistry>
+					<Script id="init-app-theme" strategy="beforeInteractive">
+						{`(() => {
   try {
     var t = localStorage.getItem('appTheme');
     if (t !== 'light' && t !== 'dark') t = 'dark';
@@ -38,8 +41,10 @@ export default function RootLayout({
     document.documentElement.dataset.theme = 'dark';
   }
 })();`}
-			</Script>
-			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
+					</Script>
+					{children}
+				</AntdRegistry>
+			</body>
 		</html>
 	);
 }

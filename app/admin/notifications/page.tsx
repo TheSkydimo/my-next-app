@@ -1,30 +1,59 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { AppLanguage } from "../../client-prefs";
-import { getInitialLanguage } from "../../client-prefs";
+import { useEffect, useMemo, useState } from "react";
+import type { AppLanguage, AppTheme } from "../../client-prefs";
+import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
-import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  ConfigProvider,
+  Divider,
+  Form,
+  Input,
+  notification,
+  Row,
+  Select,
+  Space,
+  Typography,
+  theme as antdTheme,
+  Result,
+} from "antd";
 
 export default function AdminNotificationsPage() {
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
 
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
+  const [appTheme, setAppTheme] = useState<AppTheme>(() => getInitialTheme());
   const messages = getAdminMessages(language);
 
-  const [level, setLevel] = useState<"info" | "warn" | "critical">("info");
-  const [type, setType] = useState("admin_message");
-  const [titleZh, setTitleZh] = useState("");
-  const [bodyZh, setBodyZh] = useState("");
-  const [titleEn, setTitleEn] = useState("");
-  const [bodyEn, setBodyEn] = useState("");
-  const [linkUrl, setLinkUrl] = useState("");
-
   const [sending, setSending] = useState(false);
-  const [error, setError] = useAutoDismissMessage(2500);
-  const [okMsg, setOkMsg] = useAutoDismissMessage(2500);
+  const [form] = Form.useForm<{
+    level: "info" | "warn" | "critical";
+    type: string;
+    titleZh: string;
+    bodyZh: string;
+    titleEn: string;
+    bodyEn: string;
+    linkUrl: string;
+  }>();
+
+  const [api, contextHolder] = notification.useNotification({
+    placement: "topRight",
+    showProgress: true,
+    pauseOnHover: true,
+    maxCount: 3,
+  });
+
+  const themeConfig = useMemo(() => {
+    return {
+      algorithm: appTheme === "dark" ? antdTheme.darkAlgorithm : undefined,
+    };
+  }, [appTheme]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -36,19 +65,26 @@ export default function AdminNotificationsPage() {
     return () => window.removeEventListener("app-language-changed", handler as EventListener);
   }, []);
 
-  const send = async () => {
-    if (!adminEmail) return;
-    setError("");
-    setOkMsg("");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ theme: AppTheme }>;
+      if (custom.detail?.theme) setAppTheme(custom.detail.theme);
+    };
+    window.addEventListener("app-theme-changed", handler as EventListener);
+    return () => window.removeEventListener("app-theme-changed", handler as EventListener);
+  }, []);
 
-    if (!titleZh.trim() || !titleEn.trim()) {
-      setError(messages.notifications.errorTitleRequired);
-      return;
-    }
-    if (!bodyZh.trim() || !bodyEn.trim()) {
-      setError(messages.notifications.errorBodyRequired);
-      return;
-    }
+  const send = async (values: {
+    level: "info" | "warn" | "critical";
+    type: string;
+    titleZh: string;
+    bodyZh: string;
+    titleEn: string;
+    bodyEn: string;
+    linkUrl: string;
+  }) => {
+    if (!adminEmail) return;
 
     setSending(true);
     try {
@@ -57,27 +93,37 @@ export default function AdminNotificationsPage() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          level,
-          type: type.trim() || "admin_message",
-          titleZh: titleZh.trim(),
-          bodyZh: bodyZh.trim(),
-          titleEn: titleEn.trim(),
-          bodyEn: bodyEn.trim(),
-          linkUrl: linkUrl.trim() || null,
+          level: values.level,
+          type: values.type.trim() || "admin_message",
+          titleZh: values.titleZh.trim(),
+          bodyZh: values.bodyZh.trim(),
+          titleEn: values.titleEn.trim(),
+          bodyEn: values.bodyEn.trim(),
+          linkUrl: values.linkUrl.trim() || null,
         }),
       });
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || messages.common.unknownError);
+        const text = await res.text().catch(() => "");
+        // Avoid leaking internal errors on 5xx. (4xx are safe & actionable for admin.)
+        const safeMsg =
+          res.status >= 500
+            ? messages.common.unknownError
+            : (text || messages.common.unknownError).slice(0, 300);
+        throw new Error(safeMsg);
       }
-      setOkMsg(messages.notifications.successSent);
-      setTitleZh("");
-      setBodyZh("");
-      setTitleEn("");
-      setBodyEn("");
-      setLinkUrl("");
+
+      api.success({
+        title: messages.notifications.successSent,
+        description: messages.notifications.desc,
+        duration: 3,
+      });
+      form.resetFields();
     } catch (e) {
-      setError(e instanceof Error ? e.message : messages.common.unknownError);
+      api.error({
+        title: messages.common.unknownError,
+        description: e instanceof Error ? e.message : messages.common.unknownError,
+        duration: 4.5,
+      });
     } finally {
       setSending(false);
     }
@@ -85,123 +131,156 @@ export default function AdminNotificationsPage() {
 
   if (!adminEmail) {
     return (
-      <div className="vben-page">
-        <p>{messages.common.adminLoginRequired}</p>
-      </div>
+      <ConfigProvider theme={themeConfig}>
+        <div className="vben-page">
+          <Card style={{ maxWidth: 820 }}>
+            <Result status="403" title={messages.common.adminLoginRequired} />
+          </Card>
+        </div>
+      </ConfigProvider>
     );
   }
 
   return (
-    <div className="vben-page">
-      <h1 style={{ fontSize: 18, fontWeight: 700 }}>{messages.notifications.title}</h1>
-      <p style={{ marginTop: 8, color: "#6b7280", fontSize: 13 }}>
-        {messages.notifications.desc}
-      </p>
-
-      {error && <p style={{ color: "red", marginTop: 12 }}>{error}</p>}
-      {okMsg && <p style={{ color: "green", marginTop: 12 }}>{okMsg}</p>}
-
-      <section style={{ marginTop: 18, maxWidth: 720 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13 }}>
-            <div style={{ color: "#111827", fontWeight: 600 }}>
-              {messages.notifications.scopeLabel}
-            </div>
-            <div style={{ marginTop: 6, color: "#374151" }}>
-              {messages.notifications.scopeValueAll}
-            </div>
+    <ConfigProvider theme={themeConfig}>
+      {contextHolder}
+      <div className="vben-page">
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          <div>
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              {messages.notifications.title}
+            </Typography.Title>
+            <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
+              {messages.notifications.desc}
+            </Typography.Paragraph>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <label style={{ fontSize: 13, minWidth: 200 }}>
-              {messages.notifications.levelLabel}
-              <select
-                value={level}
-                onChange={(e) => setLevel(e.target.value as "info" | "warn" | "critical")}
-                style={{ width: "100%", marginTop: 6 }}
-              >
-                <option value="info">{messages.notifications.levelInfo}</option>
-                <option value="warn">{messages.notifications.levelWarn}</option>
-                <option value="critical">{messages.notifications.levelCritical}</option>
-              </select>
-            </label>
-
-            <label style={{ fontSize: 13, flex: 1, minWidth: 240 }}>
-              {messages.notifications.typeLabel}
-              <input
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                placeholder="admin_message"
-                style={{ width: "100%", marginTop: 6 }}
-              />
-            </label>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <label style={{ fontSize: 13, flex: 1, minWidth: 280 }}>
-              {messages.notifications.titleZhLabel}
-              <input
-                value={titleZh}
-                onChange={(e) => setTitleZh(e.target.value)}
-                placeholder={messages.notifications.titleZhPlaceholder}
-                style={{ width: "100%", marginTop: 6 }}
-              />
-            </label>
-            <label style={{ fontSize: 13, flex: 1, minWidth: 280 }}>
-              {messages.notifications.titleEnLabel}
-              <input
-                value={titleEn}
-                onChange={(e) => setTitleEn(e.target.value)}
-                placeholder={messages.notifications.titleEnPlaceholder}
-                style={{ width: "100%", marginTop: 6 }}
-              />
-            </label>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <label style={{ fontSize: 13, flex: 1, minWidth: 280 }}>
-              {messages.notifications.bodyZhLabel}
-              <textarea
-                value={bodyZh}
-                onChange={(e) => setBodyZh(e.target.value)}
-                placeholder={messages.notifications.bodyZhPlaceholder}
-                style={{ width: "100%", marginTop: 6, minHeight: 120, resize: "vertical" }}
-              />
-            </label>
-            <label style={{ fontSize: 13, flex: 1, minWidth: 280 }}>
-              {messages.notifications.bodyEnLabel}
-              <textarea
-                value={bodyEn}
-                onChange={(e) => setBodyEn(e.target.value)}
-                placeholder={messages.notifications.bodyEnPlaceholder}
-                style={{ width: "100%", marginTop: 6, minHeight: 120, resize: "vertical" }}
-              />
-            </label>
-          </div>
-
-          <label style={{ fontSize: 13 }}>
-            {messages.notifications.linkUrlLabel}
-            <input
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder={messages.notifications.linkUrlPlaceholder}
-              style={{ width: "100%", marginTop: 6 }}
+          <Card style={{ maxWidth: 920 }} bodyStyle={{ paddingTop: 16 }}>
+            <Alert
+              type="info"
+              showIcon
+              message={messages.notifications.scopeLabel}
+              description={messages.notifications.scopeValueAll}
+              style={{ marginBottom: 16 }}
             />
-          </label>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-            <button
-              type="button"
-              className="user-profile-button user-profile-button--primary user-profile-button--compact"
-              onClick={() => void send()}
-              disabled={sending}
+            <Form
+              form={form}
+              layout="vertical"
+              requiredMark="optional"
+              initialValues={{
+                level: "info",
+                type: "admin_message",
+                titleZh: "",
+                bodyZh: "",
+                titleEn: "",
+                bodyEn: "",
+                linkUrl: "",
+              }}
+              onFinish={(values) => void send(values)}
             >
-              {sending ? messages.common.loading : messages.notifications.sendButton}
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
+              <Row gutter={[16, 0]}>
+                <Col xs={24} sm={8}>
+                  <Form.Item
+                    label={messages.notifications.levelLabel}
+                    name="level"
+                    rules={[{ required: true }]}
+                  >
+                    <Select
+                      options={[
+                        { value: "info", label: messages.notifications.levelInfo },
+                        { value: "warn", label: messages.notifications.levelWarn },
+                        { value: "critical", label: messages.notifications.levelCritical },
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={16}>
+                  <Form.Item
+                    label={messages.notifications.typeLabel}
+                    name="type"
+                    tooltip="Defaults to admin_message"
+                  >
+                    <Input placeholder="admin_message" maxLength={50} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Divider style={{ margin: "8px 0 16px" }} />
+
+              <Row gutter={[16, 0]}>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label={messages.notifications.titleZhLabel}
+                    name="titleZh"
+                    rules={[{ required: true, message: messages.notifications.errorTitleRequired }]}
+                  >
+                    <Input placeholder={messages.notifications.titleZhPlaceholder} maxLength={80} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label={messages.notifications.titleEnLabel}
+                    name="titleEn"
+                    rules={[{ required: true, message: messages.notifications.errorTitleRequired }]}
+                  >
+                    <Input placeholder={messages.notifications.titleEnPlaceholder} maxLength={80} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={[16, 0]}>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label={messages.notifications.bodyZhLabel}
+                    name="bodyZh"
+                    rules={[{ required: true, message: messages.notifications.errorBodyRequired }]}
+                  >
+                    <Input.TextArea
+                      placeholder={messages.notifications.bodyZhPlaceholder}
+                      autoSize={{ minRows: 6, maxRows: 14 }}
+                      maxLength={1000}
+                      showCount
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label={messages.notifications.bodyEnLabel}
+                    name="bodyEn"
+                    rules={[{ required: true, message: messages.notifications.errorBodyRequired }]}
+                  >
+                    <Input.TextArea
+                      placeholder={messages.notifications.bodyEnPlaceholder}
+                      autoSize={{ minRows: 6, maxRows: 14 }}
+                      maxLength={1000}
+                      showCount
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item label={messages.notifications.linkUrlLabel} name="linkUrl">
+                <Input placeholder={messages.notifications.linkUrlPlaceholder} maxLength={300} />
+              </Form.Item>
+
+              <Space>
+                <Button type="primary" htmlType="submit" loading={sending}>
+                  {messages.notifications.sendButton}
+                </Button>
+                <Button
+                  htmlType="button"
+                  onClick={() => form.resetFields()}
+                  disabled={sending}
+                >
+                  Reset
+                </Button>
+              </Space>
+            </Form>
+          </Card>
+        </Space>
+      </div>
+    </ConfigProvider>
   );
 }
 
