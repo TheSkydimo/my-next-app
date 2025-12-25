@@ -1,7 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureUserFeedbackTables } from "../../_utils/userFeedbackTable";
 import { ensureUsersTable } from "../../_utils/usersTable";
-import { formatFrom, getSmtpConfigWithPrefix, sendEmail } from "../../_utils/mailer";
+import { formatFrom, getEmailServiceStatus, getSmtpConfigWithPrefix, sendEmail } from "../../_utils/mailer";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { readJsonBody } from "../../_utils/body";
 import { consumeRateLimit } from "../../_utils/rateLimit";
@@ -121,25 +121,35 @@ ${cleanContent}
 此邮件由 ${appName} 自动发送。`.trim();
 
       try {
+        // Prefer Resend if configured; fall back to SMTP only when available & supported.
+        const status = getEmailServiceStatus(env, "FEEDBACK_SMTP_");
+        if (!status.ok) {
+          throw new Error(
+            "邮件服务未配置"
+          );
+        }
+
+        // If using SMTP, we need a concrete from email; keep existing prefix override behavior.
         const feedbackCfg = getSmtpConfigWithPrefix(env, "FEEDBACK_SMTP_");
         const fallbackCfg = getSmtpConfigWithPrefix(env, "SMTP_");
         const smtpCfg = feedbackCfg || fallbackCfg;
-        if (!smtpCfg) {
-          throw new Error("邮件服务未配置（缺少 SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM）");
-        }
-
         const prefix = feedbackCfg ? "FEEDBACK_SMTP_" : "SMTP_";
+        const fromEmail = smtpCfg?.from || "noreply@example.com";
 
-        await sendEmail(env, {
-          from: formatFrom({ name: `${appName} 用户反馈`, email: smtpCfg.from }),
-          to: notifyTo,
-          replyTo: user.email,
-          subject: emailSubject,
-          text: emailText,
-          html: emailHtml,
-        }, prefix);
+        await sendEmail(
+          env,
+          {
+            from: formatFrom({ name: `${appName} 用户反馈`, email: fromEmail }),
+            to: notifyTo,
+            replyTo: user.email,
+            subject: emailSubject,
+            text: emailText,
+            html: emailHtml,
+          },
+          prefix
+        );
         adminEmailSent = true;
-      } catch (e) {
+      } catch {
         // Avoid leaking SMTP/provider details into logs.
         console.error("发送反馈通知邮件失败");
         emailError = "反馈已提交";
@@ -154,7 +164,7 @@ ${cleanContent}
       // Avoid returning internal config details; keep response minimal.
       emailError: emailError ? "反馈已提交" : undefined,
     });
-  } catch (error) {
+  } catch {
     console.error("提交反馈失败");
     return new Response("发送失败，请稍后再试", { status: 500 });
   }

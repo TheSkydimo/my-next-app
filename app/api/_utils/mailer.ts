@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import { getRuntimeEnvVar } from "./runtimeEnv";
 
 export type EmailSendOptions = {
@@ -23,6 +22,11 @@ export type SmtpConfig = {
   pass: string;
   from: string;
   encryption?: string;
+};
+
+type ResendConfig = {
+  apiKey: string;
+  from: string;
 };
 
 export function getSmtpConfig(env: unknown): SmtpConfig | null {
@@ -61,7 +65,22 @@ export function getSmtpConfigWithPrefix(
   };
 }
 
-export function createSmtpTransport(config: SmtpConfig) {
+function getResendConfig(env: unknown): ResendConfig | null {
+  const apiKey = String(getRuntimeEnvVar(env, "RESEND_API_KEY") ?? "").trim();
+  if (!apiKey) return null;
+
+  // Prefer RESEND_FROM; fall back to SMTP_FROM to keep config minimal.
+  const from = String(
+    getRuntimeEnvVar(env, "RESEND_FROM") ?? getRuntimeEnvVar(env, "SMTP_FROM") ?? ""
+  ).trim();
+  if (!from) return null;
+
+  return { apiKey, from };
+}
+
+export async function createSmtpTransport(config: SmtpConfig) {
+  // Lazy-load nodemailer so route modules can still load in runtimes that don't support SMTP sockets.
+  const nodemailer = (await import("nodemailer")).default;
   const secure = config.encryption === "ssl" || config.port === 465;
   return nodemailer.createTransport({
     host: config.host,
@@ -82,11 +101,62 @@ function normalizeRecipients(to: string | string[]): string[] {
     .filter(Boolean);
 }
 
+export function getEmailServiceStatus(env: unknown, prefix: "SMTP_" | "FEEDBACK_SMTP_" = "SMTP_"): {
+  ok: boolean;
+  provider?: "resend" | "smtp";
+  reason?: "missing";
+} {
+  const resend = getResendConfig(env);
+  if (resend) return { ok: true, provider: "resend" };
+
+  const cfg = getSmtpConfigWithPrefix(env, prefix);
+  if (!cfg) return { ok: false, reason: "missing" };
+
+  return { ok: true, provider: "smtp" };
+}
+
+async function sendWithResend(cfg: ResendConfig, options: EmailSendOptions) {
+  const to = normalizeRecipients(options.to);
+  if (to.length === 0) throw new Error("Email recipients missing.");
+
+  const from = (options.from || cfg.from).trim();
+  if (!from) throw new Error("Email sender missing.");
+
+  const payload = {
+    from,
+    to,
+    subject: options.subject,
+    ...(options.html ? { html: options.html } : {}),
+    ...(options.text ? { text: options.text } : {}),
+    ...(options.replyTo ? { reply_to: options.replyTo } : {}),
+  };
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${cfg.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    // Avoid leaking provider details; callers should map to a friendly error.
+    throw new Error("Resend send failed.");
+  }
+}
+
 export async function sendEmail(
   env: unknown,
   options: EmailSendOptions,
   prefix: "SMTP_" | "FEEDBACK_SMTP_" = "SMTP_"
 ): Promise<void> {
+  const resendCfg = getResendConfig(env);
+  if (resendCfg) {
+    await sendWithResend(resendCfg, options);
+    return;
+  }
+
   const cfg = getSmtpConfigWithPrefix(env, prefix);
   if (!cfg) {
     throw new Error(
@@ -104,7 +174,7 @@ export async function sendEmail(
     throw new Error("Email sender missing.");
   }
 
-  const transport = createSmtpTransport(cfg);
+  const transport = await createSmtpTransport(cfg);
   try {
     await transport.sendMail({
     from,

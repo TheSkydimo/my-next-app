@@ -10,7 +10,7 @@ import {
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
 import { hasValidTurnstilePassCookie } from "../../_utils/turnstilePass";
 import { ensureUsersIsAdminColumn } from "../../_utils/usersTable";
-import { getSmtpConfig, sendEmail } from "../../_utils/mailer";
+import { getEmailServiceStatus, sendEmail } from "../../_utils/mailer";
 import {
   isDevBypassTurnstileEnabled,
   shouldReturnEmailCodeInResponse,
@@ -149,15 +149,6 @@ function buildEmailTemplate(options: {
 }
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
-  const requestId = crypto.randomUUID();
-
-  const withHeaders = (res: Response) => {
-    const next = new Response(res.body, res);
-    next.headers.set("Cache-Control", "no-store");
-    next.headers.set("X-Request-Id", requestId);
-    return next;
-  };
-
   const parsed = await readJsonBody<{
     email: string;
     purpose: EmailCodePurpose;
@@ -165,7 +156,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     language?: AppLanguage;
   }>(request);
   if (!parsed.ok) {
-    return withHeaders(new Response("Invalid JSON", { status: 400 }));
+    return new Response("Invalid JSON", { status: 400 });
   }
   const { email, purpose, turnstileToken, language } = parsed.value;
 
@@ -173,11 +164,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const msg = getApiMessage(lang);
 
   if (!email) {
-    return withHeaders(new Response(msg.emailRequired, { status: 400 }));
+    return new Response(msg.emailRequired, { status: 400 });
   }
 
   if (!isValidEmail(email)) {
-    return withHeaders(new Response(msg.emailInvalid, { status: 400 }));
+    return new Response(msg.emailInvalid, { status: 400 });
   }
 
   const { env } = await getCloudflareContext();
@@ -200,12 +191,10 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       } else {
       const secret = getTurnstileSecretFromEnv(env);
       if (!secret) {
-        return withHeaders(new Response(msg.turnstileNotConfigured, {
-          status: 500,
-        }));
+        return new Response(msg.turnstileNotConfigured, { status: 500 });
       }
       if (!turnstileToken) {
-        return withHeaders(new Response(msg.turnstileMissing, { status: 400 }));
+        return new Response(msg.turnstileMissing, { status: 400 });
       }
       const remoteip = request.headers.get("CF-Connecting-IP");
       const okTurnstile = await verifyTurnstileToken({
@@ -214,7 +203,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
         remoteip,
       });
       if (!okTurnstile) {
-        return withHeaders(new Response(msg.turnstileFailed, { status: 400 }));
+        return new Response(msg.turnstileFailed, { status: 400 });
       }
       }
     }
@@ -238,7 +227,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     limit: 10,
   });
   if (!ipLimit.allowed) {
-    return withHeaders(new Response(msg.codeTooFrequent, { status: 429 }));
+    return new Response(msg.codeTooFrequent, { status: 429 });
   }
 
   const emailLimit = await consumeRateLimit({
@@ -248,7 +237,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     limit: 1,
   });
   if (!emailLimit.allowed) {
-    return withHeaders(new Response(msg.codeTooFrequent, { status: 429 }));
+    return new Response(msg.codeTooFrequent, { status: 429 });
   }
 
   // 如果是管理员相关用途，先确认该邮箱为管理员账号
@@ -260,7 +249,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       .all();
 
     if (!results || results.length === 0) {
-      return withHeaders(new Response(msg.adminEmailNotFound, { status: 404 }));
+      return new Response(msg.adminEmailNotFound, { status: 404 });
     }
   }
 
@@ -288,34 +277,25 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   // 本地开发：允许直接返回验证码，便于手动测试（仍写入数据库）
   if (returnCodeInResponse) {
-    return withHeaders(
-      Response.json(
-        { ok: true, challengeId, devCode: code },
-        { headers: { "Cache-Control": "no-store" } }
-      )
-    );
+    return Response.json({ ok: true, challengeId, devCode: code }, { headers: { "Cache-Control": "no-store" } });
   }
 
-  // SMTP email service config must exist in production.
-  if (!getSmtpConfig(env)) {
-    return withHeaders(new Response(msg.smtpMissing, { status: 500 }));
+  // Email service config must exist in production.
+  const emailStatus = getEmailServiceStatus(env, "SMTP_");
+  if (!emailStatus.ok) {
+    return new Response(msg.smtpMissing, { status: 500 });
   }
 
   try {
     const tpl = buildEmailTemplate({ lang, purpose, code });
     await sendEmail(env, { to: email, subject: tpl.subject, text: tpl.text, html: tpl.html });
-  } catch (e) {
+  } catch {
     // Avoid leaking SMTP/provider details into logs (may include recipient / internal ids).
     console.error("发送验证码邮件失败");
-    return withHeaders(new Response(msg.sendMailFailed, { status: 500 }));
+    return new Response(msg.sendMailFailed, { status: 500 });
   }
 
-  return withHeaders(
-    Response.json(
-      { ok: true, challengeId },
-      { headers: { "Cache-Control": "no-store" } }
-    )
-  );
+  return Response.json({ ok: true, challengeId }, { headers: { "Cache-Control": "no-store" } });
 }, { name: "POST /api/email/send-code" });
 
 

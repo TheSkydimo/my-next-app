@@ -39,7 +39,7 @@
 	],
 	"vars": {
 		"APP_NAME": "订阅管理",
-		// Email (SMTP) — required for verification code emails
+		// Email (SMTP)
 		// - Secret: SMTP_PASS (set via `wrangler secret put SMTP_PASS` or Dashboard secret)
 		"SMTP_HOST": "smtp.qiye.aliyun.com",
 		"SMTP_PORT": "465",

@@ -1003,9 +1003,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                           }}
                           onError={() => setTurnstileLoadFailed(true)}
                           onTimeout={() => restartTurnstileFlow(t.turnstileOneClickRetry)}
-                          onBeforeInteractive={() =>
-                            restartTurnstileFlow(t.turnstileOneClickRetry)
-                          }
+                          // IMPORTANT: Allow interactive challenges (checkbox / extra steps).
+                          // Previously we force-restarted here, which trapped users in a loop.
                           onExpire={() => setTurnstileToken("")}
                           theme={theme === "dark" ? "dark" : "light"}
                           size="normal"

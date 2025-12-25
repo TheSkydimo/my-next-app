@@ -5,6 +5,10 @@
 	--foreground: #171717;
 	/* 顶部工具栏的预留高度（用于左侧头像区与右侧主内容的上内边距） */
 	--shell-header-height: 88px;
+	/* App surface tokens（对齐用户端 Ant Design 的基础容器/分割线/filled 输入框观感） */
+	--app-surface: #ffffff;
+	--app-split: rgba(5, 5, 5, 0.06);
+	--app-input-filled-bg: rgba(0, 0, 0, 0.04);
 }
 
 /* Admin 布局在浅色主题下的文字和侧边栏对比度优化（与 User 一致风格） */
@@ -95,12 +99,12 @@
 }
 
 :root[data-theme="light"] .admin-topbar__search {
-	background: #f3f4f6;
-	border: 1px solid #e5e7eb;
+	background: var(--app-input-filled-bg);
+	border: 1px solid var(--app-split);
 }
 
 :root[data-theme="light"] .admin-topbar__search-input {
-	color: #111827;
+	color: var(--foreground);
 }
 
 :root[data-theme="light"] .admin-topbar__search-input::placeholder {
@@ -124,11 +128,18 @@
 :root[data-theme="dark"] {
 	--background: #000000;
 	--foreground: #e5e7eb;
+	/* Ant Design darkAlgorithm-like tokens (used by user layout via token.colorBgContainer / token.colorSplit) */
+	--app-surface: #141414;
+	--app-split: rgba(255, 255, 255, 0.12);
+	--app-input-filled-bg: rgba(255, 255, 255, 0.08);
 }
 
 :root[data-theme="light"] {
 	--background: #f9fafb;
 	--foreground: #111827;
+	--app-surface: #ffffff;
+	--app-split: rgba(5, 5, 5, 0.06);
+	--app-input-filled-bg: rgba(0, 0, 0, 0.04);
 }
 
 body {
@@ -3506,7 +3517,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	content: "";
 	position: fixed;
 	inset: -25%;
-	background: #000000;
+	background: var(--background);
 	filter: none;
 	opacity: 1;
 	z-index: 0;
@@ -3735,7 +3746,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 /* L形外壳：侧边栏 + 顶栏统一深色背景，灰色线分隔 */
 
 .admin-shell {
-	background: #000000;
+	background: var(--app-surface);
 	backdrop-filter: none;
 	border: none;
 	box-shadow: none;
@@ -3744,7 +3755,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 /* 侧边栏外壳（L形左侧，全高，贴边） */
 .admin-shell--sidebar {
 	width: 230px;
-	padding: 20px 14px;
+	padding: 16px 14px;
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
@@ -3752,7 +3763,10 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	border-radius: 0;
 	margin: 0;
 	/* 右侧灰色分隔线 */
-	border-right: 1px solid #334155;
+	border-right: 1px solid var(--app-split);
+	position: sticky;
+	top: 0;
+	height: 100vh;
 }
 
 /* 右侧区域容器 */
@@ -3766,31 +3780,35 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 
 /* 顶栏外壳（L形顶部，贴边） */
 .admin-shell--topbar {
-	padding: 10px 20px;
+	padding: 0 24px;
 	display: flex;
 	align-items: center;
 	border-radius: 0;
 	margin: 0;
 	/* 底部灰色分隔线 */
-	border-bottom: 1px solid #334155;
+	border-bottom: 1px solid var(--app-split);
 	overflow: visible;
+	height: 64px;
 }
 
 /* 内容区（无外壳，统一黑色背景） */
 .admin-layout__content {
 	flex: 1;
-	padding: 24px 28px;
+	padding: 24px;
+	margin: 24px 16px;
 	overflow-y: auto;
 	overflow-x: hidden;
-	color: #e5e7eb;
-	background: #000000;
+	color: var(--foreground);
+	background: var(--app-surface);
+	border-radius: 8px;
+	box-shadow: none;
 }
 
 .admin-layout__content h1,
 .admin-layout__content h2,
 .admin-layout__content h3 {
-	color: #e5e7eb;
-	text-shadow: 0 1px 10px rgba(15, 23, 42, 0.9);
+	color: var(--foreground);
+	text-shadow: none;
 }
 
 .admin-layout__content a {
@@ -3803,25 +3821,24 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 
 /* 浅色主题下的外壳样式 */
 :root[data-theme="light"] .admin-shell {
-	background: #f8fafc;
+	background: var(--app-surface);
 	backdrop-filter: none;
 	box-shadow: none;
 }
 
 :root[data-theme="light"] .admin-shell--sidebar {
 	/* 右侧灰色分隔线 */
-	border-right: 1px solid #e2e8f0;
+	border-right: 1px solid var(--app-split);
 }
 
 :root[data-theme="light"] .admin-shell--topbar {
 	/* 底部灰色分隔线 */
-	border-bottom: 1px solid #e2e8f0;
+	border-bottom: 1px solid var(--app-split);
 }
 
 :root[data-theme="light"] .admin-layout__content {
-	color: #111827;
-	/* 内容区浅灰背景，与侧边栏/顶栏区分 */
-	background: #f1f5f9;
+	color: var(--foreground);
+	background: var(--app-surface);
 }
 
 :root[data-theme="light"] .admin-layout__content h1,
@@ -3864,30 +3881,42 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 .admin-topbar__search {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	padding: 4px 10px;
+	gap: 8px;
+	padding: 0 12px;
 	flex: 1 1 auto;
-	border-radius: 9999px;
-	background: rgba(15, 23, 42, 0.9);
-	border: 1px solid rgba(51, 65, 85, 0.95);
+	height: 32px;
+	border-radius: 6px;
+	background: var(--app-input-filled-bg);
+	border: 1px solid var(--app-split);
+	transition:
+		border-color 160ms ease,
+		box-shadow 160ms ease,
+		background-color 160ms ease;
 }
 
 .admin-topbar__search-icon {
-	font-size: 12px;
+	font-size: 14px;
 	color: #9ca3af;
+	display: inline-flex;
+	align-items: center;
 }
 
 .admin-topbar__search-input {
 	border: 0;
 	outline: none;
 	background: transparent;
-	color: #e5e7eb;
-	font-size: 12px;
+	color: var(--foreground);
+	font-size: 14px;
 	min-width: 150px;
 }
 
 .admin-topbar__search-input::placeholder {
 	color: #6b7280;
+}
+
+.admin-topbar__search:focus-within {
+	border-color: #1677ff;
+	box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.2);
 }
 
 .admin-topbar__actions {

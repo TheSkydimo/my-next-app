@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { SearchOutlined } from "@ant-design/icons";
 import {
   applyLanguage,
   applyTheme,
@@ -66,6 +67,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener("keydown", keyHandler);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const logout = () => {
@@ -303,7 +305,9 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                   </span>
                 </div>
                 <div className="admin-topbar__search">
-                  <span className="admin-topbar__search-icon">🔍</span>
+                  <span className="admin-topbar__search-icon" aria-hidden="true">
+                    <SearchOutlined />
+                  </span>
                   <input
                     className="admin-topbar__search-input"
                     placeholder={messages.layout.searchPlaceholder}

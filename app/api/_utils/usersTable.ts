@@ -19,12 +19,25 @@ async function maybeMigrateUsersTableRemoveLegacyAuthColumn(db: D1Database) {
   const selectVipExpiresAt = cols.has("vip_expires_at") ? "vip_expires_at" : "NULL";
   const selectCreatedAt = cols.has("created_at") ? "created_at" : "CURRENT_TIMESTAMP";
 
-  // Best-effort migration with FK temporarily disabled (SQLite requirement when rebuilding tables).
-  await db.prepare("PRAGMA foreign_keys=off").run();
-  await db.prepare("BEGIN").run();
+  // Prefer SQLite DROP COLUMN if supported (avoids rebuilding the table).
   try {
-    await db
-      .prepare(
+    await db.prepare("ALTER TABLE users DROP COLUMN password_hash").run();
+    return;
+  } catch {
+    // fall back to table rebuild
+  }
+
+  // Fallback migration: rebuild users table without legacy column.
+  // Note: Avoid explicit BEGIN/COMMIT here; D1 may not support manual transactions in all contexts.
+  try {
+    await db.prepare("PRAGMA foreign_keys=off").run();
+  } catch {
+    // ignore (best-effort)
+  }
+
+  try {
+    await db.batch([
+      db.prepare(
         `CREATE TABLE IF NOT EXISTS users__new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           username TEXT NOT NULL,
@@ -35,30 +48,21 @@ async function maybeMigrateUsersTableRemoveLegacyAuthColumn(db: D1Database) {
           vip_expires_at TIMESTAMP,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`
-      )
-      .run();
-
-    await db
-      .prepare(
+      ),
+      db.prepare(
         `INSERT INTO users__new (id, username, email, avatar_url, is_admin, is_super_admin, vip_expires_at, created_at)
          SELECT id, username, email, ${selectAvatarUrl}, ${selectIsAdmin}, ${selectIsSuperAdmin}, ${selectVipExpiresAt}, ${selectCreatedAt}
          FROM users`
-      )
-      .run();
-
-    await db.prepare("DROP TABLE users").run();
-    await db.prepare("ALTER TABLE users__new RENAME TO users").run();
-
-    await db.prepare("COMMIT").run();
-  } catch (e) {
-    try {
-      await db.prepare("ROLLBACK").run();
-    } catch {
-      // ignore
-    }
-    throw e;
+      ),
+      db.prepare("DROP TABLE users"),
+      db.prepare("ALTER TABLE users__new RENAME TO users"),
+    ]);
   } finally {
-    await db.prepare("PRAGMA foreign_keys=on").run();
+    try {
+      await db.prepare("PRAGMA foreign_keys=on").run();
+    } catch {
+      // ignore (best-effort)
+    }
   }
 }
 
