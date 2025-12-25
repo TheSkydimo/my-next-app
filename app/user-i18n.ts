@@ -16,6 +16,17 @@ export type UserMessages = {
     guestSubtitle: string;
     loginButton: string;
     registerButton: string;
+    orderUploadCtaTitle: string;
+    orderUploadCtaDesc: string;
+    orderUploadCtaButton: string;
+    orderPreviewTitle: string;
+    orderPreviewSubtitle: (total: number) => string;
+    orderPreviewEmpty: string;
+    orderPreviewFetchFailed: string;
+    orderPreviewViewAll: string;
+    orderPreviewGoUpload: string;
+    orderPreviewOpen: string;
+    orderPreviewOrderNoFallback: string;
   };
   layout: {
     navHome: string;
@@ -132,6 +143,18 @@ const zhCN: UserMessages = {
     guestSubtitle: "你还没有登录，请先登录或注册。",
     loginButton: "去登录",
     registerButton: "去注册",
+    orderUploadCtaTitle: "下一步：上传订单截图，获得用户权益",
+    orderUploadCtaDesc: "上传订单截图后，我们将为你绑定设备并激活质保权益。",
+    orderUploadCtaButton: "去上传订单",
+    orderPreviewTitle: "我的订单信息",
+    orderPreviewSubtitle: (total: number) =>
+      total > 0 ? `已上传 ${total} 条订单截图。` : "你还没有上传订单截图。",
+    orderPreviewEmpty: "暂无订单截图。上传后可在这里快速查看。",
+    orderPreviewFetchFailed: "获取订单信息失败，请稍后重试。",
+    orderPreviewViewAll: "查看全部 / 去管理",
+    orderPreviewGoUpload: "去上传",
+    orderPreviewOpen: "预览订单截图",
+    orderPreviewOrderNoFallback: "订单：#",
   },
   layout: {
     navHome: "首页",
@@ -248,6 +271,21 @@ const enUS: UserMessages = {
       "You are not signed in yet. Please sign in or create an account.",
     loginButton: "Sign in",
     registerButton: "Sign up",
+    orderUploadCtaTitle: "Next step: upload your order screenshot to unlock benefits",
+    orderUploadCtaDesc:
+      "After uploading, we will bind your device and activate your warranty benefits.",
+    orderUploadCtaButton: "Upload order",
+    orderPreviewTitle: "My order info",
+    orderPreviewSubtitle: (total: number) =>
+      total > 0
+        ? `${total} order screenshots uploaded.`
+        : "No order screenshots uploaded yet.",
+    orderPreviewEmpty: "No order screenshots yet. Upload one to preview here.",
+    orderPreviewFetchFailed: "Failed to load order info. Please try again later.",
+    orderPreviewViewAll: "View all / Manage",
+    orderPreviewGoUpload: "Upload",
+    orderPreviewOpen: "Preview order screenshot",
+    orderPreviewOrderNoFallback: "Order: #",
   },
   layout: {
     navHome: "Home",

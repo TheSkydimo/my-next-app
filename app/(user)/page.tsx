@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { AppLanguage } from "../client-prefs";
 import { getInitialLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import { useOptionalUser } from "../contexts/UserContext";
 import { AuthEmailCodePage } from "../components/AuthEmailCodePage";
+import UserOrdersReadOnlyPanel from "../components/UserOrdersReadOnlyPanel";
+import { useUserOrdersPreview } from "../hooks/useUserOrdersPreview";
 
 export default function Home() {
   // 使用 UserContext 获取预加载的用户信息
@@ -35,6 +38,13 @@ export default function Home() {
   }, []);
 
   const messages = getUserMessages(language);
+  const ordersPreview = useUserOrdersPreview(userEmail, language);
+  const hasOrderInfo = ordersPreview.items.length > 0;
+  // 规则：有订单信息就隐藏引导语；无订单信息（或拉取失败）才显示引导语
+  const shouldShowCta =
+    !!userEmail &&
+    !hasOrderInfo &&
+    (ordersPreview.loaded || !!ordersPreview.error);
 
   // 与管理端保持一致：已登录用户的欢迎信息采用简单文本布局，不再使用块状卡片
   if (displayName) {
@@ -49,6 +59,53 @@ export default function Home() {
             </p>
           )}
         </div>
+
+        {shouldShowCta && (
+          <section className="user-page-section" style={{ marginTop: 18 }}>
+            <div className="user-page-card">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ minWidth: 220 }}>
+                  <div
+                    className="user-page-section__title"
+                    style={{ margin: 0, fontSize: 16, fontWeight: 600 }}
+                  >
+                    {messages.home.orderUploadCtaTitle}
+                  </div>
+                  <div
+                    className="user-page-section__subtext"
+                    style={{ marginTop: 6, lineHeight: 1.6 }}
+                  >
+                    {messages.home.orderUploadCtaDesc}
+                  </div>
+                </div>
+
+                <Link
+                  href="/devices#order-section"
+                  className="btn btn-primary btn-lg"
+                >
+                  {messages.home.orderUploadCtaButton}
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {userEmail && (
+          <UserOrdersReadOnlyPanel
+            language={language}
+            items={ordersPreview.items}
+            loading={ordersPreview.loading}
+            error={ordersPreview.error}
+          />
+        )}
       </div>
     );
   }
