@@ -24,15 +24,23 @@ export function TurnstileWidget({
   onToken,
   onError,
   onExpire,
+  onTimeout,
+  onBeforeInteractive,
+  onAfterInteractive,
   theme = "auto",
   size = "normal",
+  resetNonce,
 }: {
   siteKey: string;
   onToken: (token: string) => void;
-  onError?: () => void;
+  onError?: (errorCode?: string) => void;
   onExpire?: () => void;
+  onTimeout?: () => void;
+  onBeforeInteractive?: () => void;
+  onAfterInteractive?: () => void;
   theme?: TurnstileTheme;
   size?: TurnstileSize;
+  resetNonce?: number;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
@@ -42,13 +50,23 @@ export function TurnstileWidget({
   // 回调用 ref 固定住，避免父组件重渲染导致 Turnstile widget 被销毁/重建（出现“勾不上”）
   const callbacksRef = useRef<{
     onToken: (token: string) => void;
-    onError?: () => void;
+    onError?: (errorCode?: string) => void;
     onExpire?: () => void;
-  }>({ onToken, onError, onExpire });
+    onTimeout?: () => void;
+    onBeforeInteractive?: () => void;
+    onAfterInteractive?: () => void;
+  }>({ onToken, onError, onExpire, onTimeout, onBeforeInteractive, onAfterInteractive });
 
   useEffect(() => {
-    callbacksRef.current = { onToken, onError, onExpire };
-  }, [onError, onExpire, onToken]);
+    callbacksRef.current = {
+      onToken,
+      onError,
+      onExpire,
+      onTimeout,
+      onBeforeInteractive,
+      onAfterInteractive,
+    };
+  }, [onAfterInteractive, onBeforeInteractive, onError, onExpire, onTimeout, onToken]);
 
   // If Turnstile script is already present (e.g. component remount due to React key),
   // Next.js <Script> may not fire onLoad again. In that case, mark ready immediately.
@@ -70,9 +88,23 @@ export function TurnstileWidget({
         callbacksRef.current.onToken("");
         callbacksRef.current.onExpire?.();
       },
-      "error-callback": () => {
+      "error-callback": (errorCode?: unknown) => {
         callbacksRef.current.onToken("");
-        callbacksRef.current.onError?.();
+        callbacksRef.current.onError?.(
+          typeof errorCode === "string" ? errorCode : errorCode ? String(errorCode) : undefined
+        );
+      },
+      "timeout-callback": () => {
+        callbacksRef.current.onToken("");
+        callbacksRef.current.onTimeout?.();
+      },
+      // NOTE: 这些回调在官方文档中不总是显式列出，但在部分集成/实现中存在；
+      // 即使 Turnstile 忽略未知字段，也不会影响正常流程。
+      "before-interactive-callback": () => {
+        callbacksRef.current.onBeforeInteractive?.();
+      },
+      "after-interactive-callback": () => {
+        callbacksRef.current.onAfterInteractive?.();
       },
     } as const;
   }, [siteKey, size, theme]);
@@ -106,6 +138,23 @@ export function TurnstileWidget({
     };
   }, [options, scriptReady, siteKey]);
 
+  // Allow parent to reset the widget without remounting.
+  useEffect(() => {
+    if (!scriptReady) return;
+    const id = widgetIdRef.current;
+    if (!id) return;
+    if (!window.turnstile?.reset) return;
+    // resetNonce is a "signal" - only act when it's provided/changes.
+    if (typeof resetNonce !== "number") return;
+    try {
+      window.turnstile.reset(id);
+    } catch {
+      // ignore
+    } finally {
+      callbacksRef.current.onToken("");
+    }
+  }, [resetNonce, scriptReady]);
+
   return (
     <>
       <Script
@@ -119,7 +168,7 @@ export function TurnstileWidget({
           setScriptReady(false);
           setScriptFailed(true);
           callbacksRef.current.onToken("");
-          callbacksRef.current.onError?.();
+          callbacksRef.current.onError?.("script-load-failed");
         }}
       />
       {!siteKey ? (

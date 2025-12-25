@@ -39,6 +39,7 @@ const TEXTS: Record<
       stepCodeTitle: string;
       turnstileNotice: string;
       turnstileVerifying: string;
+      turnstileOneClickRetry: string;
       emailLabel: string;
       emailPlaceholder: string;
       emailCodeLabel: string;
@@ -75,6 +76,8 @@ const TEXTS: Record<
       stepCodeTitle: "输入验证码",
       turnstileNotice: "您的连接需要被验证才能继续",
       turnstileVerifying: "验证中…",
+      turnstileOneClickRetry:
+        "当前验证需要“一键验证”。请稍后再试（2 秒后将返回人机验证并重新开始）。",
       emailLabel: "请输入您的邮箱进行登录或者创建账户",
       emailPlaceholder: "name@example.com",
       emailCodeLabel: "邮箱验证码",
@@ -109,6 +112,8 @@ const TEXTS: Record<
       stepCodeTitle: "Enter code",
       turnstileNotice: "Your connection needs to be verified before you can proceed.",
       turnstileVerifying: "Verifying…",
+      turnstileOneClickRetry:
+        "This verification requires an interactive check. Please try again later (returning to verification in 2s).",
       emailLabel: "Please enter your email to login or create an account",
       emailPlaceholder: "name@example.com",
       emailCodeLabel: "Email code",
@@ -146,6 +151,8 @@ const TEXTS: Record<
       stepCodeTitle: "输入验证码",
       turnstileNotice: "您的连接需要被验证才能继续。",
       turnstileVerifying: "验证中…",
+      turnstileOneClickRetry:
+        "当前验证需要“一键验证”。请稍后再试（2 秒后将返回人机验证并重新开始）。",
       emailLabel: "请输入管理员邮箱获取验证码",
       emailPlaceholder: "admin@example.com",
       emailCodeLabel: "邮箱验证码",
@@ -179,6 +186,8 @@ const TEXTS: Record<
       stepCodeTitle: "Enter code",
       turnstileNotice: "Your connection needs to be verified before you can proceed.",
       turnstileVerifying: "Verifying…",
+      turnstileOneClickRetry:
+        "This verification requires an interactive check. Please try again later (returning to verification in 2s).",
       emailLabel: "Enter admin email to receive a sign-in code",
       emailPlaceholder: "admin@example.com",
       emailCodeLabel: "Email code",
@@ -252,6 +261,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [turnstileRequired, setTurnstileRequired] = useState(true);
   const [turnstilePassed, setTurnstilePassed] = useState(false);
   const [verifyingTurnstile, setVerifyingTurnstile] = useState(false);
+  const [turnstileResetNonce, setTurnstileResetNonce] = useState(0);
   const [error, setError] = useState("");
   const [errorKind, setErrorKind] = useState<
     "none" | "send-code" | "login" | "validation" | "turnstile" | "other"
@@ -293,6 +303,17 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   useEffect(() => {
     errorKindRef.current = errorKind;
   }, [errorKind]);
+
+  const turnstileRestartTimerRef = useRef<number | null>(null);
+  const interactiveHandledRef = useRef(false);
+  useEffect(() => {
+    return () => {
+      if (turnstileRestartTimerRef.current) {
+        window.clearTimeout(turnstileRestartTimerRef.current);
+        turnstileRestartTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Reset "retry / report" state when switching recipient email.
@@ -532,6 +553,40 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     // being forced back to the Turnstile page (human verification is done once).
   };
 
+  const restartTurnstileFlow = useCallback(
+    (message: string) => {
+      // Avoid repeated triggers from the widget.
+      if (interactiveHandledRef.current) return;
+      interactiveHandledRef.current = true;
+
+      setError(message);
+      setErrorKind("turnstile");
+      setVerifyingTurnstile(false);
+      setTurnstileToken("");
+      setTurnstilePassed(false);
+      setStep("turnstile");
+
+      if (turnstileRestartTimerRef.current) {
+        window.clearTimeout(turnstileRestartTimerRef.current);
+        turnstileRestartTimerRef.current = null;
+      }
+
+      turnstileRestartTimerRef.current = window.setTimeout(() => {
+        // Back to the human verification step and restart the widget.
+        setError("");
+        setErrorKind("none");
+        setTurnstileToken("");
+        setTurnstileLoadFailed(false);
+        setVerifyingTurnstile(false);
+        setTurnstilePassed(false);
+        setStep("turnstile");
+        setTurnstileResetNonce((n) => n + 1);
+        interactiveHandledRef.current = false;
+      }, 2000);
+    },
+    []
+  );
+
   const startSendCode = () => {
     setError("");
     setErrorKind("none");
@@ -578,9 +633,10 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       });
 
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        setError(text || t.errorTurnstileRequired);
-        setErrorKind("turnstile");
+        // 用户侧表现：提示稍后再试，并自动回到人机验证页面重新开始
+        // （避免在 Turnstile “一键验证/交互”或网络抖动时卡死在当前状态）
+        await res.text().catch(() => "");
+        restartTurnstileFlow(t.turnstileOneClickRetry);
         return;
       }
 
@@ -588,14 +644,14 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       // Do not reset Turnstile on success; user won't come back here unless they restart.
       setStep("email");
     } catch {
-      setError(t.errorTurnstileRequired);
-      setErrorKind("turnstile");
+      restartTurnstileFlow(t.turnstileOneClickRetry);
     } finally {
       setVerifyingTurnstile(false);
     }
   }, [
     t.errorTurnstileLoadFailed,
-    t.errorTurnstileRequired,
+    t.turnstileOneClickRetry,
+    restartTurnstileFlow,
     turnstileLoadFailed,
     turnstilePassed,
     turnstileRequired,
@@ -946,9 +1002,14 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                             }
                           }}
                           onError={() => setTurnstileLoadFailed(true)}
+                          onTimeout={() => restartTurnstileFlow(t.turnstileOneClickRetry)}
+                          onBeforeInteractive={() =>
+                            restartTurnstileFlow(t.turnstileOneClickRetry)
+                          }
                           onExpire={() => setTurnstileToken("")}
                           theme={theme === "dark" ? "dark" : "light"}
                           size="normal"
+                          resetNonce={turnstileResetNonce}
                         />
                       </div>
                     </div>

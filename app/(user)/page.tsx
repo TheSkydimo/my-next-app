@@ -98,7 +98,8 @@ export default function Home() {
           </section>
         )}
 
-        {userEmail && (
+        {/* 有“下一步”提示时，不展示下方“我的订单信息”区域，避免信息重复与干扰 */}
+        {userEmail && !shouldShowCta && (
           <UserOrdersReadOnlyPanel
             language={language}
             items={ordersPreview.items}
