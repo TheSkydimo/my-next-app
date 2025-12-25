@@ -52,47 +52,28 @@ export type AdminMessages = {
     usernameDialogSave: string;
     updateInfo: string;
     finishUpdateInfo: string;
-    passwordSectionTitle: string;
-    passwordSectionEdit: string;
     emailSectionTitle: string;
     emailSectionEdit: string;
-    passwordDialogTitle: string;
-    passwordOldPlaceholder: string;
-    passwordNewPlaceholder: string;
-    passwordConfirmPlaceholder: string;
-    passwordDialogCancel: string;
-    passwordDialogConfirm: string;
     emailDialogTitle: string;
     emailDialogDesc: string;
     emailNewPlaceholder: string;
     emailCodePlaceholder: string;
     emailSendCode: string;
     emailSendingCode: string;
-    emailOldPasswordPlaceholder: string;
-    emailNewPasswordPlaceholder: string;
-    emailConfirmNewPasswordPlaceholder: string;
     emailDialogCancel: string;
     emailDialogConfirm: string;
     errorProfileLoadFailed: string;
     errorUsernameUpdateFailed: string;
     errorAvatarUpdateFailed: string;
-    errorPasswordFieldsRequired: string;
-    errorPasswordNotMatch: string;
-    errorPasswordUpdateFailed: string;
     errorNewEmailRequired: string;
     errorSendCodeFailed: string;
     errorUpdateEmailFieldsRequired: string;
-    errorUpdateEmailPasswordFieldsRequired: string;
-    errorUpdateEmailPasswordNotMatch: string;
     errorUpdateEmailFailed: string;
     errorAvatarTooLarge: string;
     successUsernameUpdated: string;
     successAvatarUpdated: string;
-    successPasswordUpdated: string;
     successCodeSent: string;
     successEmailUpdated: string;
-    showPassword: string;
-    hidePassword: string;
   };
   users: {
     title: string;
@@ -241,48 +222,28 @@ const zhCN: AdminMessages = {
     usernameDialogSave: "保存",
     updateInfo: "更新信息",
     finishUpdateInfo: "完成信息修改",
-    passwordSectionTitle: "修改密码",
-    passwordSectionEdit: "修改",
     emailSectionTitle: "修改邮箱",
     emailSectionEdit: "修改",
-    passwordDialogTitle: "修改密码",
-    passwordOldPlaceholder: "旧密码",
-    passwordNewPlaceholder: "新密码",
-    passwordConfirmPlaceholder: "确认新密码",
-    passwordDialogCancel: "取消",
-    passwordDialogConfirm: "确认修改",
     emailDialogTitle: "确认修改邮箱",
     emailDialogDesc: "修改邮箱需要验证新邮箱验证码。修改完成后请使用新邮箱重新登录。",
     emailNewPlaceholder: "新邮箱",
     emailCodePlaceholder: "邮箱验证码",
     emailSendCode: "获取验证码",
     emailSendingCode: "发送中...",
-    emailOldPasswordPlaceholder: "旧密码",
-    emailNewPasswordPlaceholder: "新密码",
-    emailConfirmNewPasswordPlaceholder: "确认新密码",
     emailDialogCancel: "取消",
     emailDialogConfirm: "确认修改",
     errorProfileLoadFailed: "获取个人信息失败",
     errorUsernameUpdateFailed: "更新用户名失败",
     errorAvatarUpdateFailed: "更新头像失败",
-    errorPasswordFieldsRequired: "请完整填写旧密码和新密码",
-    errorPasswordNotMatch: "两次输入的新密码不一致",
-    errorPasswordUpdateFailed: "修改密码失败",
     errorNewEmailRequired: "请先填写新邮箱",
     errorSendCodeFailed: "发送验证码失败",
     errorUpdateEmailFieldsRequired: "请填写新邮箱和邮箱验证码",
-    errorUpdateEmailPasswordFieldsRequired:
-      "请在弹出的对话框中填写旧密码和新密码",
-    errorUpdateEmailPasswordNotMatch: "两次输入的新密码不一致",
     errorUpdateEmailFailed: "修改邮箱失败",
     errorAvatarTooLarge: "头像图片大小请控制在 2MB 以内",
     successUsernameUpdated: "用户名已更新",
     successAvatarUpdated: "头像已更新",
-    successPasswordUpdated: "密码已修改",
     successCodeSent: "验证码已发送到新邮箱，请注意查收",
     successEmailUpdated: "邮箱已修改，请使用新邮箱登录",
-    showPassword: "显示",
-    hidePassword: "隐藏",
   },
   users: {
     title: "普通用户管理",
@@ -436,16 +397,8 @@ const enUS: AdminMessages = {
     usernameDialogSave: "Save",
     updateInfo: "Update info",
     finishUpdateInfo: "Finish editing",
-    passwordSectionTitle: "Change password",
-    passwordSectionEdit: "Edit",
     emailSectionTitle: "Change email",
     emailSectionEdit: "Edit",
-    passwordDialogTitle: "Change password",
-    passwordOldPlaceholder: "Current password",
-    passwordNewPlaceholder: "New password",
-    passwordConfirmPlaceholder: "Confirm new password",
-    passwordDialogCancel: "Cancel",
-    passwordDialogConfirm: "Confirm",
     emailDialogTitle: "Confirm email change",
     emailDialogDesc:
       "To change your email, verify the code sent to the new email. After changing, please log in again with the new email.",
@@ -453,34 +406,21 @@ const enUS: AdminMessages = {
     emailCodePlaceholder: "Verification code",
     emailSendCode: "Send code",
     emailSendingCode: "Sending...",
-    emailOldPasswordPlaceholder: "Current password",
-    emailNewPasswordPlaceholder: "New password",
-    emailConfirmNewPasswordPlaceholder: "Confirm new password",
     emailDialogCancel: "Cancel",
     emailDialogConfirm: "Confirm",
     errorProfileLoadFailed: "Failed to load profile",
     errorUsernameUpdateFailed: "Failed to update username",
     errorAvatarUpdateFailed: "Failed to update avatar",
-    errorPasswordFieldsRequired:
-      "Please fill in the current password and the new password",
-    errorPasswordNotMatch: "The two new passwords do not match",
-    errorPasswordUpdateFailed: "Failed to change password",
     errorNewEmailRequired: "Please enter the new email first",
     errorSendCodeFailed: "Failed to send verification code",
     errorUpdateEmailFieldsRequired:
       "Please enter the new email and the verification code",
-    errorUpdateEmailPasswordFieldsRequired:
-      "Please fill in the current and new password in the dialog",
-    errorUpdateEmailPasswordNotMatch: "The two new passwords do not match",
     errorUpdateEmailFailed: "Failed to change email",
     errorAvatarTooLarge: "Avatar image size must be within 2MB",
     successUsernameUpdated: "Username updated",
     successAvatarUpdated: "Avatar updated",
-    successPasswordUpdated: "Password changed",
     successCodeSent: "Verification code has been sent to the new email",
     successEmailUpdated: "Email updated, please login with the new email",
-    showPassword: "Show",
-    hidePassword: "Hide",
   },
   users: {
     title: "User Management",

@@ -9,8 +9,6 @@ import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 type AuthErrorStage =
   | "user-login:send-code"
   | "admin-login:send-code"
-  | "user-forgot:send-code"
-  | "admin-forgot:send-code"
   | "register:send-code";
 
 function escapeHtml(input: string): string {
@@ -26,8 +24,6 @@ function isAllowedStage(stage: string): stage is AuthErrorStage {
   return (
     stage === "user-login:send-code" ||
     stage === "admin-login:send-code" ||
-    stage === "user-forgot:send-code" ||
-    stage === "admin-forgot:send-code" ||
     stage === "register:send-code"
   );
 }

@@ -77,7 +77,6 @@ export default function AdminProfilePage() {
   const [usernameModalOpen, setUsernameModalOpen] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
   const [sendingCode, setSendingCode] = useState(false);
   const [emailCodeChallengeId, setEmailCodeChallengeId] = useState("");
@@ -89,7 +88,6 @@ export default function AdminProfilePage() {
   const [usernameForm] = Form.useForm<{ username: string }>();
   const [avatarForm] = Form.useForm<{ avatarUrl: string }>();
   const [emailForm] = Form.useForm<{ newEmail: string; emailCode: string }>();
-  const [passwordForm] = Form.useForm<{ oldPassword: string; newPassword: string; confirm: string }>();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -174,11 +172,6 @@ export default function AdminProfilePage() {
     emailForm.resetFields();
     setEmailCodeChallengeId("");
     setEmailModalOpen(true);
-  };
-
-  const openPasswordModal = () => {
-    passwordForm.resetFields();
-    setPasswordModalOpen(true);
   };
 
   const doUpdateUsername = async (username: string) => {
@@ -382,42 +375,6 @@ export default function AdminProfilePage() {
     }
   };
 
-  const doUpdatePassword = async (oldPassword: string, newPassword: string) => {
-    if (!adminEmail) return;
-    const key = "admin-profile-password";
-    api.open({
-      key,
-      message: language === "zh-CN" ? "正在保存…" : "Saving…",
-      description: language === "zh-CN" ? "正在修改密码" : "Updating password",
-      duration: 0,
-    });
-    try {
-      const res = await fetch("/api/user/profile", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ oldPassword, newPassword }),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(safeErrorFromResponse(res, text, messages.common.unknownError));
-      }
-      api.success({
-        key,
-        message: language === "zh-CN" ? "已修改" : "Updated",
-        description: messages.profile.successPasswordUpdated,
-        duration: 2.6,
-      });
-      setPasswordModalOpen(false);
-    } catch (e) {
-      api.error({
-        key,
-        message: messages.common.unknownError,
-        description: e instanceof Error ? e.message : messages.common.unknownError,
-        duration: 4,
-      });
-    }
-  };
 
   if (!adminEmail) {
     return (
@@ -547,7 +504,6 @@ export default function AdminProfilePage() {
                         }
                       />
                       <Space wrap>
-                        <Button onClick={openPasswordModal}>{messages.profile.passwordSectionTitle}</Button>
                         <Button onClick={openEmailModal}>{messages.profile.emailSectionTitle}</Button>
                       </Space>
                     </Space>
@@ -797,56 +753,6 @@ export default function AdminProfilePage() {
         </Space>
       </Modal>
 
-      <Modal
-        title={messages.profile.passwordDialogTitle}
-        open={passwordModalOpen}
-        onCancel={() => setPasswordModalOpen(false)}
-        onOk={() => {
-          void passwordForm
-            .validateFields()
-            .then((v) => doUpdatePassword(v.oldPassword, v.newPassword))
-            .catch(() => undefined);
-        }}
-        okText={messages.profile.passwordDialogConfirm}
-        cancelText={messages.profile.passwordDialogCancel}
-      >
-        <Form form={passwordForm} layout="vertical" requiredMark="optional">
-          <Form.Item
-            label={messages.profile.passwordOldPlaceholder}
-            name="oldPassword"
-            rules={[{ required: true, message: messages.profile.errorPasswordFieldsRequired }]}
-          >
-            <Input.Password autoComplete="current-password" />
-          </Form.Item>
-          <Form.Item
-            label={messages.profile.passwordNewPlaceholder}
-            name="newPassword"
-            rules={[
-              { required: true, message: messages.profile.errorPasswordFieldsRequired },
-              { min: 6, message: language === "zh-CN" ? "至少 6 位" : "Min 6 chars" },
-              { max: 256, message: language === "zh-CN" ? "最多 256 位" : "Max 256 chars" },
-            ]}
-          >
-            <Input.Password autoComplete="new-password" />
-          </Form.Item>
-          <Form.Item
-            label={messages.profile.passwordConfirmPlaceholder}
-            name="confirm"
-            dependencies={["newPassword"]}
-            rules={[
-              { required: true, message: messages.profile.errorPasswordFieldsRequired },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue("newPassword") === value) return Promise.resolve();
-                  return Promise.reject(new Error(messages.profile.errorPasswordNotMatch));
-                },
-              }),
-            ]}
-          >
-            <Input.Password autoComplete="new-password" />
-          </Form.Item>
-        </Form>
-      </Modal>
     </ConfigProvider>
   );
 }

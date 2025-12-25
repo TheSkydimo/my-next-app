@@ -1,5 +1,4 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { sha256 } from "../../_utils/auth";
 import { verifyAndUseEmailCode } from "../../_utils/emailCode";
 import { requireUserFromRequest } from "../_utils/userSession";
 import {
@@ -17,6 +16,12 @@ type UserRow = {
   avatar_url: string | null;
   created_at: string;
 };
+
+function withNoStore(res: Response) {
+  const next = new Response(res.body, res);
+  next.headers.set("Cache-Control", "no-store");
+  return next;
+}
 
 async function ensureAvatarUrlColumn(db: D1Database) {
   // 确保 avatar_url 字段存在（兼容旧库，避免在没有该字段时直接报错）
@@ -36,13 +41,13 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const db = env.my_user_db as D1Database;
 
   const authed = await requireUserFromRequest({ request, env, db });
-  if (authed instanceof Response) return authed;
+  if (authed instanceof Response) return withNoStore(authed);
 
   try {
     await ensureAvatarUrlColumn(db);
   } catch (e) {
     console.error("确保 avatar_url 字段存在失败:", e);
-    return new Response("服务器内部错误", { status: 500 });
+    return withNoStore(new Response("服务器内部错误", { status: 500 }));
   }
 
   const queryResult = await db
@@ -55,17 +60,17 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const user = queryResult.results?.[0];
 
   if (!user) {
-    return new Response("用户不存在", { status: 404 });
+    return withNoStore(new Response("用户不存在", { status: 404 }));
   }
 
-  return Response.json({
+  return withNoStore(Response.json({
     id: user.id,
     username: user.username,
     email: user.email,
     isAdmin: !!user.is_admin,
     avatarUrl: convertDbAvatarUrlToPublicUrl(user.avatar_url),
     createdAt: user.created_at,
-  });
+  }));
 }, { name: "GET /api/user/profile" });
 
 function normalizeAvatarDbUrl(input: string): string {
@@ -92,8 +97,6 @@ function isOwnedAvatarR2KeyForUser(userId: number, key: string): boolean {
 export const POST = withApiMonitoring(async function POST(request: Request) {
   const body = (await request.json()) as {
     username?: string;
-    oldPassword?: string;
-    newPassword?: string;
     newEmail?: string;
     emailCode?: string;
     emailCodeChallengeId?: string;
@@ -102,8 +105,6 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   const {
     username,
-    oldPassword,
-    newPassword,
     newEmail,
     emailCode,
     emailCodeChallengeId,
@@ -115,8 +116,8 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     "avatarUrl"
   );
 
-  if (!username && !newPassword && !newEmail && !hasAvatarField) {
-    return new Response("没有需要更新的字段", { status: 400 });
+  if (!username && !newEmail && !hasAvatarField) {
+    return withNoStore(new Response("没有需要更新的字段", { status: 400 }));
   }
 
   const { env } = await getCloudflareContext();
@@ -124,41 +125,24 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const r2 = env.ORDER_IMAGES as R2Bucket;
 
   const authed = await requireUserFromRequest({ request, env, db });
-  if (authed instanceof Response) return authed;
+  if (authed instanceof Response) return withNoStore(authed);
 
   // POST 也需要兼容旧库（避免用户只调用更新接口而未触发 GET）
   try {
     await ensureAvatarUrlColumn(db);
   } catch (e) {
     console.error("确保 avatar_url 字段存在失败:", e);
-    return new Response("服务器内部错误", { status: 500 });
-  }
-
-  // 如需修改密码，必须校验旧密码
-  if (newPassword) {
-    if (!oldPassword) {
-      return new Response("修改密码需要提供旧密码", { status: 400 });
-    }
-
-    const oldHash = await sha256(oldPassword);
-    const { results } = await db
-      .prepare("SELECT id FROM users WHERE id = ? AND password_hash = ?")
-      .bind(authed.user.id, oldHash)
-      .all();
-
-    if (!results || results.length === 0) {
-      return new Response("旧密码不正确", { status: 400 });
-    }
+    return withNoStore(new Response("服务器内部错误", { status: 500 }));
   }
 
   // 如需修改邮箱，必须经过邮箱验证码验证（验证码发到新邮箱）
   if (newEmail) {
     if (!emailCode) {
-      return new Response("修改邮箱需要提供邮箱验证码", { status: 400 });
+      return withNoStore(new Response("修改邮箱需要提供邮箱验证码", { status: 400 }));
     }
 
     if (!emailCodeChallengeId) {
-      return new Response("邮箱验证码错误或已过期", { status: 400 });
+      return withNoStore(new Response("邮箱验证码错误或已过期", { status: 400 }));
     }
 
     const okCode = await verifyAndUseEmailCode({
@@ -170,7 +154,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     });
 
     if (!okCode) {
-      return new Response("邮箱验证码错误或已过期", { status: 400 });
+      return withNoStore(new Response("邮箱验证码错误或已过期", { status: 400 }));
     }
   }
 
@@ -181,12 +165,6 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   if (username) {
     fields.push("username = ?");
     values.push(username);
-  }
-
-  if (newPassword) {
-    const newHash = await sha256(newPassword);
-    fields.push("password_hash = ?");
-    values.push(newHash);
   }
 
   if (newEmail) {
@@ -201,9 +179,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   if (hasAvatarField) {
     // 禁止 data: base64（体积大、不可缓存、会导致返回 avatarUrl 为 null 进而“更新成功但不显示”）
     if (typeof avatarUrl === "string" && avatarUrl.trim().startsWith("data:")) {
-      return new Response("不支持 base64(data:) 头像，请使用“上传头像”功能", {
+      return withNoStore(new Response("不支持 base64(data:) 头像，请使用“上传头像”功能", {
         status: 400,
-      });
+      }));
     }
 
     // 先读用户 id 与旧头像，方便后续校验“头像 key 归属”，以及（最佳努力）删除旧 R2 对象
@@ -214,7 +192,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
     const prevRow = prev.results?.[0];
     if (!prevRow) {
-      return new Response("用户不存在", { status: 404 });
+      return withNoStore(new Response("用户不存在", { status: 404 }));
     }
 
     prevAvatarUrl = prevRow.avatar_url ?? null;
@@ -229,9 +207,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       const key = r2KeyFromSchemeUrl(normalizedAvatarDbUrl);
       if (key && key.startsWith("avatars/")) {
         if (!isOwnedAvatarR2KeyForUser(authed.user.id, key)) {
-          return new Response("非法头像地址：只能使用自己上传的头像", {
+          return withNoStore(new Response("非法头像地址：只能使用自己上传的头像", {
             status: 400,
-          });
+          }));
         }
       }
     }
@@ -251,11 +229,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     const msg = e instanceof Error ? e.message : String(e);
 
     if (msg.includes("UNIQUE constraint failed: users.email")) {
-      return new Response("该邮箱已被使用", { status: 400 });
+      return withNoStore(new Response("该邮箱已被使用", { status: 400 }));
     }
 
     console.error("更新用户信息失败:", e);
-    return new Response("更新用户信息失败", { status: 500 });
+    return withNoStore(new Response("更新用户信息失败", { status: 500 }));
   }
 
   // 最佳努力删除旧头像（仅当：旧头像为 r2://avatars/..., 新头像不同/被清空）
@@ -284,13 +262,13 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   // 如果更新了头像，返回“可直接展示”的 URL，避免前端把 r2:// 当作 <img src>
   if (hasAvatarField) {
-    return Response.json({
+    return withNoStore(Response.json({
       ok: true,
       avatarUrl: convertDbAvatarUrlToPublicUrl(normalizedAvatarDbUrl),
-    });
+    }));
   }
 
-  return Response.json({ ok: true });
+  return withNoStore(Response.json({ ok: true }));
 }, { name: "POST /api/user/profile" });
 
 

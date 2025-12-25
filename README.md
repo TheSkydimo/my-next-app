@@ -76,7 +76,7 @@ For production, set the secret via `wrangler secret put TURNSTILE_SECRET_KEY` (d
 
 This repo expects the following **server-side secrets** (never commit them):
 
-- `SMTP_PASS` (SMTP password/app password; required for verification emails)
+- `SMTP_PASS` (SMTP credential / app credential; required for verification emails)
 - `MOLE_API_KEY` (optional; used by `/api/user/orders`)
 
 For local preview on the Cloudflare runtime, put them in `.dev.vars`.

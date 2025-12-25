@@ -144,10 +144,9 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     }
   };
 
-  const isPublicRoute =
-    pathname === "/admin/login" || pathname === "/admin/forgot-password";
+  const isPublicRoute = pathname === "/admin/login";
 
-  // 登录页、找回密码页不做管理员登录校验，直接渲染内容
+  // 登录页不做管理员登录校验，直接渲染内容
   if (isPublicRoute) {
     return <>{children}</>;
   }

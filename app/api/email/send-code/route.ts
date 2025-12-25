@@ -87,8 +87,6 @@ function buildEmailTemplate(options: {
     register: "注册验证码",
     "user-login": "登录验证码",
     "admin-login": "管理员登录验证码",
-    "user-forgot": "重置密码验证码",
-    "admin-forgot": "管理员重置密码验证码",
     "change-email": "更换邮箱验证码",
   };
 
@@ -96,8 +94,6 @@ function buildEmailTemplate(options: {
     register: "Sign-up verification code",
     "user-login": "Sign-in verification code",
     "admin-login": "Admin sign-in verification code",
-    "user-forgot": "Password reset code",
-    "admin-forgot": "Admin password reset code",
     "change-email": "Email change verification code",
   };
 
@@ -193,9 +189,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   // 发送验证码：部分用途强制 Turnstile（防刷）
   if (
     purpose === "user-login" ||
-    purpose === "admin-login" ||
-    purpose === "user-forgot" ||
-    purpose === "admin-forgot"
+    purpose === "admin-login"
   ) {
     if (!bypassTurnstile) {
       // Allow passing a short-lived server-verified cookie so the user can retry
@@ -258,7 +252,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   }
 
   // 如果是管理员相关用途，先确认该邮箱为管理员账号
-  if (purpose === "admin-login" || purpose === "admin-forgot") {
+  if (purpose === "admin-login") {
     await ensureUsersIsAdminColumn(db);
     const { results } = await db
       .prepare("SELECT id FROM users WHERE email = ? AND is_admin = 1")

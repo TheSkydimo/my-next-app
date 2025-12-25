@@ -304,8 +304,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
   // 登录页面等特殊处理
   if (
     pathname === "/login" ||
-    pathname === "/register" ||
-    pathname === "/forgot-password"
+    pathname === "/register"
   ) {
     return (
       <ConfigProvider {...commonConfigProviderProps}>

@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { sha256, isValidEmail } from "../_utils/auth";
+import { isValidEmail } from "../_utils/auth";
 import { convertDbAvatarUrlToPublicUrl } from "../_utils/r2ObjectUrls";
 import { verifyAndUseEmailCode } from "../_utils/emailCode";
 import { generateNumericUsername } from "../_utils/user";
@@ -97,17 +97,15 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   if (existing.results && existing.results.length > 0) {
     row = existing.results[0];
   } else {
-    // 首次登录：自动创建用户（无密码登录也需要占位 password_hash，兼容旧表结构）
-    const password_hash = await sha256(crypto.randomUUID());
-
+    // 首次登录：自动创建用户（仅邮箱验证码）
     let finalUsername = generateNumericUsername(10);
     let inserted = false;
 
     for (let attempt = 0; attempt < 6; attempt++) {
       try {
         await db
-          .prepare("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)")
-          .bind(finalUsername, email, password_hash)
+          .prepare("INSERT INTO users (username, email) VALUES (?, ?)")
+          .bind(finalUsername, email)
           .run();
         inserted = true;
         break;

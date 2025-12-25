@@ -1,17 +1,17 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { isValidEmail, sha256 } from "../_utils/auth";
+import { isValidEmail } from "../_utils/auth";
 import { verifyAndUseEmailCode } from "../_utils/emailCode";
 import { generateNumericUsername } from "../_utils/user";
 import { isDevBypassTurnstileEnabled } from "../_utils/runtimeEnv";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../_utils/turnstile";
 import { readJsonBody } from "../_utils/body";
+import { ensureUsersTable } from "../_utils/usersTable";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
   const parsed = await readJsonBody<{
     username?: string;
     email: string;
-    password: string;
     emailCode?: string;
     emailCodeChallengeId?: string;
     turnstileToken?: string;
@@ -19,11 +19,10 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   if (!parsed.ok) {
     return new Response("Invalid JSON", { status: 400 });
   }
-  const { username, email, password, emailCode, emailCodeChallengeId, turnstileToken } =
-    parsed.value;
+  const { username, email, emailCode, emailCodeChallengeId, turnstileToken } = parsed.value;
 
-  if (!email || !password) {
-    return new Response("邮箱和密码不能为空", { status: 400 });
+  if (!email) {
+    return new Response("邮箱不能为空", { status: 400 });
   }
 
   if (!emailCode) {
@@ -37,15 +36,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     return new Response("邮箱格式不正确", { status: 400 });
   }
 
-  if (password.length < 6) {
-    return new Response("密码长度不能少于 6 位", { status: 400 });
-  }
-  if (password.length > 256) {
-    return new Response("密码长度过长", { status: 400 });
-  }
-
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
+  await ensureUsersTable(db);
 
   const bypassTurnstile = isDevBypassTurnstileEnabled(env);
   if (!bypassTurnstile) {
@@ -84,8 +77,6 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     return new Response("邮箱验证码错误或已过期", { status: 400 });
   }
 
-  const password_hash = await sha256(password);
-
   try {
     const providedUsername = typeof username === "string" ? username.trim() : "";
     let finalUsername = providedUsername || generateNumericUsername(10);
@@ -95,9 +86,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       try {
         await db
           .prepare(
-            "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)"
+            "INSERT INTO users (username, email) VALUES (?, ?)"
           )
-          .bind(finalUsername, email, password_hash)
+          .bind(finalUsername, email)
           .run();
         inserted = true;
         break;

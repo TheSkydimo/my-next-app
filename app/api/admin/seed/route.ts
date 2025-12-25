@@ -1,5 +1,4 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { sha256 } from "../../_utils/auth";
 import { ensureUsersTable } from "../../_utils/usersTable";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
@@ -109,22 +108,19 @@ async function runSeed(): Promise<Response> {
     .bind(adminEmail)
     .all();
 
-  // 不再提供“账号+密码”登录：这里生成不可预测的随机 password_hash 作为占位（兼容旧表结构）
-  const password_hash = await sha256(crypto.randomUUID());
-
   if (!existing.results || existing.results.length === 0) {
     await db
       .prepare(
-        "INSERT INTO users (username, email, password_hash, is_admin, is_super_admin) VALUES (?, ?, ?, 1, 1)"
+        "INSERT INTO users (username, email, is_admin, is_super_admin) VALUES (?, ?, 1, 1)"
       )
-      .bind(adminUsername, adminEmail, password_hash)
+      .bind(adminUsername, adminEmail)
       .run();
   } else {
     await db
       .prepare(
-        "UPDATE users SET is_admin = 1, is_super_admin = 1, password_hash = ? WHERE email = ?"
+        "UPDATE users SET is_admin = 1, is_super_admin = 1 WHERE email = ?"
       )
-      .bind(password_hash, adminEmail)
+      .bind(adminEmail)
       .run();
   }
 
@@ -132,7 +128,7 @@ async function runSeed(): Promise<Response> {
     ok: true,
     adminEmail,
     message:
-      "超级管理员初始化完成。管理端登录已改为邮箱验证码登录（无需密码）。请务必在生产环境关闭 ALLOW_ADMIN_SEED。",
+      "超级管理员初始化完成。管理端登录已改为邮箱验证码登录（无需任何口令）。请务必在生产环境关闭 ALLOW_ADMIN_SEED。",
   });
 }
 
