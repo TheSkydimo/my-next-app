@@ -20,7 +20,6 @@ import {
   Popconfirm,
 } from "antd";
 import { UserOverviewCard, type UserDetail } from "./_components/UserOverviewCard";
-import { UserVipEditorModal } from "../_components/UserVipEditorModal";
 import { UserOrdersTable, type AdminOrderItem } from "./_components/UserOrdersTable";
 
 type SegmentParams = {
@@ -56,7 +55,6 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const [vipModalOpen, setVipModalOpen] = useState(false);
 
   const [api, contextHolder] = notification.useNotification({
     placement: "topRight",
@@ -160,9 +158,8 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
   }, [adminEmail, userEmail]);
 
   const doAdminAction = async (body: {
-    action: "remove" | "set-admin" | "unset-admin" | "set-vip";
+    action: "remove" | "set-admin" | "unset-admin";
     userEmail: string;
-    vipExpiresAt?: string | null;
   }) => {
     if (!adminEmail) return;
     setActionLoading(true);
@@ -184,7 +181,6 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
         duration: 3,
       });
       await load();
-      setVipModalOpen(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : messages.common.unknownError;
       api.error({
@@ -287,25 +283,6 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
           >
             <Space wrap>
               <Button
-                type="primary"
-                onClick={() => setVipModalOpen(true)}
-                loading={actionLoading}
-                disabled={!user}
-              >
-                {language === "zh-CN" ? "设置会员" : "Set VIP"}
-              </Button>
-
-              <Button
-                onClick={() =>
-                  user ? void doAdminAction({ action: "set-vip", userEmail: user.email, vipExpiresAt: null }) : undefined
-                }
-                loading={actionLoading}
-                disabled={!user || actionLoading}
-              >
-                {language === "zh-CN" ? "取消会员" : "Cancel VIP"}
-              </Button>
-
-              <Button
                 onClick={() =>
                   user ? void doAdminAction({ action: "set-admin", userEmail: user.email }) : undefined
                 }
@@ -377,21 +354,6 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
         </Space>
       </div>
 
-      <UserVipEditorModal
-        open={vipModalOpen}
-        language={language}
-        currentVipExpiresAt={user?.vipExpiresAt ?? null}
-        loading={actionLoading}
-        onCancel={() => setVipModalOpen(false)}
-        onSubmit={async (vipExpiresAt) => {
-          if (!user) return;
-          await doAdminAction({
-            action: "set-vip",
-            userEmail: user.email,
-            vipExpiresAt,
-          });
-        }}
-      />
     </ConfigProvider>
   );
 }

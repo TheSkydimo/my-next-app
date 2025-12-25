@@ -23,7 +23,6 @@ import {
   notification,
   theme as antdTheme,
 } from "antd";
-import { UserVipEditorModal } from "./_components/UserVipEditorModal";
 
 type UserItem = {
   id: number;
@@ -69,9 +68,6 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string>("");
-
-  const [vipModalOpen, setVipModalOpen] = useState(false);
-  const [vipTarget, setVipTarget] = useState<UserItem | null>(null);
 
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
@@ -148,9 +144,8 @@ export default function AdminUsersPage() {
   }, [adminEmail]);
 
   const doAdminAction = async (body: {
-    action: "remove" | "set-admin" | "unset-admin" | "set-vip";
+    action: "remove" | "set-admin" | "unset-admin";
     userEmail: string;
-    vipExpiresAt?: string | null;
   }) => {
     if (!adminEmail) return;
     setActionLoading(true);
@@ -172,8 +167,6 @@ export default function AdminUsersPage() {
         duration: 3,
       });
       await fetchUsers();
-      setVipModalOpen(false);
-      setVipTarget(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : messages.common.unknownError;
       api.error({
@@ -273,30 +266,6 @@ export default function AdminUsersPage() {
           const canDelete = row.email !== adminEmail && !row.isVip;
           return (
             <Space wrap size={8}>
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => {
-                  setVipTarget(row);
-                  setVipModalOpen(true);
-                }}
-                disabled={actionLoading}
-              >
-                {language === "zh-CN" ? "设置会员" : "Set VIP"}
-              </Button>
-              <Button
-                size="small"
-                onClick={() =>
-                  void doAdminAction({
-                    action: "set-vip",
-                    userEmail: row.email,
-                    vipExpiresAt: null,
-                  })
-                }
-                disabled={actionLoading}
-              >
-                {language === "zh-CN" ? "取消会员" : "Cancel VIP"}
-              </Button>
               {canSetAdmin ? (
                 <Popconfirm
                   title={language === "zh-CN" ? "确认设为管理员？" : "Make this user admin?"}
@@ -427,25 +396,6 @@ export default function AdminUsersPage() {
           </Card>
         </Space>
       </div>
-
-      <UserVipEditorModal
-        open={vipModalOpen}
-        language={language}
-        currentVipExpiresAt={vipTarget?.vipExpiresAt ?? null}
-        loading={actionLoading}
-        onCancel={() => {
-          setVipModalOpen(false);
-          setVipTarget(null);
-        }}
-        onSubmit={async (vipExpiresAt) => {
-          if (!vipTarget) return;
-          await doAdminAction({
-            action: "set-vip",
-            userEmail: vipTarget.email,
-            vipExpiresAt,
-          });
-        }}
-      />
     </ConfigProvider>
   );
 }
