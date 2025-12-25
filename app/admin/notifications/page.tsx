@@ -155,129 +155,133 @@ export default function AdminNotificationsPage() {
             </Typography.Paragraph>
           </div>
 
-          <Card style={{ maxWidth: 920 }} bodyStyle={{ paddingTop: 16 }}>
-            <Alert
-              type="info"
-              showIcon
-              message={messages.notifications.scopeLabel}
-              description={messages.notifications.scopeValueAll}
-              style={{ marginBottom: 16 }}
-            />
+          <Row justify="center">
+            <Col xs={24} lg={20} xl={16} xxl={14}>
+              <Card style={{ width: "100%" }} bodyStyle={{ paddingTop: 16 }}>
+                <Alert
+                  type="info"
+                  showIcon
+                  message={messages.notifications.scopeLabel}
+                  description={messages.notifications.scopeValueAll}
+                  style={{ marginBottom: 16 }}
+                />
 
-            <Form
-              form={form}
-              layout="vertical"
-              requiredMark="optional"
-              initialValues={{
-                level: "info",
-                type: "admin_message",
-                titleZh: "",
-                bodyZh: "",
-                titleEn: "",
-                bodyEn: "",
-                linkUrl: "",
-              }}
-              onFinish={(values) => void send(values)}
-            >
-              <Row gutter={[16, 0]}>
-                <Col xs={24} sm={8}>
-                  <Form.Item
-                    label={messages.notifications.levelLabel}
-                    name="level"
-                    rules={[{ required: true }]}
-                  >
-                    <Select
-                      options={[
-                        { value: "info", label: messages.notifications.levelInfo },
-                        { value: "warn", label: messages.notifications.levelWarn },
-                        { value: "critical", label: messages.notifications.levelCritical },
-                      ]}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} sm={16}>
-                  <Form.Item
-                    label={messages.notifications.typeLabel}
-                    name="type"
-                    tooltip="Defaults to admin_message"
-                  >
-                    <Input placeholder="admin_message" maxLength={50} />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Divider style={{ margin: "8px 0 16px" }} />
-
-              <Row gutter={[16, 0]}>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    label={messages.notifications.titleZhLabel}
-                    name="titleZh"
-                    rules={[{ required: true, message: messages.notifications.errorTitleRequired }]}
-                  >
-                    <Input placeholder={messages.notifications.titleZhPlaceholder} maxLength={80} />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    label={messages.notifications.titleEnLabel}
-                    name="titleEn"
-                    rules={[{ required: true, message: messages.notifications.errorTitleRequired }]}
-                  >
-                    <Input placeholder={messages.notifications.titleEnPlaceholder} maxLength={80} />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Row gutter={[16, 0]}>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    label={messages.notifications.bodyZhLabel}
-                    name="bodyZh"
-                    rules={[{ required: true, message: messages.notifications.errorBodyRequired }]}
-                  >
-                    <Input.TextArea
-                      placeholder={messages.notifications.bodyZhPlaceholder}
-                      autoSize={{ minRows: 6, maxRows: 14 }}
-                      maxLength={1000}
-                      showCount
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    label={messages.notifications.bodyEnLabel}
-                    name="bodyEn"
-                    rules={[{ required: true, message: messages.notifications.errorBodyRequired }]}
-                  >
-                    <Input.TextArea
-                      placeholder={messages.notifications.bodyEnPlaceholder}
-                      autoSize={{ minRows: 6, maxRows: 14 }}
-                      maxLength={1000}
-                      showCount
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Form.Item label={messages.notifications.linkUrlLabel} name="linkUrl">
-                <Input placeholder={messages.notifications.linkUrlPlaceholder} maxLength={300} />
-              </Form.Item>
-
-              <Space>
-                <Button type="primary" htmlType="submit" loading={sending}>
-                  {messages.notifications.sendButton}
-                </Button>
-                <Button
-                  htmlType="button"
-                  onClick={() => form.resetFields()}
-                  disabled={sending}
+                <Form
+                  form={form}
+                  layout="vertical"
+                  requiredMark="optional"
+                  initialValues={{
+                    level: "info",
+                    type: "admin_message",
+                    titleZh: "",
+                    bodyZh: "",
+                    titleEn: "",
+                    bodyEn: "",
+                    linkUrl: "",
+                  }}
+                  onFinish={(values) => void send(values)}
                 >
-                  Reset
-                </Button>
-              </Space>
-            </Form>
-          </Card>
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24} sm={8}>
+                      <Form.Item
+                        label={messages.notifications.levelLabel}
+                        name="level"
+                        rules={[{ required: true }]}
+                      >
+                        <Select
+                          options={[
+                            { value: "info", label: messages.notifications.levelInfo },
+                            { value: "warn", label: messages.notifications.levelWarn },
+                            { value: "critical", label: messages.notifications.levelCritical },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={16}>
+                      <Form.Item
+                        label={messages.notifications.typeLabel}
+                        name="type"
+                        tooltip="Defaults to admin_message"
+                      >
+                        <Input placeholder="admin_message" maxLength={50} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Divider style={{ margin: "8px 0 16px" }} />
+
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={messages.notifications.titleZhLabel}
+                        name="titleZh"
+                        rules={[{ required: true, message: messages.notifications.errorTitleRequired }]}
+                      >
+                        <Input placeholder={messages.notifications.titleZhPlaceholder} maxLength={80} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={messages.notifications.titleEnLabel}
+                        name="titleEn"
+                        rules={[{ required: true, message: messages.notifications.errorTitleRequired }]}
+                      >
+                        <Input placeholder={messages.notifications.titleEnPlaceholder} maxLength={80} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={messages.notifications.bodyZhLabel}
+                        name="bodyZh"
+                        rules={[{ required: true, message: messages.notifications.errorBodyRequired }]}
+                      >
+                        <Input.TextArea
+                          placeholder={messages.notifications.bodyZhPlaceholder}
+                          autoSize={{ minRows: 6, maxRows: 14 }}
+                          maxLength={1000}
+                          showCount
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={messages.notifications.bodyEnLabel}
+                        name="bodyEn"
+                        rules={[{ required: true, message: messages.notifications.errorBodyRequired }]}
+                      >
+                        <Input.TextArea
+                          placeholder={messages.notifications.bodyEnPlaceholder}
+                          autoSize={{ minRows: 6, maxRows: 14 }}
+                          maxLength={1000}
+                          showCount
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Form.Item label={messages.notifications.linkUrlLabel} name="linkUrl">
+                    <Input placeholder={messages.notifications.linkUrlPlaceholder} maxLength={300} />
+                  </Form.Item>
+
+                  <Space wrap>
+                    <Button type="primary" htmlType="submit" loading={sending}>
+                      {messages.notifications.sendButton}
+                    </Button>
+                    <Button
+                      htmlType="button"
+                      onClick={() => form.resetFields()}
+                      disabled={sending}
+                    >
+                      Reset
+                    </Button>
+                  </Space>
+                </Form>
+              </Card>
+            </Col>
+          </Row>
         </Space>
       </div>
     </ConfigProvider>

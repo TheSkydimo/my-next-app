@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   ConfigProvider,
+  Grid,
   Input,
   Popconfirm,
   Result,
@@ -52,6 +53,9 @@ export default function AdminAdminsPage() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string>("");
+
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
 
   const [api, contextHolder] = notification.useNotification({
     placement: "topRight",
@@ -224,12 +228,14 @@ export default function AdminAdminsPage() {
         dataIndex: "createdAt",
         key: "createdAt",
         width: 200,
+        responsive: ["md"],
         render: (v: string) => <Typography.Text type="secondary">{v}</Typography.Text>,
       },
       {
         title: messages.admins.tableActions,
         key: "actions",
-        width: 320,
+        width: isMobile ? 260 : 320,
+        fixed: screens.md ? "right" : undefined,
         render: (_: unknown, row: AdminItem) => {
           const isSelf = row.email === adminEmail;
           return (
@@ -268,7 +274,7 @@ export default function AdminAdminsPage() {
         },
       },
     ];
-  }, [actionLoading, adminEmail, doAction, language, messages.admins, pagination]);
+  }, [actionLoading, adminEmail, doAction, isMobile, language, messages.admins, pagination, screens.md]);
 
   if (unauthorized) {
     return (
@@ -344,6 +350,8 @@ export default function AdminAdminsPage() {
               dataSource={admins}
               columns={columns}
               loading={loading}
+              size={isMobile ? "small" : "middle"}
+              scroll={{ x: "max-content" }}
               locale={{ emptyText: messages.admins.emptyText }}
               pagination={
                 pagination
@@ -352,6 +360,7 @@ export default function AdminAdminsPage() {
                       pageSize: pagination.pageSize,
                       total: pagination.total,
                       showSizeChanger: true,
+                      responsive: true,
                       onChange: (p, ps) => void fetchAdmins({ page: p, pageSize: ps }),
                     }
                   : false

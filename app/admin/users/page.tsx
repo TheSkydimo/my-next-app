@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   ConfigProvider,
+  Grid,
   Input,
   Popconfirm,
   Result,
@@ -71,6 +72,9 @@ export default function AdminUsersPage() {
 
   const [vipModalOpen, setVipModalOpen] = useState(false);
   const [vipTarget, setVipTarget] = useState<UserItem | null>(null);
+
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
 
   const [api, contextHolder] = notification.useNotification({
     placement: "topRight",
@@ -244,6 +248,7 @@ export default function AdminUsersPage() {
         dataIndex: "vipExpiresAt",
         key: "vipExpiresAt",
         width: 180,
+        responsive: ["md"],
         render: (v: string | null) => (
           <Typography.Text type="secondary">{v ? formatDateTime(v) : "-"}</Typography.Text>
         ),
@@ -253,6 +258,7 @@ export default function AdminUsersPage() {
         dataIndex: "createdAt",
         key: "createdAt",
         width: 180,
+        responsive: ["md"],
         render: (v: string) => (
           <Typography.Text type="secondary">{formatDateTime(v)}</Typography.Text>
         ),
@@ -260,7 +266,8 @@ export default function AdminUsersPage() {
       {
         title: language === "zh-CN" ? "操作" : "Actions",
         key: "actions",
-        width: 360,
+        width: isMobile ? 280 : 360,
+        fixed: screens.md ? "right" : undefined,
         render: (_: unknown, row: UserItem) => {
           const canSetAdmin = isSuperAdmin && !row.isAdmin;
           const canDelete = row.email !== adminEmail && !row.isVip;
@@ -326,7 +333,7 @@ export default function AdminUsersPage() {
         },
       },
     ];
-  }, [actionLoading, adminEmail, doAdminAction, isSuperAdmin, language, pagination]);
+  }, [actionLoading, adminEmail, doAdminAction, isMobile, isSuperAdmin, language, pagination, screens.md]);
 
   if (!adminEmail) {
     return (
@@ -402,6 +409,8 @@ export default function AdminUsersPage() {
               dataSource={users}
               columns={columns}
               loading={loading}
+              size={isMobile ? "small" : "middle"}
+              scroll={{ x: "max-content" }}
               pagination={
                 pagination
                   ? {
@@ -409,6 +418,7 @@ export default function AdminUsersPage() {
                       pageSize: pagination.pageSize,
                       total: pagination.total,
                       showSizeChanger: true,
+                      responsive: true,
                       onChange: (p, ps) => void fetchUsers({ page: p, pageSize: ps }),
                     }
                   : false

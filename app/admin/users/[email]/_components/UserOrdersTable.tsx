@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Button, Image, Space, Table, Typography } from "antd";
+import { Button, Grid, Image, Space, Table, Typography } from "antd";
 
 export type AdminOrderItem = {
   id: number;
@@ -29,6 +29,8 @@ export function UserOrdersTable({
   language: "zh-CN" | "en-US";
 }) {
   const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
 
   const columns = useMemo(() => {
     return [
@@ -98,6 +100,7 @@ export function UserOrdersTable({
         title: language === "zh-CN" ? "备注" : "Note",
         dataIndex: "note",
         key: "note",
+        responsive: ["md"],
         render: (v: string | null) =>
           v ? (
             <Typography.Paragraph style={{ margin: 0 }} ellipsis={{ rows: 2 }}>
@@ -113,10 +116,11 @@ export function UserOrdersTable({
   return (
     <Table<AdminOrderItem>
       rowKey="id"
-      size="middle"
+      size={isMobile ? "small" : "middle"}
       dataSource={items}
       columns={[...columns] as unknown as never}
       pagination={false}
+      scroll={{ x: "max-content" }}
       expandable={{
         expandedRowRender: (row) => (
           <Space direction="vertical" size={6} style={{ width: "100%" }}>
