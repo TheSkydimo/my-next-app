@@ -267,6 +267,9 @@ export default function UserDevicesPage() {
   const totalOrders = uniqueOrders.length;
   const hasOrderData = totalOrders > 0;
   const totalRowsForPaging = hasOrderData ? totalOrders : deviceTotal;
+  const ordersCacheUrl = userEmail
+    ? `/api/user/orders?email=${encodeURIComponent(userEmail)}`
+    : null;
 
   // Delete Order Logic
   const handleDeleteOrder = async (order: OrderSnapshot) => {
@@ -282,6 +285,7 @@ export default function UserDevicesPage() {
         throw new Error(text || (language === "zh-CN" ? "删除失败" : "Delete failed"));
       }
 
+      let nextOrders: Record<string, OrderSnapshot[]> | null = null;
       setOrders((prev) => {
         const key = order.deviceId || NO_DEVICE_ID;
         const list = prev[key] ?? [];
@@ -289,16 +293,14 @@ export default function UserDevicesPage() {
         const next = { ...prev };
         if (nextList.length > 0) next[key] = nextList;
         else delete next[key];
+        nextOrders = next;
         return next;
       });
 
-      // 同步更新缓存（best-effort）：避免用户删除后切页回来又看到旧数据
-      const ordersUrl = `/api/user/orders?email=${encodeURIComponent(userEmail)}`;
-      const cached = cache.get<{ items?: OrderSnapshot[] }>(ordersUrl);
-      if (cached && Array.isArray(cached.items)) {
-        cache.set(ordersUrl, {
-          items: cached.items.filter((x) => x.id !== order.id),
-        });
+      // 写操作成功后：强制同步缓存，避免切页后读到旧数据
+      if (ordersCacheUrl && nextOrders) {
+        const flat = Object.values(nextOrders).flat();
+        cache.set(ordersCacheUrl, { items: flat });
       }
       setOkMsg(language === "zh-CN" ? "删除成功" : "Deleted successfully");
     } catch (e: unknown) {
@@ -361,20 +363,20 @@ export default function UserDevicesPage() {
 
   // Upload Logic Wrapper
   const handleUploadSuccess = (data: OrderSnapshot) => {
+    let nextOrders: Record<string, OrderSnapshot[]> | null = null;
     setOrders((prev) => {
       const key = data.deviceId || NO_DEVICE_ID;
       const list = prev[key] ?? [];
-      return { ...prev, [key]: [data, ...list] };
+      const deduped = [data, ...list.filter((x) => x.id !== data.id)];
+      const next = { ...prev, [key]: deduped };
+      nextOrders = next;
+      return next;
     });
 
-    // 同步更新缓存（best-effort）：避免上传后切页返回仍触发加载/显示旧列表
-    if (userEmail) {
-      const ordersUrl = `/api/user/orders?email=${encodeURIComponent(userEmail)}`;
-      const cached = cache.get<{ items?: OrderSnapshot[] }>(ordersUrl);
-      if (cached && Array.isArray(cached.items)) {
-        const exists = cached.items.some((x) => x.id === data.id);
-        cache.set(ordersUrl, { items: exists ? cached.items : [data, ...cached.items] });
-      }
+    // 写操作成功后：强制同步缓存，避免切页后读到旧数据
+    if (ordersCacheUrl && nextOrders) {
+      const flat = Object.values(nextOrders).flat();
+      cache.set(ordersCacheUrl, { items: flat });
     }
     setUploadingOrderForDevice(null);
   };

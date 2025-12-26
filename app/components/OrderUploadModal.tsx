@@ -32,14 +32,33 @@ export default function OrderUploadModal({
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
 
+  const isImageFile = (file: File) => {
+    const type = String(file.type || "");
+    if (type.startsWith("image/")) return true;
+    // Some browsers / drag sources may not provide a MIME type; fall back to extension.
+    const name = String(file.name || "").toLowerCase();
+    return (
+      name.endsWith(".png") ||
+      name.endsWith(".jpg") ||
+      name.endsWith(".jpeg") ||
+      name.endsWith(".webp") ||
+      name.endsWith(".gif") ||
+      name.endsWith(".bmp") ||
+      name.endsWith(".heic")
+    );
+  };
+
   const handleUpload = async () => {
     if (fileList.length === 0) {
       setError(language === "zh-CN" ? "请选择要上传的文件" : "Please select a file to upload");
       return;
     }
 
-    const file = fileList[0].originFileObj;
-    if (!file) return;
+    const file = fileList[0]?.originFileObj;
+    if (!(file instanceof File)) {
+      setError(language === "zh-CN" ? "请选择要上传的文件" : "Please select a file to upload");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -84,24 +103,27 @@ export default function OrderUploadModal({
   };
 
   const uploadProps: UploadProps = {
-    onRemove: (file) => {
-      const index = fileList.indexOf(file);
-      const newFileList = fileList.slice();
-      newFileList.splice(index, 1);
-      setFileList(newFileList);
-    },
     beforeUpload: (file) => {
-      // Check file type if needed
-      const isImage = file.type.startsWith("image/");
-      if (!isImage) {
+      if (!isImageFile(file)) {
         message.error(language === "zh-CN" ? "只能上传图片文件!" : "You can only upload image files!");
         return Upload.LIST_IGNORE;
       }
-      setFileList([file]); // Only allow 1 file
+      // Use onChange to populate UploadFile (with originFileObj).
       return false; // Prevent auto upload
+    },
+    onChange: (info) => {
+      // Only allow 1 file, keep the latest.
+      const next = (info.fileList ?? []).slice(-1);
+      setFileList(next);
+      if (next.length > 0) setError("");
+    },
+    onRemove: () => {
+      setFileList([]);
+      setError("");
     },
     fileList,
     maxCount: 1,
+    disabled: loading,
   };
 
   const title = deviceId 
@@ -113,8 +135,10 @@ export default function OrderUploadModal({
       open={open}
       title={title}
       onCancel={handleClose}
+      maskClosable={!loading}
+      closable={!loading}
       footer={[
-        <Button key="cancel" onClick={handleClose}>
+        <Button key="cancel" onClick={handleClose} disabled={loading}>
           {language === "zh-CN" ? "取消" : "Cancel"}
         </Button>,
         <Button
@@ -122,7 +146,7 @@ export default function OrderUploadModal({
           type="primary"
           loading={loading}
           onClick={handleUpload}
-          disabled={fileList.length === 0}
+          disabled={fileList.length === 0 || loading}
         >
           {language === "zh-CN" ? "提交" : "Submit"}
         </Button>,
