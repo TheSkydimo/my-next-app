@@ -141,6 +141,27 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
+  // 监听全局语言变更事件（例如 /en、/zh 路由在进入时会触发 applyLanguage）
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ language: AppLanguage }>;
+      const next = custom.detail?.language;
+      if (next === "zh-CN" || next === "en-US") {
+        setLanguage(next);
+      }
+    };
+
+    window.addEventListener("app-language-changed", handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        "app-language-changed",
+        handler as EventListener
+      );
+    };
+  }, []);
+
   // 监听 pathname 和 hash 变化同步菜单选中状态
   useEffect(() => {
     if (typeof window === "undefined") return;
