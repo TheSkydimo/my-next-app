@@ -7,6 +7,7 @@ export type UserMessages = {
     loginRequired: string;
     goLogin: string;
     loading: string;
+    edit: string;
     unknownError: string;
   };
   home: {
@@ -125,6 +126,7 @@ const zhCN: UserMessages = {
     loginRequired: "未检测到用户登录，请先登录。",
     goLogin: "去登录",
     loading: "加载中...",
+    edit: "编辑",
     unknownError: "发生未知错误",
   },
   home: {
@@ -242,6 +244,7 @@ const enUS: UserMessages = {
     loginRequired: "No logged-in user detected. Please sign in first.",
     goLogin: "Go to Login",
     loading: "Loading...",
+    edit: "Edit",
     unknownError: "Unknown error occurred",
   },
   home: {

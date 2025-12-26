@@ -2,11 +2,35 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  Avatar,
+  Button,
+  Card,
+  Divider,
+  Form,
+  Input,
+  Modal,
+  Space,
+  Typography,
+  Upload,
+  message,
+  Descriptions,
+  Spin,
+  Alert,
+  Tabs,
+  Grid,
+} from "antd";
+import type { UploadFile } from "antd";
+import {
+  UserOutlined,
+} from "@ant-design/icons";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
-import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
+
+const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 type Profile = {
   username: string;
@@ -15,30 +39,42 @@ type Profile = {
 };
 
 export default function UserProfilePage() {
-  // 使用 UserContext 获取预加载的用户信息，避免重复请求
   const userContext = useUser();
   const userEmail = userContext.profile?.email ?? null;
   const isUserInitialized = userContext.initialized;
   
-  const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+
+  const [language, setLanguage] = useState<AppLanguage>(() =>
+    getInitialLanguage()
+  );
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useAutoDismissMessage(2000);
-  const [okMsg, setOkMsg] = useAutoDismissMessage(2000);
-  const [editing, setEditing] = useState(false);
+  
+  // Modals state
+  const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  
+  // Forms
+  const [usernameForm] = Form.useForm();
+  const [emailForm] = Form.useForm();
+  const [avatarForm] = Form.useForm();
 
-  const [usernameInput, setUsernameInput] = useState("");
-
-  const [avatarUrlInput, setAvatarUrlInput] = useState("");
-  const [avatarUploading, setAvatarUploading] = useState(false);
-
-  const [newEmail, setNewEmail] = useState("");
-  const [emailCode, setEmailCode] = useState("");
-  const [emailCodeChallengeId, setEmailCodeChallengeId] = useState("");
+  // Loading states
+  const [usernameLoading, setUsernameLoading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
-  const [showUsernameDialog, setShowUsernameDialog] = useState(false);
-  const [showAvatarDialog, setShowAvatarDialog] = useState(false);
-  const [showEmailDialog, setShowEmailDialog] = useState(false);
+
+  // Avatar Preview
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [avatarFileList, setAvatarFileList] = useState<UploadFile[]>([]);
+
+  // Email verification state
+  const [emailCodeChallengeId, setEmailCodeChallengeId] = useState("");
+
+  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -61,205 +97,194 @@ export default function UserProfilePage() {
 
   const messages = getUserMessages(language);
 
-  // 使用 UserContext 中的预加载数据初始化 profile 状态
+  // Initialize profile from context
   useEffect(() => {
     if (userContext.profile && !profile) {
       const { username, email, avatarUrl } = userContext.profile;
       setProfile({ username, email, avatarUrl });
-      setUsernameInput(username);
-      setAvatarUrlInput(avatarUrl ?? "");
+      usernameForm.setFieldValue("username", username);
+      avatarForm.setFieldValue("avatarUrl", avatarUrl ?? "");
     }
-  }, [userContext.profile, profile]);
+  }, [userContext.profile, profile, usernameForm, avatarForm]);
 
-  // 当 UserContext 的 loading 状态变化时，同步到本地 loading 状态
-  useEffect(() => {
-    // 只在 context 初始化过程中同步 loading 状态
-    if (!userContext.initialized) {
-      setLoading(userContext.loading);
-    }
-  }, [userContext.loading, userContext.initialized]);
+  // Handlers
+  const openUsernameModal = () => {
+    usernameForm.setFieldsValue({ username: profile?.username ?? "" });
+    setIsUsernameModalOpen(true);
+  };
 
-  const updateUsername = async () => {
-    if (!userEmail || !usernameInput) return;
-    setError("");
-    setOkMsg("");
+  const openAvatarModal = () => {
+    setAvatarFileList([]);
+    setAvatarPreviewUrl(profile?.avatarUrl ?? null);
+    avatarForm.setFieldsValue({ avatarUrl: profile?.avatarUrl ?? "" });
+    setIsAvatarModalOpen(true);
+  };
+
+  const openEmailModal = () => {
+    emailForm.resetFields();
+    setEmailCodeChallengeId("");
+    setIsEmailModalOpen(true);
+  };
+
+  const handleUpdateUsername = async () => {
     try {
+      const values = await usernameForm.validateFields();
+      if (!userEmail) return;
+
+      setUsernameLoading(true);
       const res = await fetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: usernameInput,
+          username: values.username,
         }),
       });
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || messages.profile.errorUsernameUpdateFailed);
       }
-      setOkMsg(messages.profile.successUsernameUpdated);
+
+      messageApi.success(messages.profile.successUsernameUpdated);
       setProfile((p) =>
         p
-          ? { ...p, username: usernameInput }
-          : { username: usernameInput, email: userEmail, avatarUrl: null }
+          ? { ...p, username: values.username }
+          : { username: values.username, email: userEmail, avatarUrl: null }
       );
-
-      // 同步更新到 UserContext，触发全局状态更新
-      userContext.updateProfile({ username: usernameInput });
+      userContext.updateProfile({ username: values.username });
+      setIsUsernameModalOpen(false);
     } catch (e) {
-      setError(
+      messageApi.error(
         e instanceof Error
           ? e.message
           : messages.profile.errorUsernameUpdateFailed
       );
+    } finally {
+      setUsernameLoading(false);
     }
   };
 
-  const updateAvatar = async (overrideAvatarUrl?: string | null) => {
+  const doUpdateAvatar = async (avatarUrl: string | null) => {
     if (!userEmail) return;
-    setError("");
-    setOkMsg("");
+    setAvatarLoading(true);
     try {
-      let finalAvatarUrl =
-        overrideAvatarUrl !== undefined
-          ? overrideAvatarUrl
-          : avatarUrlInput.trim() || null;
-
-      // 如果用户粘贴了 data:image/...;base64,...，自动转存到 R2，再把 r2://... 写入资料
-      if (typeof finalAvatarUrl === "string" && finalAvatarUrl.startsWith("data:")) {
-        const res = await fetch("/api/avatar/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataUrl: finalAvatarUrl }),
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || messages.profile.errorAvatarUpdateFailed);
-        }
-        const data = (await res.json()) as { dbUrl: string };
-        if (!data?.dbUrl) {
-          throw new Error(messages.profile.errorAvatarUpdateFailed);
-        }
-        setAvatarUrlInput(data.dbUrl);
-        finalAvatarUrl = data.dbUrl;
-      }
-
       const res = await fetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          avatarUrl: finalAvatarUrl,
-        }),
+        body: JSON.stringify({ avatarUrl }),
       });
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || messages.profile.errorAvatarUpdateFailed);
       }
-      const data = (await res.json().catch(() => null)) as
-        | { avatarUrl?: string | null }
-        | null;
 
-      const newAvatarUrl =
-        typeof data?.avatarUrl === "string" ? data.avatarUrl : null;
+      const data = (await res.json().catch(() => null)) as { avatarUrl?: string | null } | null;
+      const newAvatarUrl = typeof data?.avatarUrl === "string" ? data.avatarUrl : null;
 
-      // 用户提交了非空头像，但服务端未返回可展示的 avatarUrl，视为失败（避免“成功但不显示”）
-      if (finalAvatarUrl && !newAvatarUrl) {
+      if (avatarUrl && !newAvatarUrl) {
         throw new Error(messages.profile.errorAvatarUpdateFailed);
       }
+
       setProfile((p) =>
         p
           ? { ...p, avatarUrl: newAvatarUrl }
-          : { username: usernameInput || "", email: userEmail, avatarUrl: newAvatarUrl }
+          : { username: profile?.username || "", email: userEmail, avatarUrl: newAvatarUrl }
       );
-
-      // 同步更新到 UserContext，触发全局状态更新（包括 localStorage 和事件通知）
       userContext.updateProfile({ avatarUrl: newAvatarUrl });
-      setOkMsg(messages.profile.successAvatarUpdated);
+      messageApi.success(messages.profile.successAvatarUpdated);
+      setIsAvatarModalOpen(false);
     } catch (e) {
-      setOkMsg("");
-      setError(
-        e instanceof Error
-          ? e.message
-          : messages.profile.errorAvatarUpdateFailed
+      messageApi.error(
+        e instanceof Error ? e.message : messages.profile.errorAvatarUpdateFailed
       );
+    } finally {
+      setAvatarLoading(false);
     }
   };
 
-  const sendChangeEmailCode = async () => {
-    if (!newEmail) {
-      setError(messages.profile.errorNewEmailRequired);
-      return;
-    }
-    setError("");
-    setOkMsg("");
-    setSendingCode(true);
+  const handleSendCode = async () => {
     try {
+      const email = emailForm.getFieldValue("newEmail");
+      if (!email) {
+        messageApi.error(messages.profile.errorNewEmailRequired);
+        return;
+      }
+      
+      // Basic email validation
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+         messageApi.error("Please enter a valid email address");
+         return;
+      }
+
+      setSendingCode(true);
       const res = await fetch("/api/email/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: newEmail,
+          email,
           purpose: "change-email",
           language,
         }),
       });
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || messages.profile.errorSendCodeFailed);
       }
+
       const data = (await res.json().catch(() => null)) as
         | { challengeId?: string }
         | null;
+
       if (!data?.challengeId) {
         throw new Error(messages.profile.errorSendCodeFailed);
       }
+
       setEmailCodeChallengeId(String(data.challengeId));
-      setOkMsg(messages.profile.successCodeSent);
+      messageApi.success(messages.profile.successCodeSent);
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : messages.profile.errorSendCodeFailed
+      messageApi.error(
+        e instanceof Error ? e.message : messages.profile.errorSendCodeFailed
       );
     } finally {
       setSendingCode(false);
     }
   };
 
-  const updateEmail = async () => {
-    if (!userEmail) return;
-    if (!newEmail || !emailCode) {
-      setError(messages.profile.errorUpdateEmailFieldsRequired);
-      return;
-    }
-
-    setError("");
-    setOkMsg("");
+  const handleUpdateEmail = async () => {
     try {
+      const values = await emailForm.validateFields();
+      if (!userEmail) return;
+
+      setEmailLoading(true);
       const res = await fetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          newEmail,
-          emailCode,
+          newEmail: values.newEmail,
+          emailCode: values.emailCode,
           emailCodeChallengeId,
         }),
       });
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || messages.profile.errorUpdateEmailFailed);
       }
-      setOkMsg(messages.profile.successEmailUpdated);
-      setNewEmail("");
-      setEmailCode("");
+
+      messageApi.success(messages.profile.successEmailUpdated);
+      setIsEmailModalOpen(false);
+      emailForm.resetFields();
       setEmailCodeChallengeId("");
 
+      // Logout logic
       if (typeof window !== "undefined") {
-        // 最佳努力清理服务端 Session Cookie
         try {
           await fetch("/api/logout", { method: "POST" });
         } catch {
           // ignore
         }
-        // 修改邮箱后强制退出登录，要求使用新邮箱重新登录
         window.localStorage.removeItem("loggedInUserEmail");
         window.localStorage.removeItem("loggedInUserName");
         setTimeout(() => {
@@ -267,19 +292,18 @@ export default function UserProfilePage() {
         }, 1200);
       }
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : messages.profile.errorUpdateEmailFailed
+      messageApi.error(
+        e instanceof Error ? e.message : messages.profile.errorUpdateEmailFailed
       );
+    } finally {
+      setEmailLoading(false);
     }
   };
 
-  // 等待 UserContext 初始化完成再判断登录状态
   if (!isUserInitialized) {
     return (
-      <div className="vben-page">
-        <p>{messages.common.loading}</p>
+      <div style={{ display: "flex", justifyContent: "center", padding: "50px" }}>
+        <Spin size="large" />
       </div>
     );
   }
@@ -287,359 +311,274 @@ export default function UserProfilePage() {
   if (!userEmail) {
     return (
       <div className="vben-page">
-        <p>{messages.common.loginRequired}</p>
-        <Link href="/login">{messages.common.goLogin}</Link>
+        <Card style={{ maxWidth: 820, margin: "0 auto" }}>
+           <Typography.Title level={4}>{messages.common.loginRequired}</Typography.Title>
+           <Link href="/login">
+             <Button type="primary">{messages.common.goLogin}</Button>
+           </Link>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="vben-page">
-      {loading && <p>{messages.common.loading}</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {okMsg && <p style={{ color: "green" }}>{okMsg}</p>}
+      {contextHolder}
+      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+        
+        {/* Header Area */}
+        <Space
+          align="start"
+          style={{ width: "100%", justifyContent: "space-between" }}
+          wrap
+        >
+          <div>
+            <Title level={4} style={{ margin: 0 }}>
+              {messages.profile.title || "个人资料"}
+            </Title>
+            <Text type="secondary" style={{ marginTop: 6, display: 'block' }}>
+              {messages.profile.currentEmail} {userEmail}
+            </Text>
+          </div>
+          <Link href="/">
+             <Button>{language === "zh-CN" ? "返回首页" : "Back Home"}</Button>
+          </Link>
+        </Space>
 
-      {profile && (
-        <>
-          <section style={{ marginTop: 24 }}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-                marginTop: 8,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                }}
-              >
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: "9999px",
-                    overflow: "hidden",
-                    border: "1px solid #e5e7eb",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "#f9fafb",
-                    fontSize: 12,
-                    color: "#9ca3af",
-                  }}
-                >
-                  {profile.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={profile.avatarUrl}
-                      alt="avatar"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <span>{messages.profile.avatarNone}</span>
-                  )}
-                </div>
-                {editing && (
-                  <button
-                    type="button"
-                    className="user-profile-button user-profile-button--tertiary"
-                    onClick={() => {
-                      setError("");
-                      setOkMsg("");
-                      setAvatarUrlInput(profile.avatarUrl ?? "");
-                      setShowAvatarDialog(true);
-                    }}
-                  >
-                    {profile.avatarUrl ? messages.profile.changeAvatar : messages.profile.setAvatar}
-                  </button>
-                )}
-              </div>
-              <label style={{ fontSize: 14 }}>
-                {messages.profile.currentEmail}
-                <strong>{profile.email}</strong>
-              </label>
-              <label
-                style={{ fontSize: 14, cursor: editing ? "pointer" : "default" }}
-                className={editing ? "user-profile-inline-edit" : undefined}
-                onClick={
-                  editing
-                    ? () => {
-                        setError("");
-                        setOkMsg("");
-                        setUsernameInput(profile.username);
-                        setShowUsernameDialog(true);
-                      }
-                    : undefined
-                }
-              >
-                {messages.profile.username}
-                <strong>{profile.username}</strong>
-              </label>
-            </div>
-          </section>
+        <Tabs
+          items={[
+            {
+              key: "overview",
+              label: language === "zh-CN" ? "基础信息" : "Overview",
+              children: (
+                <Card>
+                  {profile && (
+                    <>
+                      <Space
+                        align="start"
+                        style={{ width: "100%", justifyContent: "space-between" }}
+                        wrap
+                      >
+                        <Space align="center" size={12}>
+                          <Avatar
+                            size={56}
+                            src={profile.avatarUrl}
+                            icon={<UserOutlined />}
+                            style={{ backgroundColor: '#1677ff' }}
+                          />
+                          <div>
+                             <Space size={8} wrap>
+                                <Text strong style={{ fontSize: 16 }}>{profile.username}</Text>
+                             </Space>
+                             <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <Text type="secondary">{profile.email}</Text>
+                             </div>
+                          </div>
+                        </Space>
+                        
+                        <Space wrap>
+                          <Button onClick={openUsernameModal}>{messages.profile.editUsername}</Button>
+                          <Button onClick={openAvatarModal}>
+                             {profile.avatarUrl ? messages.profile.changeAvatar : messages.profile.setAvatar}
+                          </Button>
+                        </Space>
+                      </Space>
 
-          {showAvatarDialog && (
-            <div className="dialog-overlay">
-              <div className="dialog-card">
-                <h3 className="dialog-card__title">
-                  {messages.profile.avatarDialogTitle}
-                </h3>
-                <p className="dialog-card__desc dialog-card__desc--muted">
-                  {messages.profile.avatarDialogDesc}
-                </p>
-                <div className="dialog-card__body">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      void (async () => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
+                      <Divider style={{ margin: "12px 0" }} />
 
-                        // 允许重复选择同一张图片也能触发 onChange
-                        e.currentTarget.value = "";
-
-                        // Android 相册/相机图片通常远大于 300KB；统一放宽到 2MB（并与后端限制保持一致）
-                        if (file.size > 2 * 1024 * 1024) {
-                          setError(messages.profile.errorAvatarTooLarge);
-                          return;
-                        }
-
-                        if (!userEmail) return;
-
-                        setError("");
-                        setOkMsg("");
-                        setAvatarUploading(true);
-
-                        try {
-                          const formData = new FormData();
-                          formData.append("file", file);
-
-                          const res = await fetch("/api/avatar/upload", {
-                            method: "POST",
-                            body: formData,
-                          });
-
-                          if (!res.ok) {
-                            const text = await res.text();
-                            throw new Error(
-                              text || messages.profile.errorAvatarUpdateFailed
-                            );
+                      <Descriptions
+                        column={1}
+                        size={isMobile ? "small" : "middle"}
+                        items={[
+                          {
+                            key: 'email',
+                            label: messages.profile.currentEmail,
+                            children: <Text copyable>{profile.email}</Text>,
+                          },
+                          {
+                            key: 'username',
+                            label: messages.profile.username,
+                            children: profile.username,
                           }
+                        ]}
+                      />
+                    </>
+                  )}
+                </Card>
+              )
+            },
+            {
+              key: "security",
+              label: language === "zh-CN" ? "安全设置" : "Security",
+              children: (
+                <Card>
+                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                    <Alert
+                      type="info"
+                      showIcon
+                      message={language === "zh-CN" ? "安全提示" : "Security tip"}
+                      description={messages.profile.emailDialogDesc}
+                    />
+                    <Space wrap>
+                      <Button onClick={openEmailModal}>{messages.profile.emailSectionTitle}</Button>
+                    </Space>
+                  </Space>
+                </Card>
+              )
+            }
+          ]}
+        />
 
-                          const data = (await res.json()) as {
-                            dbUrl: string;
-                            publicUrl: string;
-                          };
+      </Space>
 
-                          // dbUrl 用于写入数据库（r2://...）；publicUrl 用于展示
-                          setAvatarUrlInput(data.dbUrl);
-                        } catch (err) {
-                          setError(
-                            err instanceof Error
-                              ? err.message
-                              : messages.profile.errorAvatarUpdateFailed
-                          );
-                        } finally {
-                          setAvatarUploading(false);
-                        }
-                      })();
-                    }}
-                  />
-                  <input
-                    placeholder="https://example.com/avatar.png"
-                    value={avatarUrlInput}
-                    onChange={(e) => setAvatarUrlInput(e.target.value)}
-                  />
-                </div>
-                <div className="dialog-card__actions">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAvatarDialog(false);
-                      setAvatarUrlInput(profile.avatarUrl ?? "");
-                    }}
-                    className="dialog-card__cancel"
-                  >
-                    {messages.profile.avatarDialogCancel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await updateAvatar();
-                      setShowAvatarDialog(false);
-                    }}
-                    className="dialog-card__primary"
-                    disabled={avatarUploading}
-                  >
-                    {avatarUploading ? messages.common.loading : messages.profile.avatarDialogSave}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+      {/* Username Modal */}
+      <Modal
+        title={messages.profile.usernameDialogTitle}
+        open={isUsernameModalOpen}
+        onOk={handleUpdateUsername}
+        onCancel={() => setIsUsernameModalOpen(false)}
+        confirmLoading={usernameLoading}
+      >
+        <Form form={usernameForm} layout="vertical">
+          <Form.Item
+            name="username"
+            label={messages.profile.username}
+            rules={[{ required: true, message: messages.profile.username + " is required" }]}
+          >
+            <Input placeholder={messages.profile.username} maxLength={50} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
-          {showUsernameDialog && (
-            <div className="dialog-overlay">
-              <div className="dialog-card">
-                <h3 className="dialog-card__title">
-                  {messages.profile.usernameDialogTitle}
-                </h3>
-                <div className="dialog-card__body">
-                  <input
-                    placeholder={messages.profile.username}
-                    value={usernameInput}
-                    onChange={(e) => setUsernameInput(e.target.value)}
-                  />
-                </div>
-                <div className="dialog-card__actions">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUsernameDialog(false);
-                      setUsernameInput(profile.username);
-                    }}
-                    className="dialog-card__cancel"
-                  >
-                    {messages.profile.usernameDialogCancel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await updateUsername();
-                      setShowUsernameDialog(false);
-                    }}
-                    className="dialog-card__primary"
-                  >
-                    {messages.profile.usernameDialogSave}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {editing && (
-            <section style={{ marginTop: 32 }}>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                  gap: 8,
+      {/* Avatar Modal - Matches Admin Style */}
+      <Modal
+        title={messages.profile.avatarDialogTitle}
+        open={isAvatarModalOpen}
+        onCancel={() => setIsAvatarModalOpen(false)}
+        onOk={() => {
+           void avatarForm.validateFields().then(v => {
+             const url = v.avatarUrl?.trim();
+             void doUpdateAvatar(url || null);
+           }).catch(() => {});
+        }}
+        confirmLoading={avatarLoading}
+        okText={messages.profile.avatarDialogSave}
+        cancelText={messages.profile.avatarDialogCancel}
+      >
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+           <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+              {messages.profile.avatarDialogDesc}
+           </Typography.Paragraph>
+           <Space align="center" size={12}>
+              <Avatar size={48} src={avatarPreviewUrl} icon={<UserOutlined />} />
+              <Upload
+                accept="image/*"
+                showUploadList={false}
+                fileList={avatarFileList}
+                beforeUpload={(file) => {
+                  if (file.size > 2 * 1024 * 1024) {
+                    messageApi.error(messages.profile.errorAvatarTooLarge);
+                    return Upload.LIST_IGNORE;
+                  }
+                  return true;
+                }}
+                customRequest={async (options) => {
+                  const file = options.file as File;
+                  setAvatarLoading(true);
+                  try {
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    const res = await fetch("/api/avatar/upload", {
+                       method: "POST",
+                       body: formData
+                    });
+                    if(!res.ok) throw new Error("Upload failed");
+                    const data = (await res.json()) as { dbUrl?: string; publicUrl?: string };
+                    if(data.dbUrl) {
+                       avatarForm.setFieldValue("avatarUrl", data.dbUrl);
+                       setAvatarPreviewUrl(data.publicUrl || data.dbUrl);
+                       messageApi.success(language === "zh-CN" ? "上传成功，请点击保存" : "Uploaded, click Save to apply");
+                       options.onSuccess?.(data);
+                    }
+                  } catch(e) {
+                     messageApi.error(messages.profile.errorAvatarUpdateFailed);
+                     options.onError?.(e as Error);
+                  } finally {
+                     setAvatarLoading(false);
+                  }
                 }}
               >
-                <h2 style={{ fontSize: 16 }}>
-                  {messages.profile.emailSectionTitle}
-                </h2>
-                <button
-                  type="button"
-                  className="user-profile-button user-profile-button--tertiary user-profile-inline-link"
-                  onClick={() => {
-                    setError("");
-                    setOkMsg("");
-                    setShowEmailDialog(true);
-                  }}
-                >
-                  {messages.profile.emailSectionEdit}
-                </button>
-              </div>
-            </section>
-          )}
-
-          {/* 底部统一的“更新信息”主按钮，控制是否进入编辑模式 */}
-          <section style={{ marginTop: 40 }}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-                marginTop: 8,
-              }}
-            >
-              <button
-                type="button"
-                className="user-profile-button user-profile-button--primary user-profile-button--compact"
-                onClick={() => setEditing((prev) => !prev)}
+                 <Button loading={avatarLoading} icon={<UserOutlined />}>
+                   {language === "zh-CN" ? "上传图片" : "Upload Image"}
+                 </Button>
+              </Upload>
+              <Button danger onClick={() => {
+                 avatarForm.setFieldValue("avatarUrl", "");
+                 setAvatarPreviewUrl(null);
+              }}>
+                 {language === "zh-CN" ? "清除" : "Clear"}
+              </Button>
+           </Space>
+           <Form form={avatarForm} layout="vertical">
+              <Form.Item
+                label={language === "zh-CN" ? "头像地址（可选）" : "Avatar URL (optional)"}
+                name="avatarUrl"
               >
-                {editing
-                  ? messages.profile.finishUpdateInfo
-                  : messages.profile.updateInfo}
-              </button>
-            </div>
-          </section>
+                 <Input placeholder="https://example.com/avatar.png" onChange={(e) => setAvatarPreviewUrl(e.target.value)} />
+              </Form.Item>
+           </Form>
+        </Space>
+      </Modal>
 
-          {showEmailDialog && (
-            <div className="dialog-overlay">
-              <div className="dialog-card">
-                <h3 className="dialog-card__title">
-                  {messages.profile.emailDialogTitle}
-                </h3>
-                <p className="dialog-card__desc dialog-card__desc--warn">
-                  {messages.profile.emailDialogDesc}
-                </p>
-                <div className="dialog-card__body">
-                  <input
-                    type="email"
-                    placeholder={messages.profile.emailNewPlaceholder}
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                  />
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      placeholder={messages.profile.emailCodePlaceholder}
-                      value={emailCode}
-                      onChange={(e) => setEmailCode(e.target.value)}
-                      style={{ flex: 1 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={sendChangeEmailCode}
-                      disabled={sendingCode}
-                    >
-                      {sendingCode
-                        ? messages.profile.emailSendingCode
-                        : messages.profile.emailSendCode}
-                    </button>
-                  </div>
-                </div>
-                <div className="dialog-card__actions">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEmailDialog(false);
-                      setNewEmail("");
-                      setEmailCode("");
-                      setEmailCodeChallengeId("");
-                    }}
-                    className="dialog-card__cancel"
+      {/* Email Modal */}
+      <Modal
+        title={messages.profile.emailDialogTitle}
+        open={isEmailModalOpen}
+        onOk={handleUpdateEmail}
+        onCancel={() => {
+          setIsEmailModalOpen(false);
+          emailForm.resetFields();
+        }}
+        confirmLoading={emailLoading}
+      >
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Alert type="warning" showIcon message={messages.profile.emailDialogDesc} />
+          <Form form={emailForm} layout="vertical">
+            <Form.Item
+              name="newEmail"
+              label={messages.profile.emailNewPlaceholder}
+              rules={[
+                { required: true, message: messages.profile.errorNewEmailRequired },
+                { type: 'email', message: 'Please enter a valid email' }
+              ]}
+            >
+               <Input placeholder={messages.profile.emailNewPlaceholder} />
+            </Form.Item>
+            
+            <Form.Item
+              label={messages.profile.emailCodePlaceholder}
+              required
+              style={{ marginBottom: 0 }}
+            >
+              <Space.Compact style={{ width: "100%" }}>
+                  <Form.Item
+                    name="emailCode"
+                    noStyle
+                    rules={[{ required: true, message: 'Please enter verification code' }]}
                   >
-                    {messages.profile.emailDialogCancel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await updateEmail();
-                      setShowEmailDialog(false);
-                    }}
-                    className="dialog-card__primary"
+                    <Input placeholder={messages.profile.emailCodePlaceholder} />
+                  </Form.Item>
+                  <Button 
+                    onClick={handleSendCode} 
+                    loading={sendingCode}
                   >
-                    {messages.profile.emailDialogConfirm}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
+                    {sendingCode ? messages.profile.emailSendingCode : messages.profile.emailSendCode}
+                  </Button>
+              </Space.Compact>
+            </Form.Item>
+          </Form>
+        </Space>
+      </Modal>
     </div>
   );
 }
-
-
-
-

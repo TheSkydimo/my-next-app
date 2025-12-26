@@ -3,8 +3,36 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
-import { SearchOutlined } from "@ant-design/icons";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  SearchOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  HomeOutlined,
+  UserOutlined,
+  TeamOutlined,
+  BellOutlined,
+  FileTextOutlined,
+  PictureOutlined,
+  LogoutOutlined,
+  TranslationOutlined,
+  MoonOutlined,
+  SunOutlined,
+} from "@ant-design/icons";
+import {
+  Layout,
+  Menu,
+  Button,
+  Input,
+  Dropdown,
+  Avatar,
+  ConfigProvider,
+  theme as antTheme,
+  Space,
+  Drawer,
+  Grid,
+} from "antd";
+import type { MenuProps, InputRef } from "antd";
 import {
   applyLanguage,
   applyTheme,
@@ -15,7 +43,10 @@ import {
 } from "../client-prefs";
 import { getAdminMessages } from "../admin-i18n";
 import { AdminProvider, useOptionalAdmin } from "../contexts/AdminContext";
-import { TranslateIcon } from "../components/icons/TranslateIcon";
+
+const { Header, Sider, Content } = Layout;
+const { useBreakpoint } = Grid;
+const { useToken } = antTheme;
 
 /**
  * 管理端布局组件（外层包装）
@@ -35,6 +66,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
  */
 function AdminLayoutInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const adminContext = useOptionalAdmin();
 
   // 从 AdminContext 获取管理员信息，避免重复请求
@@ -44,12 +76,21 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   const adminRole = adminContext?.profile?.role ?? null;
   const initialized = adminContext?.initialized ?? false;
 
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // 响应式断点
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+
   const [theme, setTheme] = useState<AppTheme>(() => getInitialTheme());
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const [searchValue, setSearchValue] = useState("");
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchInputRef = useRef<InputRef | null>(null);
   const messages = getAdminMessages(language);
+
+  // 菜单状态（对齐用户端）
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
 
   // 初始化主题 / 语言，并处理 Ctrl + K 聚焦搜索框
   useEffect(() => {
@@ -83,7 +124,6 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   };
 
   // 已登录管理员，展示侧边栏 + 子页面内容
-  const isActive = (href: string) => pathname === href;
   const isSuperAdmin = adminRole === "super_admin";
   const roleLabel =
     adminRole === "super_admin"
@@ -138,7 +178,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     );
 
     if (matched) {
-      window.location.href = matched.href;
+      router.push(matched.href);
     } else {
       window.alert(
         `${messages.layout.searchNotFound}${messages.layout.searchNotFoundHint}`
@@ -148,9 +188,43 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
 
   const isPublicRoute = pathname === "/admin/login";
 
+  // 同步菜单选中状态
+  useEffect(() => {
+    const key =
+      pathname === "/admin"
+        ? "home"
+        : pathname === "/admin/profile"
+        ? "profile"
+        : pathname === "/admin/admins"
+        ? "admins"
+        : pathname === "/admin/users"
+        ? "users"
+        : pathname === "/admin/notifications"
+        ? "notifications"
+        : pathname === "/admin/logs"
+        ? "logs"
+        : "";
+
+    setSelectedKeys(key ? [key] : []);
+  }, [pathname]);
+
+  const commonConfigProviderProps = {
+    theme: {
+      algorithm:
+        theme === "dark" ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
+      token: {
+        colorPrimary: "#1677ff",
+        borderRadius: 6,
+        fontFamily: "Arial, Helvetica, sans-serif",
+      },
+    },
+  };
+
   // 登录页不做管理员登录校验，直接渲染内容
   if (isPublicRoute) {
-    return <>{children}</>;
+    return (
+      <ConfigProvider {...commonConfigProviderProps}>{children}</ConfigProvider>
+    );
   }
 
   // 初始加载阶段，避免闪烁，什么都不渲染
@@ -161,256 +235,385 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   // 未登录管理员时，不展示内部内容和菜单
   if (!isAuthed) {
     return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <h1>{messages.layout.unauthTitle}</h1>
-          <p>{messages.layout.unauthDesc}</p>
-          <p style={{ marginTop: 12 }}>
-            <Link href="/admin/login">{messages.layout.unauthLoginLink}</Link>
-          </p>
+      <ConfigProvider {...commonConfigProviderProps}>
+        <div className="auth-page">
+          <div className="auth-card">
+            <h1>{messages.layout.unauthTitle}</h1>
+            <p>{messages.layout.unauthDesc}</p>
+            <p style={{ marginTop: 12 }}>
+              <Link href="/admin/login">{messages.layout.unauthLoginLink}</Link>
+            </p>
+          </div>
         </div>
-      </div>
+      </ConfigProvider>
     );
   }
 
-
   return (
-    <div className="admin-layout">
-      <div className="admin-layout__body">
-        {/* 侧边栏外壳（L形左侧） */}
-        <aside className="admin-shell admin-shell--sidebar">
-          {isAuthed && (
-            <div className="admin-layout__profile">
-              <div
-                title={displayName || undefined}
-                className="admin-layout__avatar"
-                onClick={() => {
-                  if (pathname !== "/admin/profile") {
-                    window.location.href = "/admin/profile";
-                  }
-                }}
-              >
-                {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={avatarUrl}
-                    alt="管理员头像"
-                    className="admin-layout__avatar-img"
-                  />
-                ) : (
-                  <span className="admin-layout__avatar-initial">
-                    {displayName
-                      ? displayName.trim().charAt(0).toUpperCase()
-                      : "A"}
-                  </span>
-                )}
-              </div>
-
-              <div className="admin-layout__profile-meta">
-                {displayName && (
-                  <div
-                    className="admin-layout__display-name"
-                    title={displayName}
-                  >
-                    {displayName}
-                  </div>
-                )}
-                {roleLabel && (
-                  <span
-                    className={`admin-layout__role-badge ${
-                      isSuperAdmin
-                        ? "admin-layout__role-badge--super"
-                        : "admin-layout__role-badge--normal"
-                    }`}
-                  >
-                    {roleLabel}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-          <nav className="admin-layout__nav">
-            <Link
-              href="/admin"
-              className={`admin-layout__nav-link ${
-                isActive("/admin") ? "admin-layout__nav-link--active" : ""
-              }`}
-            >
-              {messages.layout.navHome}
-            </Link>
-            <Link
-              href="/admin/profile"
-              className={`admin-layout__nav-link ${
-                isActive("/admin/profile")
-                  ? "admin-layout__nav-link--active"
-                  : ""
-              }`}
-            >
-              {messages.layout.navProfile}
-            </Link>
-            {isSuperAdmin && (
-              <Link
-                href="/admin/admins"
-                className={`admin-layout__nav-link ${
-                  isActive("/admin/admins")
-                    ? "admin-layout__nav-link--active"
-                    : ""
-                }`}
-              >
-                {messages.layout.navAdmins}
-              </Link>
-            )}
-            <Link
-              href="/admin/users"
-              className={`admin-layout__nav-link ${
-                isActive("/admin/users")
-                  ? "admin-layout__nav-link--active"
-                  : ""
-              }`}
-            >
-              {messages.layout.navUsers}
-            </Link>
-            <Link
-              href="/admin/notifications"
-              className={`admin-layout__nav-link ${
-                isActive("/admin/notifications")
-                  ? "admin-layout__nav-link--active"
-                  : ""
-              }`}
-            >
-              {messages.layout.navNotifications}
-            </Link>
-            <Link
-              href="/admin/logs"
-              className={`admin-layout__nav-link ${
-                isActive("/admin/logs")
-                  ? "admin-layout__nav-link--active"
-                  : ""
-              }`}
-            >
-              {messages.layout.navLogs}
-            </Link>
-            </nav>
-        </aside>
-
-        {/* 右侧区域 */}
-        <div className="admin-layout__right">
-          {/* 顶栏外壳（L形顶部） */}
-          <div className="admin-shell admin-shell--topbar">
-            <div className="admin-topbar">
-                <div className="topbar-brand">
-                  <div className="topbar-brand__mark" />
-                  <span className="topbar-brand__text">
-                    {messages.layout.brand}
-                  </span>
-                </div>
-                <div className="admin-topbar__search">
-                  <span className="admin-topbar__search-icon" aria-hidden="true">
-                    <SearchOutlined />
-                  </span>
-                  <input
-                    className="admin-topbar__search-input"
-                    placeholder={messages.layout.searchPlaceholder}
-                    ref={searchInputRef}
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        triggerSearch();
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="admin-topbar__actions">
-                  <button
-                    type="button"
-                    className="admin-topbar__icon-btn admin-topbar__icon-btn--translate"
-                    aria-label="切换语言"
-                    title={language === "zh-CN" ? "切换到 English" : "Switch to 中文"}
-                    onClick={toggleLanguage}
-                  >
-                    <TranslateIcon className="admin-topbar__translate-icon" />
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-topbar__icon-btn"
-                    aria-label="切换主题样式"
-                    title={theme === "dark" ? "切换为浅色主题" : "切换为深色主题"}
-                    onClick={toggleTheme}
-                  >
-                    🌓
-                  </button>
-                  <div className="admin-topbar__avatar-wrapper">
-                    <button
-                      type="button"
-                      className="admin-topbar__avatar-btn"
-                      onClick={() => setUserMenuOpen((v) => !v)}
-                      aria-haspopup="true"
-                      aria-expanded={userMenuOpen}
-                    >
-                      {avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={avatarUrl}
-                          alt="管理员头像"
-                          className="admin-topbar__avatar-img"
-                        />
-                      ) : (
-                        <span className="admin-topbar__avatar-initial">
-                          {displayName
-                            ? displayName.trim().charAt(0).toUpperCase()
-                            : "A"}
-                        </span>
-                      )}
-                    </button>
-
-                    {userMenuOpen && (
-                      <div className="admin-topbar__user-menu">
-                        <div className="admin-topbar__user-meta">
-                          <div className="admin-topbar__user-name">
-                            {displayName || messages.layout.userMenuNameFallback}
-                          </div>
-                          {roleLabel && (
-                            <div className="admin-topbar__user-role">
-                              {roleLabel}
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          className="admin-topbar__user-menu-item"
-                          onClick={() => {
-                            window.location.href = "/admin/profile";
-                            setUserMenuOpen(false);
-                          }}
-                        >
-                          {messages.layout.userMenuProfile}
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-topbar__user-menu-item admin-topbar__user-menu-item--danger"
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            logout();
-                          }}
-                        >
-                          {messages.layout.userMenuLogout}
-                        </button>
-                      </div>
-                    )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 内容区（无外壳） */}
-          <main className="admin-layout__content">
-            {children}
-          </main>
-        </div>
-      </div>
-    </div>
+    <ConfigProvider {...commonConfigProviderProps}>
+      <AdminAntdShell
+        theme={theme}
+        language={language}
+        isMobile={isMobile}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        mobileDrawerOpen={mobileDrawerOpen}
+        setMobileDrawerOpen={setMobileDrawerOpen}
+        selectedKeys={selectedKeys}
+        openKeys={openKeys}
+        setOpenKeys={setOpenKeys}
+        messages={messages}
+        isSuperAdmin={isSuperAdmin}
+        toggleLanguage={toggleLanguage}
+        toggleTheme={toggleTheme}
+        searchValue={searchValue}
+        setSearchValue={setSearchValue}
+        triggerSearch={triggerSearch}
+        searchInputRef={searchInputRef}
+        avatarUrl={avatarUrl}
+        displayName={displayName}
+        roleLabel={roleLabel}
+        logout={logout}
+      >
+        {children}
+      </AdminAntdShell>
+    </ConfigProvider>
   );
 }
 
+function AdminAntdShell({
+  theme,
+  language,
+  isMobile,
+  collapsed,
+  setCollapsed,
+  mobileDrawerOpen,
+  setMobileDrawerOpen,
+  selectedKeys,
+  openKeys,
+  setOpenKeys,
+  messages,
+  isSuperAdmin,
+  toggleLanguage,
+  toggleTheme,
+  searchValue,
+  setSearchValue,
+  triggerSearch,
+  searchInputRef,
+  avatarUrl,
+  displayName,
+  roleLabel,
+  logout,
+  children,
+}: {
+  theme: AppTheme;
+  language: AppLanguage;
+  isMobile: boolean;
+  collapsed: boolean;
+  setCollapsed: (v: boolean) => void;
+  mobileDrawerOpen: boolean;
+  setMobileDrawerOpen: (v: boolean) => void;
+  selectedKeys: string[];
+  openKeys: string[];
+  setOpenKeys: (keys: string[]) => void;
+  messages: ReturnType<typeof getAdminMessages>;
+  isSuperAdmin: boolean;
+  toggleLanguage: () => void;
+  toggleTheme: () => void;
+  searchValue: string;
+  setSearchValue: (v: string) => void;
+  triggerSearch: () => void;
+  searchInputRef: React.RefObject<InputRef | null>;
+  avatarUrl: string | null;
+  displayName: string | null;
+  roleLabel: string | null;
+  logout: () => void;
+  children: ReactNode;
+}) {
+  const router = useRouter();
+  const { token } = useToken();
+
+  const layoutBgColor = token.colorBgContainer;
+
+  const menuItems: MenuProps["items"] = [
+    {
+      key: "home",
+      icon: <HomeOutlined />,
+      label: messages.layout.navHome,
+      onClick: () => {
+        router.push("/admin");
+        setMobileDrawerOpen(false);
+      },
+    },
+    {
+      key: "profile",
+      icon: <UserOutlined />,
+      label: messages.layout.navProfile,
+      onClick: () => {
+        router.push("/admin/profile");
+        setMobileDrawerOpen(false);
+      },
+    },
+    ...(isSuperAdmin
+      ? [
+          {
+            key: "admins",
+            icon: <TeamOutlined />,
+            label: messages.layout.navAdmins,
+            onClick: () => {
+              router.push("/admin/admins");
+              setMobileDrawerOpen(false);
+            },
+          } as NonNullable<MenuProps["items"]>[number],
+        ]
+      : []),
+    {
+      key: "users",
+      icon: <TeamOutlined />,
+      label: messages.layout.navUsers,
+      onClick: () => {
+        router.push("/admin/users");
+        setMobileDrawerOpen(false);
+      },
+    },
+    {
+      key: "notifications",
+      icon: <BellOutlined />,
+      label: messages.layout.navNotifications,
+      onClick: () => {
+        router.push("/admin/notifications");
+        setMobileDrawerOpen(false);
+      },
+    },
+    {
+      key: "logs",
+      icon: <FileTextOutlined />,
+      label: messages.layout.navLogs,
+      onClick: () => {
+        router.push("/admin/logs");
+        setMobileDrawerOpen(false);
+      },
+    },
+  ];
+
+  const userMenuProps: MenuProps = {
+    items: [
+      ...(roleLabel
+        ? [
+            {
+              key: "role",
+              label: roleLabel,
+              disabled: true,
+            } as NonNullable<MenuProps["items"]>[number],
+            { type: "divider" as const },
+          ]
+        : []),
+      {
+        key: "profile",
+        icon: <UserOutlined />,
+        label: messages.layout.userMenuProfile,
+        onClick: () => router.push("/admin/profile"),
+      },
+      {
+        type: "divider",
+      },
+      {
+        key: "logout",
+        icon: <LogoutOutlined />,
+        label: messages.layout.userMenuLogout,
+        onClick: logout,
+        danger: true,
+      },
+    ],
+  };
+
+  return (
+    <Layout style={{ minHeight: "100vh" }}>
+      {!isMobile && (
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
+          theme="light"
+          style={{
+            overflow: "auto",
+            height: "100vh",
+            position: "sticky",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            background: layoutBgColor,
+            borderRight: `1px solid ${token.colorSplit}`,
+          }}
+        >
+          <div
+            style={{
+              height: 64,
+              margin: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: collapsed ? "center" : "flex-start",
+              overflow: "hidden",
+              color: token.colorText,
+              fontWeight: "bold",
+              fontSize: 18,
+              whiteSpace: "nowrap",
+              transition: "all 0.2s",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt={messages.layout.brand}
+              style={{
+                width: 32,
+                height: 32,
+                marginRight: collapsed ? 0 : 8,
+                flexShrink: 0,
+                objectFit: "contain",
+              }}
+            />
+            {!collapsed && <span>{messages.layout.brand}</span>}
+          </div>
+          <Menu
+            theme="light"
+            mode="inline"
+            selectedKeys={selectedKeys}
+            openKeys={openKeys}
+            onOpenChange={(keys) => setOpenKeys(keys as string[])}
+            items={menuItems}
+            className="user-adminlike-menu"
+            style={{
+              background: "transparent",
+              borderRight: 0,
+            }}
+          />
+        </Sider>
+      )}
+
+      <Drawer
+        title={messages.layout.brand}
+        placement="left"
+        onClose={() => setMobileDrawerOpen(false)}
+        open={mobileDrawerOpen && isMobile}
+        width={240}
+        styles={{ body: { padding: 0 } }}
+      >
+        <Menu
+          mode="inline"
+          selectedKeys={selectedKeys}
+          openKeys={openKeys}
+          onOpenChange={(keys) => setOpenKeys(keys as string[])}
+          items={menuItems}
+          className="user-adminlike-menu"
+          style={{ borderRight: 0 }}
+        />
+      </Drawer>
+
+      <Layout>
+        <Header
+          style={{
+            padding: "0 24px",
+            background: layoutBgColor,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            position: "sticky",
+            top: 0,
+            zIndex: 1000,
+            borderBottom: `1px solid ${token.colorSplit}`,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {isMobile ? (
+              <Button
+                type="text"
+                icon={<MenuUnfoldOutlined />}
+                onClick={() => setMobileDrawerOpen(true)}
+                style={{ fontSize: "16px", width: 46, height: 46 }}
+              />
+            ) : (
+              <Button
+                type="text"
+                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={() => setCollapsed(!collapsed)}
+                style={{ fontSize: "16px", width: 46, height: 46 }}
+              />
+            )}
+          </div>
+
+          <Space size={16} align="center">
+            {!isMobile && (
+              <Input
+                ref={searchInputRef}
+                prefix={<SearchOutlined className="text-gray-400" />}
+                placeholder={messages.layout.searchPlaceholder}
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onPressEnter={triggerSearch}
+                allowClear
+                style={{ width: 200 }}
+                variant="filled"
+              />
+            )}
+
+            <Button
+              type="text"
+              icon={<TranslationOutlined />}
+              onClick={toggleLanguage}
+              title={language === "zh-CN" ? "Switch to English" : "切换到中文"}
+            />
+
+            <Button
+              type="text"
+              icon={theme === "dark" ? <SunOutlined /> : <MoonOutlined />}
+              onClick={toggleTheme}
+              title="Toggle Theme"
+            />
+
+            <Dropdown menu={userMenuProps} placement="bottomRight" arrow>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  transition: "background 0.3s",
+                }}
+                className="hover:bg-black/5 dark:hover:bg-white/10"
+              >
+                <Avatar
+                  src={avatarUrl}
+                  icon={<UserOutlined />}
+                  style={{
+                    backgroundColor: avatarUrl ? "transparent" : "#1890ff",
+                  }}
+                />
+                {!isMobile && displayName && (
+                  <span style={{ marginLeft: 8, maxWidth: 140 }} className="truncate">
+                    {displayName}
+                  </span>
+                )}
+              </div>
+            </Dropdown>
+          </Space>
+        </Header>
+
+        <Content
+          className="admin-layout__content"
+          style={{
+            margin: "24px 16px",
+            padding: 24,
+            minHeight: 280,
+            background: layoutBgColor,
+            borderRadius: 8,
+            overflow: "initial",
+          }}
+        >
+          {children}
+        </Content>
+      </Layout>
+    </Layout>
+  );
+}

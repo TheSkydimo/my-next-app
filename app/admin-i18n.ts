@@ -207,8 +207,8 @@ const zhCN: AdminMessages = {
   profile: {
     title: "管理员信息",
     avatarNone: "无头像",
-    currentEmail: "当前邮箱：",
-    username: "用户名：",
+    currentEmail: "邮箱",
+    username: "用户名",
     editUsername: "修改",
     setAvatar: "设置头像",
     changeAvatar: "更换头像",
@@ -382,8 +382,8 @@ const enUS: AdminMessages = {
   profile: {
     title: "Admin Profile",
     avatarNone: "No avatar",
-    currentEmail: "Current email: ",
-    username: "Username: ",
+    currentEmail: "Email",
+    username: "Username",
     editUsername: "Edit",
     setAvatar: "Set avatar",
     changeAvatar: "Change avatar",
