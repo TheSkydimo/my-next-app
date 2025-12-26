@@ -16,6 +16,8 @@ import {
   Grid,
 } from "antd";
 import type { MenuProps } from "antd";
+import antdEnUS from "antd/locale/en_US";
+import antdZhCN from "antd/locale/zh_CN";
 import {
   HomeOutlined,
   UserOutlined,
@@ -316,6 +318,9 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
         fontFamily: "Arial, Helvetica, sans-serif",
       },
     }
+    ,
+    // AntD 组件内置文案（如 Typography copyable 的 tooltip）跟随语言切换
+    locale: language === "zh-CN" ? antdZhCN : antdEnUS,
   };
 
   // 登录页面等特殊处理

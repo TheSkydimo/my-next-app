@@ -635,6 +635,92 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	display: block;
 }
 
+/* AntD Pagination：统一分页数字按钮样式，避免“上一页/下一页”像按钮但页码还是默认样式，造成首页视觉不一致 */
+.ant-pagination .ant-pagination-item {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 34px;
+	height: 34px;
+	margin-inline: 4px;
+	border-radius: 9999px;
+	border: 1px solid rgba(99, 102, 241, 0.45);
+	background: transparent;
+	transition:
+		transform 150ms ease-out,
+		background 150ms ease-out,
+		border-color 150ms ease-out,
+		box-shadow 150ms ease-out,
+		color 150ms ease-out,
+		opacity 150ms ease-out;
+}
+
+.ant-pagination .ant-pagination-item a {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	padding: 0 12px;
+	color: #e5e7eb;
+}
+
+.ant-pagination .ant-pagination-item:hover {
+	transform: translateY(-1px);
+	border-color: rgba(99, 102, 241, 0.85);
+	box-shadow:
+		0 0 0 1px rgba(99, 102, 241, 0.25),
+		0 0 18px rgba(59, 130, 246, 0.28);
+}
+
+.ant-pagination .ant-pagination-item:hover a {
+	color: #ffffff;
+}
+
+.ant-pagination .ant-pagination-item-active {
+	border-color: rgba(59, 130, 246, 0.9);
+	background: rgba(59, 130, 246, 0.18);
+}
+
+.ant-pagination .ant-pagination-item-active a {
+	color: #ffffff;
+}
+
+.ant-pagination .ant-pagination-disabled,
+.ant-pagination .ant-pagination-disabled:hover {
+	opacity: 0.55;
+	transform: none;
+	box-shadow: none;
+}
+
+/* Light theme */
+::root[data-theme="light"] .ant-pagination .ant-pagination-item {
+	border-color: rgba(37, 99, 235, 0.45);
+}
+
+::root[data-theme="light"] .ant-pagination .ant-pagination-item a {
+	color: #111827;
+}
+
+::root[data-theme="light"] .ant-pagination .ant-pagination-item:hover {
+	border-color: rgba(37, 99, 235, 0.85);
+	box-shadow:
+		0 0 0 1px rgba(37, 99, 235, 0.18),
+		0 0 18px rgba(37, 99, 235, 0.22);
+}
+
+::root[data-theme="light"] .ant-pagination .ant-pagination-item:hover a {
+	color: #0f172a;
+}
+
+::root[data-theme="light"] .ant-pagination .ant-pagination-item-active {
+	border-color: rgba(37, 99, 235, 0.9);
+	background: rgba(37, 99, 235, 0.12);
+}
+
+::root[data-theme="light"] .ant-pagination .ant-pagination-item-active a {
+	color: #0f172a;
+}
+
 /* ========== 统一按钮系统 ========== */
 
 /*
