@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Typography, Card, Button, Space, Row, Col, Alert, theme, Grid } from "antd";
-import { CloudUploadOutlined, ShoppingCartOutlined, RightOutlined } from "@ant-design/icons";
+import { Typography, Space, theme, Grid } from "antd";
 import type { AppLanguage } from "../client-prefs";
 import { getInitialLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import { useOptionalUser } from "../contexts/UserContext";
 import { AuthEmailCodePage } from "../components/AuthEmailCodePage";
 import UserOrdersReadOnlyPanel from "../components/UserOrdersReadOnlyPanel";
+import OrderUploadCtaCard from "../components/OrderUploadCtaCard";
 import { useUserOrdersPreview } from "../hooks/useUserOrdersPreview";
 
 const { Title, Text, Paragraph } = Typography;
@@ -74,32 +74,11 @@ export default function Home() {
 
           {/* CTA Section */}
           {shouldShowCta && (
-            <Alert
-              message={
-                <Title level={5} style={{ margin: 0 }}>
-                  {messages.home.orderUploadCtaTitle}
-                </Title>
-              }
-              description={
-                <div style={{ marginTop: 8 }}>
-                  <Paragraph style={{ marginBottom: 16, color: token.colorTextSecondary }}>
-                    {messages.home.orderUploadCtaDesc}
-                  </Paragraph>
-                  <Link href="/devices#order-section">
-                    <Button type="primary" size="large" icon={<CloudUploadOutlined />}>
-                      {messages.home.orderUploadCtaButton}
-                    </Button>
-                  </Link>
-                </div>
-              }
-              type="info"
-              showIcon={!isMobile} // Mobile might be too crowded with icon
-              icon={<ShoppingCartOutlined style={{ fontSize: 24 }} />}
-              style={{
-                border: `1px solid ${token.colorPrimaryBorder}`,
-                backgroundColor: token.colorPrimaryBg,
-                padding: isMobile ? 16 : 24,
-              }}
+            <OrderUploadCtaCard
+              title={messages.home.orderUploadCtaTitle}
+              description={messages.home.orderUploadCtaDesc}
+              buttonText={messages.home.orderUploadCtaButton}
+              href="/devices#order-section"
             />
           )}
 
