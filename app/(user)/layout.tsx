@@ -20,6 +20,8 @@ import {
   HomeOutlined,
   UserOutlined,
   LaptopOutlined,
+  FileTextOutlined,
+  SafetyCertificateOutlined,
   LogoutOutlined,
   TranslationOutlined,
   MenuFoldOutlined,
@@ -238,6 +240,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
       children: [
         {
           key: "order",
+          icon: <FileTextOutlined />,
           label: language === "zh-CN" ? "订单信息" : "Order info",
           onClick: () => {
             router.push("/devices#order-section");
@@ -252,6 +255,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
         },
         {
           key: "warranty",
+          icon: <SafetyCertificateOutlined />,
           label: language === "zh-CN" ? "质保信息" : "Warranty info",
           onClick: () => {
             router.push("/devices#warranty-section");

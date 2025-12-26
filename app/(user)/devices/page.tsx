@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Typography, Button, Alert, Empty, Pagination, Table, Tag, Card } from "antd";
-import { CloudUploadOutlined } from "@ant-design/icons";
+import { CloudUploadOutlined, FileTextOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import type { TableProps } from "antd";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
@@ -343,8 +343,24 @@ export default function UserDevicesPage() {
   const isWarrantySectionOpen = activeSection === "warranty";
 
   const getPageTitle = () => {
-    if (isOrderSectionOpen) return language === "zh-CN" ? "订单信息管理" : "Order Management";
-    if (isWarrantySectionOpen) return language === "zh-CN" ? "质保信息查询" : "Warranty Information";
+    if (isOrderSectionOpen) {
+      const title = language === "zh-CN" ? "订单信息管理" : "Order Management";
+      return (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+          <FileTextOutlined aria-hidden />
+          <span>{title}</span>
+        </span>
+      );
+    }
+    if (isWarrantySectionOpen) {
+      const title = language === "zh-CN" ? "质保信息查询" : "Warranty Information";
+      return (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+          <SafetyCertificateOutlined aria-hidden />
+          <span>{title}</span>
+        </span>
+      );
+    }
     return messages.devices.title;
   };
 
