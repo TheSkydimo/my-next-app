@@ -640,7 +640,8 @@ function AdminAntdShell({
             minHeight: 280,
             background: layoutBgColor,
             borderRadius: 8,
-            overflow: "initial",
+            // Keep scrolling inside content area (body is overflow:hidden in globals.css)
+            overflow: "auto",
           }}
         >
           {children}
