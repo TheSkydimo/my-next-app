@@ -19,6 +19,8 @@ type CreateAdminNotificationBody = {
   titleEn?: string;
   bodyEn?: string;
   linkUrl?: string | null;
+  scope?: "all_users" | "vip_users" | "non_vip_users" | "admins" | "email_list";
+  targetEmails?: string[] | string;
 };
 
 function sanitizeOneLine(input: unknown, maxLen: number): string {
@@ -41,7 +43,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const authed = await requireAdminFromRequest({ request, env, db });
   if (authed instanceof Response) return authed;
 
-  const { page, pageSize, q, type, level, status } = parseAdminNotificationEventsPaging(
+  const { page, pageSize, q, type, level, status, includeDeleted } = parseAdminNotificationEventsPaging(
     request.url
   );
 
@@ -53,6 +55,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     type,
     level,
     status,
+    includeDeleted,
   });
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -63,16 +66,20 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
         id: r.id,
         type: r.type,
         level: r.level,
+        audienceLang: r.audience_lang,
         titleZh: r.title_zh,
         bodyZh: r.body_zh,
         titleEn: r.title_en,
         bodyEn: r.body_en,
         linkUrl: r.link_url,
         scope: r.scope,
+        targetJson: r.target_json,
         createdByAdminId: r.created_by_admin_id,
         createdByAdminRole: r.created_by_admin_role,
         status: r.status,
         errorMessage: r.error_message,
+        isDeleted: !!r.is_deleted,
+        deletedAt: r.deleted_at,
         createdAt: r.created_at,
       })),
       pagination: { total, page, pageSize, totalPages },
@@ -105,30 +112,61 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const bodyEn = sanitizeBody(raw.bodyEn, 1000);
   const linkUrl = raw.linkUrl == null ? null : sanitizeOneLine(raw.linkUrl, 300) || null;
 
-  if (!titleZh || !titleEn) {
-    return new Response("titleZh/titleEn is required", {
-      status: 400,
-      headers: { "Cache-Control": "no-store" },
-    });
-  }
-  if (!bodyZh || !bodyEn) {
-    return new Response("bodyZh/bodyEn is required", {
+  const zhOk = !!titleZh && !!bodyZh;
+  const enOk = !!titleEn && !!bodyEn;
+  if (!zhOk && !enOk) {
+    return new Response("At least one language (zh or en) is required", {
       status: 400,
       headers: { "Cache-Control": "no-store" },
     });
   }
 
-  const scope = "all_users";
+  const audienceLang = zhOk && enOk ? "both" : zhOk ? "zh" : "en";
+
+  const scope =
+    raw.scope === "vip_users" ||
+    raw.scope === "non_vip_users" ||
+    raw.scope === "admins" ||
+    raw.scope === "email_list"
+      ? raw.scope
+      : "all_users";
+
+  const targetEmailsRaw = raw.targetEmails;
+  const targetEmails =
+    scope === "email_list"
+      ? (Array.isArray(targetEmailsRaw)
+          ? targetEmailsRaw
+          : String(targetEmailsRaw ?? "")
+              .split(/[\n,;]+/g))
+          .map((x) => String(x).trim())
+          .filter(Boolean)
+          .slice(0, 200)
+      : [];
+
+  if (scope === "email_list" && targetEmails.length <= 0) {
+    return new Response("targetEmails is required for email_list", {
+      status: 400,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+
+  const targetJson =
+    scope === "email_list"
+      ? JSON.stringify({ emails: targetEmails })
+      : null;
+
   const { id: eventId } = await createAdminNotificationEvent({
     db,
     type,
     level,
-    titleZh,
-    bodyZh,
-    titleEn,
-    bodyEn,
+    audienceLang,
+    titleZh: titleZh || "",
+    bodyZh: bodyZh || "",
+    titleEn: titleEn || "",
+    bodyEn: bodyEn || "",
     linkUrl,
     scope,
+    targetJson,
     createdByAdminId: authed.admin.id,
     createdByAdminRole: authed.admin.role,
     status: "sending",
@@ -139,16 +177,22 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       db,
       type,
       level,
-      titleZh,
-      bodyZh,
-      titleEn,
-      bodyEn,
+      audienceLang,
+      eventId,
+      titleZh: titleZh || "",
+      bodyZh: bodyZh || "",
+      titleEn: titleEn || "",
+      bodyEn: bodyEn || "",
       linkUrl,
+      scope,
+      targetEmails,
       meta: {
         eventId,
         createdByAdminId: authed.admin.id,
         createdByAdminRole: authed.admin.role,
         scope,
+        audienceLang,
+        targetEmails: scope === "email_list" ? targetEmails : undefined,
       },
     });
 
@@ -174,6 +218,8 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       notificationType: type,
       level,
       linkUrl,
+      scope,
+      audienceLang,
     },
   });
 

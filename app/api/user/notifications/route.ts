@@ -27,7 +27,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     unreadOnly,
     lang,
   });
-  const unreadCount = await getUserUnreadNotificationCount(db, authed.user.id);
+  const unreadCount = await getUserUnreadNotificationCount(db, authed.user.id, lang);
   return Response.json(
     { ...list, unreadCount },
     { headers: { "Cache-Control": "no-store" } }
@@ -43,6 +43,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   if (authed instanceof Response) return authed;
 
   await markAllUserNotificationsRead(db, authed.user.id);
+  // Keep legacy behavior (mark all languages). Unread count is language-specific only on GET with `lang=`.
   const unreadCount = await getUserUnreadNotificationCount(db, authed.user.id);
   return Response.json(
     { ok: true, unreadCount },

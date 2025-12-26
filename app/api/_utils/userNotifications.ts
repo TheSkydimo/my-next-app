@@ -2,6 +2,7 @@ import {
   ensureUserNotificationsTable,
   type UserNotificationLevel,
   type UserNotificationRow,
+  type UserNotificationAudienceLang,
 } from "./userNotificationsTable";
 import { ensureUsersTable } from "./usersTable";
 import type { AppLanguage } from "./appLanguage";
@@ -28,8 +29,14 @@ export async function createUserNotification(options: {
   userId: number;
   type: string;
   level?: UserNotificationLevel;
+  audienceLang?: UserNotificationAudienceLang;
+  eventId?: number | null;
   title: string;
   body: string;
+  titleZh?: string | null;
+  bodyZh?: string | null;
+  titleEn?: string | null;
+  bodyEn?: string | null;
   linkUrl?: string | null;
   meta?: unknown;
 }) {
@@ -50,15 +57,21 @@ export async function createUserNotification(options: {
   await db
     .prepare(
       `INSERT INTO user_notifications
-       (user_id, type, level, title, body, link_url, meta_json, is_read)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
+       (user_id, event_id, type, level, audience_lang, title, body, title_zh, body_zh, title_en, body_en, link_url, meta_json, is_deleted, is_read)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)`
     )
     .bind(
       options.userId,
+      options.eventId ?? null,
       options.type,
       options.level ?? "info",
+      options.audienceLang ?? null,
       options.title,
       options.body,
+      options.titleZh ?? null,
+      options.bodyZh ?? null,
+      options.titleEn ?? null,
+      options.bodyEn ?? null,
       options.linkUrl ?? null,
       metaJson
     )
@@ -69,11 +82,15 @@ export async function createBroadcastUserNotification(options: {
   db: D1Database;
   type: string;
   level?: UserNotificationLevel;
+  audienceLang: UserNotificationAudienceLang;
+  eventId: number;
   titleZh: string;
   bodyZh: string;
   titleEn: string;
   bodyEn: string;
   linkUrl?: string | null;
+  scope?: string;
+  targetEmails?: string[];
   meta?: unknown;
 }) {
   const { db } = options;
@@ -91,37 +108,105 @@ export async function createBroadcastUserNotification(options: {
           }
         })();
 
+  const legacyTitle = options.titleZh || options.titleEn;
+  const legacyBody = options.bodyZh || options.bodyEn;
+
+  const scope = String(options.scope ?? "all_users");
+  const where: string[] = ["1=1"];
+  const bindsUsers: unknown[] = [];
+
+  if (scope === "vip_users") {
+    where.push("vip_expires_at IS NOT NULL AND vip_expires_at > CURRENT_TIMESTAMP");
+  } else if (scope === "non_vip_users") {
+    where.push("(vip_expires_at IS NULL OR vip_expires_at <= CURRENT_TIMESTAMP)");
+  } else if (scope === "admins") {
+    where.push("(is_admin = 1 OR is_super_admin = 1)");
+  } else if (scope === "email_list") {
+    const emails = (options.targetEmails ?? []).map((e) => String(e).trim()).filter(Boolean);
+    if (emails.length <= 0) {
+      // No recipients.
+      return;
+    }
+    const placeholders = emails.map(() => "?").join(", ");
+    where.push(`email IN (${placeholders})`);
+    bindsUsers.push(...emails);
+  }
+
   // One row per user. Use a single SQL statement for efficiency.
   await db
     .prepare(
       `INSERT INTO user_notifications
-       (user_id, type, level, title, body, title_zh, body_zh, title_en, body_en, link_url, meta_json, is_read)
-       SELECT id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0 FROM users`
+       (user_id, event_id, type, level, audience_lang, title, body, title_zh, body_zh, title_en, body_en, link_url, meta_json, is_deleted, is_read)
+       SELECT id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0
+       FROM users
+       WHERE ${where.join(" AND ")}`
     )
     .bind(
+      options.eventId,
       options.type,
       options.level ?? "info",
-      // Keep legacy title/body populated (use zh as default)
-      options.titleZh,
-      options.bodyZh,
-      options.titleZh,
-      options.bodyZh,
-      options.titleEn,
-      options.bodyEn,
+      options.audienceLang,
+      legacyTitle,
+      legacyBody,
+      options.titleZh || null,
+      options.bodyZh || null,
+      options.titleEn || null,
+      options.bodyEn || null,
       options.linkUrl ?? null,
-      metaJson
+      metaJson,
+      ...bindsUsers
     )
     .run();
 }
 
-export async function getUserUnreadNotificationCount(db: D1Database, userId: number) {
+function getAudienceLangKey(lang: AppLanguage | undefined): "zh" | "en" {
+  const normalized = normalizeAppLanguage(lang);
+  return normalized === "en-US" ? "en" : "zh";
+}
+
+export async function getUserUnreadNotificationCount(
+  db: D1Database,
+  userId: number,
+  lang?: AppLanguage
+) {
   await ensureUserNotificationsTable(db);
-  const { results } = await db
-    .prepare(
-      "SELECT COUNT(*) AS c FROM user_notifications WHERE user_id = ? AND is_read = 0"
-    )
-    .bind(userId)
-    .all<{ c: number }>();
+  const query = (() => {
+    // When lang is omitted, count all languages (legacy behavior).
+    if (!lang) {
+      return {
+        sql: `SELECT COUNT(*) AS c
+              FROM user_notifications
+              WHERE user_id = ?
+                AND is_deleted = 0
+                AND is_read = 0`,
+        binds: [userId] as unknown[],
+      };
+    }
+
+    const key = getAudienceLangKey(lang);
+    // IMPORTANT: audience_lang NULL is treated as "zh" (legacy records are zh-only by default).
+    return key === "zh"
+      ? {
+          sql: `SELECT COUNT(*) AS c
+                FROM user_notifications
+                WHERE user_id = ?
+                  AND is_deleted = 0
+                  AND is_read = 0
+                  AND (audience_lang IS NULL OR audience_lang = 'zh' OR audience_lang = 'both')`,
+          binds: [userId] as unknown[],
+        }
+      : {
+          sql: `SELECT COUNT(*) AS c
+                FROM user_notifications
+                WHERE user_id = ?
+                  AND is_deleted = 0
+                  AND is_read = 0
+                  AND (audience_lang = 'en' OR audience_lang = 'both')`,
+          binds: [userId] as unknown[],
+        };
+  })();
+
+  const { results } = await db.prepare(query.sql).bind(...query.binds).all<{ c: number }>();
   return results?.[0]?.c ?? 0;
 }
 
@@ -137,14 +222,23 @@ export async function listUserNotifications(options: {
   await ensureUserNotificationsTable(db);
 
   const offset = (page - 1) * pageSize;
-  const where = options.unreadOnly ? "AND is_read = 0" : "";
+  const whereUnread = options.unreadOnly ? "AND is_read = 0" : "";
   const lang = normalizeAppLanguage(options.lang);
+  const key = getAudienceLangKey(lang);
+  // IMPORTANT: audience_lang NULL is treated as "zh" (legacy records are zh-only by default).
+  const audienceWhere =
+    key === "zh"
+      ? "(audience_lang IS NULL OR audience_lang = 'zh' OR audience_lang = 'both')"
+      : "(audience_lang = 'en' OR audience_lang = 'both')";
 
   const countRes = await db
     .prepare(
       `SELECT COUNT(*) AS c
        FROM user_notifications
-       WHERE user_id = ? ${where}`
+       WHERE user_id = ?
+         AND is_deleted = 0
+         AND ${audienceWhere}
+         ${whereUnread}`
     )
     .bind(userId)
     .all<{ c: number }>();
@@ -154,7 +248,10 @@ export async function listUserNotifications(options: {
     .prepare(
       `SELECT id, user_id, type, level, title, body, title_zh, body_zh, title_en, body_en, link_url, meta_json, is_read, created_at, read_at
        FROM user_notifications
-       WHERE user_id = ? ${where}
+       WHERE user_id = ?
+         AND is_deleted = 0
+         AND ${audienceWhere}
+         ${whereUnread}
        ORDER BY created_at DESC, id DESC
        LIMIT ? OFFSET ?`
     )
@@ -165,8 +262,8 @@ export async function listUserNotifications(options: {
     id: r.id,
     type: r.type,
     level: r.level,
-    title: lang === "en-US" ? (r.title_en ?? r.title) : (r.title_zh ?? r.title),
-    body: lang === "en-US" ? (r.body_en ?? r.body) : (r.body_zh ?? r.body),
+    title: lang === "en-US" ? (r.title_en ?? "") : (r.title_zh ?? r.title),
+    body: lang === "en-US" ? (r.body_en ?? "") : (r.body_zh ?? r.body),
     linkUrl: r.link_url,
     isRead: !!r.is_read,
     createdAt: r.created_at,
@@ -188,7 +285,7 @@ export async function markUserNotificationRead(options: {
     .prepare(
       `UPDATE user_notifications
        SET is_read = 1, read_at = COALESCE(read_at, CURRENT_TIMESTAMP)
-       WHERE id = ? AND user_id = ?`
+       WHERE id = ? AND user_id = ? AND is_deleted = 0`
     )
     .bind(id, userId)
     .run();
@@ -200,9 +297,23 @@ export async function markAllUserNotificationsRead(db: D1Database, userId: numbe
     .prepare(
       `UPDATE user_notifications
        SET is_read = 1, read_at = COALESCE(read_at, CURRENT_TIMESTAMP)
-       WHERE user_id = ? AND is_read = 0`
+       WHERE user_id = ? AND is_read = 0 AND is_deleted = 0`
     )
     .bind(userId)
+    .run();
+}
+
+export async function softDeleteUserNotificationsByEventId(options: {
+  db: D1Database;
+  eventId: number;
+}) {
+  const { db, eventId } = options;
+  await ensureUserNotificationsTable(db);
+  await db
+    .prepare(
+      "UPDATE user_notifications SET is_deleted = 1 WHERE event_id = ? AND is_deleted = 0"
+    )
+    .bind(eventId)
     .run();
 }
 

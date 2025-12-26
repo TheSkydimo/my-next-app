@@ -17,6 +17,8 @@ export type AdminMessages = {
     navUsers: string;
     navOrders: string;
     navNotifications: string;
+    navNotificationsSend: string;
+    navNotificationsHistory: string;
     navLogs: string;
     roleSuperAdmin: string;
     roleAdmin: string;
@@ -149,11 +151,26 @@ export type AdminMessages = {
     desc: string;
     scopeLabel: string;
     scopeValueAll: string;
+    scopeFieldLabel: string;
+    scopeAllUsers: string;
+    scopeVipUsers: string;
+    scopeNonVipUsers: string;
+    scopeAdmins: string;
+    scopeEmailList: string;
+    audienceFieldLabel: string;
+    audienceTooltip: string;
+    audienceBoth: string;
+    audienceZhOnly: string;
+    audienceEnOnly: string;
+    targetEmailsLabel: string;
+    targetEmailsRequired: string;
+    targetEmailsPlaceholder: string;
     levelLabel: string;
     levelInfo: string;
     levelWarn: string;
     levelCritical: string;
     typeLabel: string;
+    typeTooltip: string;
     titleZhLabel: string;
     titleZhPlaceholder: string;
     bodyZhLabel: string;
@@ -165,9 +182,54 @@ export type AdminMessages = {
     linkUrlLabel: string;
     linkUrlPlaceholder: string;
     sendButton: string;
+    resetButton: string;
     errorTitleRequired: string;
     errorBodyRequired: string;
     successSent: string;
+  };
+  notificationsHistory: {
+    title: string;
+    desc: string;
+    filterSearchLabel: string;
+    filterSearchPlaceholder: string;
+    filterTypeLabel: string;
+    filterTypePlaceholder: string;
+    filterLevelLabel: string;
+    filterLevelAll: string;
+    filterLevelInfo: string;
+    filterLevelWarn: string;
+    filterLevelCritical: string;
+    filterStatusLabel: string;
+    filterStatusAll: string;
+    filterStatusSending: string;
+    filterStatusSent: string;
+    filterStatusFailed: string;
+    applyButton: string;
+    resetButton: string;
+    tableId: string;
+    tableLevel: string;
+    tableType: string;
+    tableTitle: string;
+    tableStatus: string;
+    tableCreatedAt: string;
+    tableActions: string;
+    actionView: string;
+    actionEditResend: string;
+    actionDelete: string;
+    deleteConfirmTitle: string;
+    deleteOkText: string;
+    modalTitle: (id: number) => string;
+    modalClose: string;
+    modalCreated: string;
+    modalError: string;
+    modalNoLink: string;
+    tagLevelInfo: string;
+    tagLevelWarn: string;
+    tagLevelCritical: string;
+    tagStatusSending: string;
+    tagStatusSent: string;
+    tagStatusFailed: string;
+    totalText: (total: number) => string;
   };
 };
 
@@ -186,6 +248,8 @@ const zhCN: AdminMessages = {
     navUsers: "用户管理",
     navOrders: "订单截图",
     navNotifications: "通知",
+    navNotificationsSend: "发送通知",
+    navNotificationsHistory: "历史通知",
     navLogs: "日志",
     roleSuperAdmin: "超级管理员",
     roleAdmin: "管理员",
@@ -324,11 +388,26 @@ const zhCN: AdminMessages = {
     desc: "向所有用户广播站内通知（用户端右上角 🔔 可接收并标记已读）。",
     scopeLabel: "发送范围",
     scopeValueAll: "全部用户（广播）",
+    scopeFieldLabel: "范围",
+    scopeAllUsers: "全部用户",
+    scopeVipUsers: "仅 VIP 用户",
+    scopeNonVipUsers: "仅非 VIP 用户",
+    scopeAdmins: "仅管理员用户",
+    scopeEmailList: "指定邮箱列表",
+    audienceFieldLabel: "语言投放",
+    audienceTooltip: "中文界面只提醒中文投放；英文界面只提醒英文投放。both 表示两边都提醒。",
+    audienceBoth: "双语投放（both）",
+    audienceZhOnly: "仅中文投放（zh）",
+    audienceEnOnly: "仅英文投放（en）",
+    targetEmailsLabel: "目标邮箱（每行一个 / 逗号分隔）",
+    targetEmailsRequired: "请输入至少一个邮箱",
+    targetEmailsPlaceholder: "user1@example.com\nuser2@example.com",
     levelLabel: "等级",
     levelInfo: "信息",
     levelWarn: "警告",
     levelCritical: "严重",
     typeLabel: "类型（可选）",
+    typeTooltip: "默认 admin_message",
     titleZhLabel: "标题（中文 zh-CN）",
     titleZhPlaceholder: "例如：系统维护通知",
     bodyZhLabel: "内容（中文 zh-CN）",
@@ -340,9 +419,54 @@ const zhCN: AdminMessages = {
     linkUrlLabel: "跳转链接（可选）",
     linkUrlPlaceholder: "例如：/profile 或 https://example.com",
     sendButton: "发送通知",
+    resetButton: "重置",
     errorTitleRequired: "请填写通知标题",
     errorBodyRequired: "请填写通知内容",
     successSent: "通知已发送",
+  },
+  notificationsHistory: {
+    title: "历史通知",
+    desc: "管理员发送记录（事件日志）。删除后会隐藏用户端对应通知。",
+    filterSearchLabel: "搜索",
+    filterSearchPlaceholder: "标题/内容包含...",
+    filterTypeLabel: "类型",
+    filterTypePlaceholder: "admin_message",
+    filterLevelLabel: "等级",
+    filterLevelAll: "全部",
+    filterLevelInfo: "信息",
+    filterLevelWarn: "警告",
+    filterLevelCritical: "严重",
+    filterStatusLabel: "状态",
+    filterStatusAll: "全部",
+    filterStatusSending: "发送中",
+    filterStatusSent: "已发送",
+    filterStatusFailed: "失败",
+    applyButton: "应用",
+    resetButton: "重置",
+    tableId: "ID",
+    tableLevel: "等级",
+    tableType: "类型",
+    tableTitle: "标题（中/英）",
+    tableStatus: "状态",
+    tableCreatedAt: "创建时间",
+    tableActions: "操作",
+    actionView: "查看",
+    actionEditResend: "编辑并重发",
+    actionDelete: "删除",
+    deleteConfirmTitle: "删除该通知，并隐藏用户端对应通知？",
+    deleteOkText: "删除",
+    modalTitle: (id: number) => `通知事件 #${id}`,
+    modalClose: "关闭",
+    modalCreated: "创建时间",
+    modalError: "错误原因",
+    modalNoLink: "无链接",
+    tagLevelInfo: "信息",
+    tagLevelWarn: "警告",
+    tagLevelCritical: "严重",
+    tagStatusSending: "发送中",
+    tagStatusSent: "已发送",
+    tagStatusFailed: "失败",
+    totalText: (total: number) => `共 ${total} 条`,
   },
 };
 
@@ -361,6 +485,8 @@ const enUS: AdminMessages = {
     navUsers: "Users",
     navOrders: "Orders",
     navNotifications: "Notifications",
+    navNotificationsSend: "Send",
+    navNotificationsHistory: "History",
     navLogs: "Logs",
     roleSuperAdmin: "Super Admin",
     roleAdmin: "Admin",
@@ -503,11 +629,27 @@ const enUS: AdminMessages = {
     desc: "Broadcast an in-app notification to all users (users receive it via the 🔔 bell).",
     scopeLabel: "Scope",
     scopeValueAll: "All users (broadcast)",
+    scopeFieldLabel: "Scope",
+    scopeAllUsers: "All users",
+    scopeVipUsers: "VIP users only",
+    scopeNonVipUsers: "Non-VIP users only",
+    scopeAdmins: "Admins only",
+    scopeEmailList: "Email list",
+    audienceFieldLabel: "Audience language",
+    audienceTooltip:
+      "Chinese UI only notifies zh audience; English UI only notifies en audience. both notifies both sides.",
+    audienceBoth: "Both (both)",
+    audienceZhOnly: "Chinese only (zh)",
+    audienceEnOnly: "English only (en)",
+    targetEmailsLabel: "Target emails (one per line / comma-separated)",
+    targetEmailsRequired: "Please enter at least one email",
+    targetEmailsPlaceholder: "user1@example.com\nuser2@example.com",
     levelLabel: "Level",
     levelInfo: "Info",
     levelWarn: "Warning",
     levelCritical: "Critical",
     typeLabel: "Type (optional)",
+    typeTooltip: "Defaults to admin_message",
     titleZhLabel: "Title (Chinese zh-CN)",
     titleZhPlaceholder: "e.g. 系统维护通知",
     bodyZhLabel: "Body (Chinese zh-CN)",
@@ -519,9 +661,54 @@ const enUS: AdminMessages = {
     linkUrlLabel: "Link URL (optional)",
     linkUrlPlaceholder: "e.g. /profile or https://example.com",
     sendButton: "Send",
+    resetButton: "Reset",
     errorTitleRequired: "Please enter a title",
     errorBodyRequired: "Please enter a body",
     successSent: "Notification sent",
+  },
+  notificationsHistory: {
+    title: "History",
+    desc: "Admin notification events (send log). Deleting hides related user notifications.",
+    filterSearchLabel: "Search",
+    filterSearchPlaceholder: "title/body contains...",
+    filterTypeLabel: "Type",
+    filterTypePlaceholder: "admin_message",
+    filterLevelLabel: "Level",
+    filterLevelAll: "All",
+    filterLevelInfo: "Info",
+    filterLevelWarn: "Warn",
+    filterLevelCritical: "Critical",
+    filterStatusLabel: "Status",
+    filterStatusAll: "All",
+    filterStatusSending: "Sending",
+    filterStatusSent: "Sent",
+    filterStatusFailed: "Failed",
+    applyButton: "Apply",
+    resetButton: "Reset",
+    tableId: "ID",
+    tableLevel: "Level",
+    tableType: "Type",
+    tableTitle: "Title (zh/en)",
+    tableStatus: "Status",
+    tableCreatedAt: "Created",
+    tableActions: "Actions",
+    actionView: "View",
+    actionEditResend: "Edit & resend",
+    actionDelete: "Delete",
+    deleteConfirmTitle: "Delete this event and hide related user notifications?",
+    deleteOkText: "Delete",
+    modalTitle: (id: number) => `Event #${id}`,
+    modalClose: "Close",
+    modalCreated: "Created",
+    modalError: "Error",
+    modalNoLink: "No link",
+    tagLevelInfo: "INFO",
+    tagLevelWarn: "WARN",
+    tagLevelCritical: "CRITICAL",
+    tagStatusSending: "SENDING",
+    tagStatusSent: "SENT",
+    tagStatusFailed: "FAILED",
+    totalText: (total: number) => `Total ${total}`,
   },
 };
 

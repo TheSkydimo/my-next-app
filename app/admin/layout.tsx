@@ -71,7 +71,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
  * 使用 AdminContext 获取已预加载的管理员信息
  */
 function AdminLayoutInner({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const router = useRouter();
   const adminContext = useOptionalAdmin();
 
@@ -166,8 +166,12 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         keywords: ["管理员", "admin", "admins"],
       },
       {
-        href: "/admin/notifications",
+        href: "/admin/notifications/send",
         keywords: ["通知", "消息", "站内信", "notification", "notifications", "message"],
+      },
+      {
+        href: "/admin/notifications/history",
+        keywords: ["通知历史", "历史通知", "history", "log", "events", "notification history"],
       },
       {
         href: "/admin/profile",
@@ -205,13 +209,21 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         ? "admins"
         : pathname === "/admin/users"
         ? "users"
-        : pathname === "/admin/notifications"
-        ? "notifications"
+        : pathname.startsWith("/admin/notifications")
+        ? pathname.includes("/history")
+          ? "notifications_history"
+          : "notifications_send"
         : pathname === "/admin/logs"
         ? "logs"
         : "";
 
     setSelectedKeys(key ? [key] : []);
+  }, [pathname]);
+
+  // Ensure notification submenu is expanded when inside /admin/notifications/*
+  useEffect(() => {
+    if (!pathname.startsWith("/admin/notifications")) return;
+    setOpenKeys((prev) => (prev.includes("notifications") ? prev : [...prev, "notifications"]));
   }, [pathname]);
 
   const commonConfigProviderProps = {
@@ -386,10 +398,24 @@ function AdminAntdShell({
       key: "notifications",
       icon: <BellOutlined />,
       label: messages.layout.navNotifications,
-      onClick: () => {
-        router.push("/admin/notifications");
-        setMobileDrawerOpen(false);
-      },
+      children: [
+        {
+          key: "notifications_send",
+          label: messages.layout.navNotificationsSend,
+          onClick: () => {
+            router.push("/admin/notifications/send");
+            setMobileDrawerOpen(false);
+          },
+        },
+        {
+          key: "notifications_history",
+          label: messages.layout.navNotificationsHistory,
+          onClick: () => {
+            router.push("/admin/notifications/history");
+            setMobileDrawerOpen(false);
+          },
+        },
+      ],
     },
     {
       key: "logs",

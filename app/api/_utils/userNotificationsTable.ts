@@ -1,10 +1,14 @@
 export type UserNotificationLevel = "info" | "warn" | "critical";
 
+export type UserNotificationAudienceLang = "zh" | "en" | "both";
+
 export type UserNotificationRow = {
   id: number;
   user_id: number;
+  event_id: number | null;
   type: string;
   level: UserNotificationLevel;
+  audience_lang: UserNotificationAudienceLang | null;
   title: string;
   body: string;
   title_zh: string | null;
@@ -13,6 +17,7 @@ export type UserNotificationRow = {
   body_en: string | null;
   link_url: string | null;
   meta_json: string | null;
+  is_deleted: number;
   is_read: number;
   created_at: string;
   read_at: string | null;
@@ -24,8 +29,10 @@ export async function ensureUserNotificationsTable(db: D1Database) {
       `CREATE TABLE IF NOT EXISTS user_notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
+        event_id INTEGER,
         type TEXT NOT NULL,
         level TEXT NOT NULL DEFAULT 'info',
+        audience_lang TEXT,
         title TEXT NOT NULL,
         body TEXT NOT NULL,
         title_zh TEXT,
@@ -34,6 +41,7 @@ export async function ensureUserNotificationsTable(db: D1Database) {
         body_en TEXT,
         link_url TEXT,
         meta_json TEXT,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
         is_read INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         read_at TIMESTAMP,
@@ -42,7 +50,7 @@ export async function ensureUserNotificationsTable(db: D1Database) {
     )
     .run();
 
-  // Best-effort: add i18n columns for existing deployments.
+  // Best-effort: add columns for existing deployments.
   // NOTE: D1 supports "ALTER TABLE ... ADD COLUMN ...", but it will throw if column exists.
   const addColumn = async (sql: string, duplicateMsg: string) => {
     try {
@@ -52,10 +60,16 @@ export async function ensureUserNotificationsTable(db: D1Database) {
       if (!msg.includes(duplicateMsg)) throw e;
     }
   };
+  await addColumn("ALTER TABLE user_notifications ADD COLUMN event_id INTEGER", "duplicate column name: event_id");
+  await addColumn("ALTER TABLE user_notifications ADD COLUMN audience_lang TEXT", "duplicate column name: audience_lang");
   await addColumn("ALTER TABLE user_notifications ADD COLUMN title_zh TEXT", "duplicate column name: title_zh");
   await addColumn("ALTER TABLE user_notifications ADD COLUMN body_zh TEXT", "duplicate column name: body_zh");
   await addColumn("ALTER TABLE user_notifications ADD COLUMN title_en TEXT", "duplicate column name: title_en");
   await addColumn("ALTER TABLE user_notifications ADD COLUMN body_en TEXT", "duplicate column name: body_en");
+  await addColumn(
+    "ALTER TABLE user_notifications ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0",
+    "duplicate column name: is_deleted"
+  );
 
   await db
     .prepare(
@@ -65,6 +79,16 @@ export async function ensureUserNotificationsTable(db: D1Database) {
   await db
     .prepare(
       "CREATE INDEX IF NOT EXISTS idx_user_notifications_user_read ON user_notifications (user_id, is_read, created_at DESC)"
+    )
+    .run();
+  await db
+    .prepare(
+      "CREATE INDEX IF NOT EXISTS idx_user_notifications_user_lang_read ON user_notifications (user_id, audience_lang, is_read, created_at DESC)"
+    )
+    .run();
+  await db
+    .prepare(
+      "CREATE INDEX IF NOT EXISTS idx_user_notifications_event ON user_notifications (event_id, is_deleted, created_at DESC)"
     )
     .run();
   await db

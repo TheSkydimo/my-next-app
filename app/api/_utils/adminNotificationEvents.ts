@@ -3,6 +3,7 @@ import {
   type AdminNotificationEventRow,
   type AdminNotificationEventStatus,
   type AdminNotificationLevel,
+  type AdminNotificationAudienceLang,
 } from "./adminNotificationEventsTable";
 
 function clampInt(value: string | null, def: number, min: number, max: number): number {
@@ -33,19 +34,25 @@ export function parseAdminNotificationEventsPaging(url: string) {
   const status: AdminNotificationEventStatus | "" =
     statusRaw === "sending" || statusRaw === "sent" || statusRaw === "failed" ? statusRaw : "";
 
-  return { page, pageSize, q, type, level, status };
+  const includeDeleted =
+    searchParams.get("includeDeleted") === "1" ||
+    String(searchParams.get("includeDeleted") ?? "").toLowerCase() === "true";
+
+  return { page, pageSize, q, type, level, status, includeDeleted };
 }
 
 export async function createAdminNotificationEvent(options: {
   db: D1Database;
   type: string;
   level: AdminNotificationLevel;
+  audienceLang: AdminNotificationAudienceLang;
   titleZh: string;
   bodyZh: string;
   titleEn: string;
   bodyEn: string;
   linkUrl: string | null;
   scope: string;
+  targetJson: string | null;
   createdByAdminId: number;
   createdByAdminRole: string;
   status: AdminNotificationEventStatus;
@@ -56,18 +63,20 @@ export async function createAdminNotificationEvent(options: {
   const insert = await db
     .prepare(
       `INSERT INTO admin_notification_events
-       (type, level, title_zh, body_zh, title_en, body_en, link_url, scope, created_by_admin_id, created_by_admin_role, status, error_message)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`
+       (type, level, audience_lang, title_zh, body_zh, title_en, body_en, link_url, scope, target_json, created_by_admin_id, created_by_admin_role, status, error_message, is_deleted, deleted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL)`
     )
     .bind(
       options.type,
       options.level,
+      options.audienceLang,
       options.titleZh,
       options.bodyZh,
       options.titleEn,
       options.bodyEn,
       options.linkUrl,
       options.scope,
+      options.targetJson,
       options.createdByAdminId,
       options.createdByAdminRole,
       options.status
@@ -89,9 +98,20 @@ export async function updateAdminNotificationEventStatus(options: {
 
   await db
     .prepare(
-      "UPDATE admin_notification_events SET status = ?, error_message = ? WHERE id = ?"
+      "UPDATE admin_notification_events SET status = ?, error_message = ? WHERE id = ? AND is_deleted = 0"
     )
     .bind(options.status, options.errorMessage ?? null, options.id)
+    .run();
+}
+
+export async function softDeleteAdminNotificationEvent(options: { db: D1Database; id: number }) {
+  const { db, id } = options;
+  await ensureAdminNotificationEventsTable(db);
+  await db
+    .prepare(
+      "UPDATE admin_notification_events SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND is_deleted = 0"
+    )
+    .bind(id)
     .run();
 }
 
@@ -103,12 +123,17 @@ export async function listAdminNotificationEvents(options: {
   type?: string;
   level?: AdminNotificationLevel | "";
   status?: AdminNotificationEventStatus | "";
+  includeDeleted?: boolean;
 }) {
   const { db } = options;
   await ensureAdminNotificationEventsTable(db);
 
   const where: string[] = ["1=1"];
   const binds: unknown[] = [];
+
+  if (!options.includeDeleted) {
+    where.push("is_deleted = 0");
+  }
 
   const q = sanitizeOneLine(options.q, 80);
   if (q) {
@@ -143,7 +168,7 @@ export async function listAdminNotificationEvents(options: {
 
   const rowsRes = await db
     .prepare(
-      `SELECT id, type, level, title_zh, body_zh, title_en, body_en, link_url, scope, created_by_admin_id, created_by_admin_role, status, error_message, created_at
+      `SELECT id, type, level, audience_lang, title_zh, body_zh, title_en, body_en, link_url, scope, target_json, created_by_admin_id, created_by_admin_role, status, error_message, is_deleted, deleted_at, created_at
        FROM admin_notification_events
        WHERE ${where.join(" AND ")}
        ORDER BY created_at DESC, id DESC
