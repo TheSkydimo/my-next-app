@@ -1,10 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
+import { Table, Card, Button, Typography, Image, Alert, List, Grid, Tag, Space } from "antd";
+import type { TableProps } from "antd";
+import { EyeOutlined, CloudUploadOutlined, UnorderedListOutlined, ShopOutlined, CalendarOutlined, NumberOutlined, ContainerOutlined } from "@ant-design/icons";
 import type { AppLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import type { OrderSnapshot } from "../hooks/useUserOrdersPreview";
+
+const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 export default function UserOrdersReadOnlyPanel({
   language,
@@ -20,354 +26,183 @@ export default function UserOrdersReadOnlyPanel({
   limit?: number;
 }) {
   const messages = useMemo(() => getUserMessages(language), [language]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
   const topItems = items.slice(0, Math.max(1, limit));
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+
+  const columns: TableProps<OrderSnapshot>["columns"] = [
+    {
+      title: language === "zh-CN" ? "截图" : "Screenshot",
+      dataIndex: "imageUrl",
+      key: "imageUrl",
+      width: 100,
+      render: (url) => (
+        <Image
+          src={url}
+          alt="order"
+          width={80}
+          height={56}
+          style={{ objectFit: "cover", borderRadius: 4 }}
+          preview={{
+            mask: <EyeOutlined />,
+          }}
+        />
+      ),
+    },
+    {
+      title: language === "zh-CN" ? "店铺" : "Shop",
+      key: "shop",
+      width: 120,
+      render: (_, record) => record.shopName ?? record.platform ?? "-",
+    },
+    {
+      title: language === "zh-CN" ? "订单号" : "Order No",
+      dataIndex: "orderNo",
+      key: "orderNo",
+      width: 150,
+      ellipsis: true,
+      render: (text, record) => (
+        <Text copyable={{ text: text ?? String(record.id) }}>
+          {text ?? `${messages.home.orderPreviewOrderNoFallback}${record.id}`}
+        </Text>
+      ),
+    },
+    {
+      title: language === "zh-CN" ? "创建时间" : "Created At",
+      dataIndex: "orderCreatedTime",
+      key: "orderCreatedTime",
+      width: 160,
+      render: (text, record) => text ?? new Date(record.createdAt).toLocaleString(),
+    },
+    {
+      title: language === "zh-CN" ? "付款时间" : "Paid At",
+      dataIndex: "orderPaidTime",
+      key: "orderPaidTime",
+      width: 160,
+      render: (text) => text ?? "-",
+    },
+    {
+      title: language === "zh-CN" ? "数量" : "Qty",
+      dataIndex: "deviceCount",
+      key: "deviceCount",
+      width: 80,
+      align: "center",
+      render: (count) => (count ? <Tag>{count}</Tag> : "-"),
+    },
+    {
+      title: language === "zh-CN" ? "备注" : "Note",
+      dataIndex: "note",
+      key: "note",
+      ellipsis: true,
+      render: (text) => text ?? "-",
+    },
+  ];
+
+  const renderMobileList = () => (
+    <List
+      dataSource={topItems}
+      loading={loading}
+      locale={{ emptyText: messages.home.orderPreviewEmpty }}
+      renderItem={(item) => (
+        <List.Item>
+          <Card 
+            size="small" 
+            style={{ width: '100%' }}
+            styles={{ body: { padding: '12px' } }}
+          >
+             <Space align="start" style={{ width: '100%' }}>
+                <Image
+                  src={item.imageUrl}
+                  alt="order"
+                  width={80}
+                  height={80}
+                  style={{ objectFit: "cover", borderRadius: 4 }}
+                />
+                <Space direction="vertical" size={4} style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text strong ellipsis>{item.shopName ?? item.platform ?? "-"}</Text>
+                    {item.deviceCount && <Tag style={{ margin: 0 }}>x{item.deviceCount}</Tag>}
+                  </div>
+                  
+                  <Space size={4} style={{ color: 'rgba(0, 0, 0, 0.45)', fontSize: 12 }}>
+                    <NumberOutlined />
+                    <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
+                       {item.orderNo ?? `${messages.home.orderPreviewOrderNoFallback}${item.id}`}
+                    </Text>
+                  </Space>
+
+                  <Space size={4} style={{ color: 'rgba(0, 0, 0, 0.45)', fontSize: 12 }}>
+                    <CalendarOutlined />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                       {item.orderCreatedTime ?? new Date(item.createdAt).toLocaleDateString()}
+                    </Text>
+                  </Space>
+                  
+                  {item.note && (
+                    <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
+                       {item.note}
+                    </Text>
+                  )}
+                </Space>
+             </Space>
+          </Card>
+        </List.Item>
+      )}
+    />
+  );
 
   return (
-    <section className="user-page-section" style={{ marginTop: 14 }}>
-      <div className="user-page-section__header">
-        <h2 className="user-page-section__title" style={{ margin: 0 }}>
-          {messages.home.orderPreviewTitle}
-        </h2>
-        <p className="user-page-section__subtext" style={{ margin: 0 }}>
-          {messages.home.orderPreviewSubtitle(items.length)}
-        </p>
-      </div>
-
-      <div className="user-page-card">
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-          <Link href="/devices#order-section" className="btn btn-secondary btn-sm">
-            {messages.home.orderPreviewGoUpload}
+    <Card
+      title={
+        <Space direction="vertical" size={0}>
+          <Title level={4} style={{ margin: 0 }}>
+            {messages.home.orderPreviewTitle}
+          </Title>
+          <Text type="secondary" style={{ fontSize: 14, fontWeight: "normal" }}>
+            {messages.home.orderPreviewSubtitle(items.length)}
+          </Text>
+        </Space>
+      }
+      extra={
+        <Space wrap>
+          <Link href="/devices#order-section">
+            <Button icon={<CloudUploadOutlined />} size={isMobile ? "small" : "middle"}>
+              {!isMobile && messages.home.orderPreviewGoUpload}
+            </Button>
           </Link>
-          <Link href="/devices#order-section" className="btn btn-primary btn-sm">
-            {messages.home.orderPreviewViewAll}
+          <Link href="/devices#order-section">
+            <Button type="primary" icon={<UnorderedListOutlined />} size={isMobile ? "small" : "middle"}>
+              {!isMobile && messages.home.orderPreviewViewAll}
+            </Button>
           </Link>
-        </div>
-
-        {loading && (
-          <p style={{ marginTop: 12, fontSize: 13, color: "#9ca3af" }}>
-            {messages.common.loading}
-          </p>
-        )}
-
-        {!loading && error && (
-          <p style={{ marginTop: 12, fontSize: 13, color: "#f87171" }}>
-            {error}
-          </p>
-        )}
-
-        {!loading && !error && topItems.length === 0 && (
-          <p style={{ marginTop: 12, fontSize: 13, color: "#9ca3af" }}>
-            {messages.home.orderPreviewEmpty}
-          </p>
-        )}
-
-        {!loading && !error && topItems.length > 0 && (
-          <div style={{ marginTop: 12, overflowX: "auto" }}>
-            <div
-              style={{
-                minWidth: 860,
-                border: "1px solid #d1d5db",
-                borderRadius: 8,
-                background: "#ffffff",
-              }}
-            >
-              {/* 表头行 */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "6px 8px",
-                  borderBottom: "1px solid #d1d5db",
-                  fontSize: 11,
-                  background: "#f3f4f6",
-                  color: "#374151",
-                  fontWeight: 600,
-                }}
-              >
-                <div
-                  style={{
-                    width: 80,
-                    flexShrink: 0,
-                    borderRight: "1px solid #d1d5db",
-                    textAlign: "center",
-                  }}
-                >
-                  {language === "zh-CN" ? "截图" : "Screenshot"}
-                </div>
-                <div
-                  style={{
-                    flex: 1,
-                    minWidth: 120,
-                    borderRight: "1px solid #d1d5db",
-                    textAlign: "center",
-                  }}
-                >
-                  {language === "zh-CN" ? "店铺" : "Shop"}
-                </div>
-                <div
-                  style={{
-                    flex: 1.2,
-                    minWidth: 150,
-                    borderRight: "1px solid #d1d5db",
-                    textAlign: "center",
-                  }}
-                >
-                  {language === "zh-CN" ? "订单号" : "Order No"}
-                </div>
-                <div
-                  style={{
-                    flex: 1.1,
-                    minWidth: 160,
-                    borderRight: "1px solid #d1d5db",
-                    textAlign: "center",
-                  }}
-                >
-                  {language === "zh-CN" ? "创建时间" : "Created At"}
-                </div>
-                <div
-                  style={{
-                    flex: 1.1,
-                    minWidth: 160,
-                    borderRight: "1px solid #d1d5db",
-                    textAlign: "center",
-                  }}
-                >
-                  {language === "zh-CN" ? "付款时间" : "Paid At"}
-                </div>
-                <div
-                  style={{
-                    width: 60,
-                    flexShrink: 0,
-                    borderRight: "1px solid #d1d5db",
-                    textAlign: "center",
-                  }}
-                >
-                  {language === "zh-CN" ? "数量" : "Qty"}
-                </div>
-                <div
-                  style={{
-                    flex: 1.2,
-                    minWidth: 160,
-                    textAlign: "center",
-                  }}
-                >
-                  {language === "zh-CN" ? "备注" : "Note"}
-                </div>
-              </div>
-
-              {/* 数据行 */}
-              {topItems.map((o, idx) => (
-                <div
-                  key={o.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "stretch",
-                    padding: "6px 8px",
-                    borderTop: "1px solid #f3f4f6",
-                    fontSize: 11,
-                    color: "#4b5563",
-                    backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9fafb",
-                  }}
-                >
-                  {/* 截图 */}
-                  <div
-                    style={{
-                      width: 80,
-                      height: 56,
-                      overflow: "hidden",
-                      borderRadius: 4,
-                      flexShrink: 0,
-                      borderRight: "1px solid #d1d5db",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setPreviewUrl(o.imageUrl)}
-                      style={{
-                        padding: 0,
-                        border: "none",
-                        background: "transparent",
-                        cursor: "zoom-in",
-                        display: "block",
-                        width: "100%",
-                        height: "100%",
-                      }}
-                      aria-label={messages.home.orderPreviewOpen}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={o.imageUrl}
-                        alt="order"
-                        width={80}
-                        height={56}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                    </button>
-                  </div>
-
-                  {/* 店铺 */}
-                  <div
-                    style={{
-                      flex: 1,
-                      minWidth: 120,
-                      display: "flex",
-                      alignItems: "center",
-                      borderRight: "1px solid #d1d5db",
-                      justifyContent: "center",
-                      textAlign: "center",
-                      padding: "0 6px",
-                    }}
-                  >
-                    {o.shopName ?? o.platform ?? "-"}
-                  </div>
-
-                  {/* 订单号 */}
-                  <div
-                    style={{
-                      flex: 1.2,
-                      minWidth: 150,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      display: "flex",
-                      alignItems: "center",
-                      borderRight: "1px solid #d1d5db",
-                      justifyContent: "center",
-                      textAlign: "center",
-                      padding: "0 6px",
-                    }}
-                    title={o.orderNo ?? undefined}
-                  >
-                    {o.orderNo ?? `${messages.home.orderPreviewOrderNoFallback}${o.id}`}
-                  </div>
-
-                  {/* 创建时间 */}
-                  <div
-                    style={{
-                      flex: 1.1,
-                      minWidth: 160,
-                      whiteSpace: "nowrap",
-                      display: "flex",
-                      alignItems: "center",
-                      borderRight: "1px solid #d1d5db",
-                      justifyContent: "center",
-                      textAlign: "center",
-                      padding: "0 6px",
-                    }}
-                  >
-                    {o.orderCreatedTime ?? new Date(o.createdAt).toLocaleString()}
-                  </div>
-
-                  {/* 付款时间 */}
-                  <div
-                    style={{
-                      flex: 1.1,
-                      minWidth: 160,
-                      whiteSpace: "nowrap",
-                      display: "flex",
-                      alignItems: "center",
-                      borderRight: "1px solid #d1d5db",
-                      justifyContent: "center",
-                      textAlign: "center",
-                      padding: "0 6px",
-                    }}
-                  >
-                    {o.orderPaidTime ?? "-"}
-                  </div>
-
-                  {/* 数量 */}
-                  <div
-                    style={{
-                      width: 60,
-                      flexShrink: 0,
-                      textAlign: "center",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRight: "1px solid #d1d5db",
-                      padding: "0 6px",
-                    }}
-                  >
-                    {o.deviceCount != null ? String(o.deviceCount) : "-"}
-                  </div>
-
-                  {/* 备注 */}
-                  <div
-                    style={{
-                      flex: 1.2,
-                      minWidth: 160,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      color: "#6b7280",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      textAlign: "center",
-                      padding: "0 6px",
-                    }}
-                    title={o.note ?? undefined}
-                  >
-                    {o.note ?? "-"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 图片预览弹窗（只读） */}
-      {previewUrl && (
-        <div
-          onClick={() => setPreviewUrl(null)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setPreviewUrl(null);
-          }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            background: "rgba(0, 0, 0, 0.8)",
-            cursor: "zoom-out",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setPreviewUrl(null)}
-            style={{ position: "absolute", top: 16, right: 16 }}
-            className="btn btn-secondary btn-icon btn-lg"
-            aria-label={language === "zh-CN" ? "关闭预览" : "Close preview"}
-          >
-            ×
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={previewUrl}
-            alt="preview"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-              objectFit: "contain",
-              borderRadius: 8,
-              boxShadow: "0 4px 32px rgba(0, 0, 0, 0.5)",
-              cursor: "default",
+        </Space>
+      }
+      style={{ marginTop: 16 }}
+      styles={{ body: { padding: isMobile ? '0 12px 12px' : 0 } }}
+    >
+      {error ? (
+        <Alert
+          message="Error"
+          description={error}
+          type="error"
+          showIcon
+          style={{ margin: 24 }}
+        />
+      ) : (
+        isMobile ? renderMobileList() : (
+          <Table
+            dataSource={topItems}
+            columns={columns}
+            rowKey="id"
+            pagination={false}
+            loading={loading}
+            locale={{
+              emptyText: messages.home.orderPreviewEmpty,
             }}
+            scroll={{ x: 800 }}
           />
-        </div>
+        )
       )}
-    </section>
+    </Card>
   );
 }
-
-
