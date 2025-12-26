@@ -56,7 +56,7 @@ export default function UserOrdersList({
       title: language === "zh-CN" ? "截图" : "Screenshot",
       dataIndex: "imageUrl",
       key: "imageUrl",
-      width: 100,
+      width: 110,
       render: (url) => (
         <Image
           src={url}
@@ -76,7 +76,6 @@ export default function UserOrdersList({
     {
       title: language === "zh-CN" ? "店铺/平台" : "Shop/Platform",
       key: "shop",
-      width: 150,
       render: (_, record) => (
         <Space>
            {record.platform && <Tag color="blue">{record.platform}</Tag>}
@@ -88,7 +87,6 @@ export default function UserOrdersList({
       title: language === "zh-CN" ? "订单号" : "Order No",
       dataIndex: "orderNo",
       key: "orderNo",
-      width: 180,
       ellipsis: true,
       render: (text, record) => (
         <Text copyable={{ text: text ?? String(record.id) }}>
@@ -100,14 +98,14 @@ export default function UserOrdersList({
       title: language === "zh-CN" ? "创建时间" : "Created At",
       dataIndex: "orderCreatedTime",
       key: "orderCreatedTime",
-      width: 160,
+      responsive: ["lg"],
       render: (text, record) => text ?? new Date(record.createdAt).toLocaleString(),
     },
     {
       title: language === "zh-CN" ? "付款时间" : "Paid At",
       dataIndex: "orderPaidTime",
       key: "orderPaidTime",
-      width: 160,
+      responsive: ["xl"],
       render: (text) => text ?? "-",
     },
     {
@@ -242,9 +240,10 @@ export default function UserOrdersList({
       columns={columns}
       rowKey="id"
       loading={loading}
-      pagination={{ pageSize: 5 }}
-      // 让表格占满容器宽度，避免因为固定 scroll.x 导致表格整体“挤在左边”
+      size={isMobile ? "small" : "middle"}
+      // 与管理端一致：表格占满容器宽度，列宽由 tableLayout + 部分固定宽度控制
       tableLayout="fixed"
+      pagination={{ pageSize: 5, responsive: true }}
       locale={{
         emptyText: (
             <Empty

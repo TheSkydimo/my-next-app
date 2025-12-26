@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Typography, Button, Alert, Empty, Pagination, Table, Tag } from "antd";
+import { Typography, Button, Alert, Empty, Pagination, Table, Tag, Card } from "antd";
 import { CloudUploadOutlined } from "@ant-design/icons";
 import type { TableProps } from "antd";
 import type { AppLanguage } from "../../client-prefs";
@@ -394,7 +394,7 @@ export default function UserDevicesPage() {
       >
         {isOrderSectionOpen && (
           <>
-            <div className="user-page-card">
+            <Card>
               <div
                 style={{
                   display: "flex",
@@ -422,17 +422,17 @@ export default function UserDevicesPage() {
                   {language === "zh-CN" ? "上传订单截图" : "Upload Order Screenshot"}
                 </Button>
               </div>
-            </div>
+            </Card>
 
             <div className="user-page-section" style={{ marginTop: 16, padding: 0 }}>
-              <div className="user-page-card">
+              <Card style={{ width: "100%" }} styles={{ body: { paddingTop: 12 } }}>
                 <UserOrdersList
                   language={language}
                   items={orders[NO_DEVICE_ID] ?? []}
                   onDelete={handleDeleteOrder}
                   loading={loading}
                 />
-              </div>
+              </Card>
             </div>
           </>
         )}
@@ -447,11 +447,12 @@ export default function UserDevicesPage() {
         {isWarrantySectionOpen && (
           <>
             <p className="user-page-section__subtext">{messages.devices.listSubtitle}</p>
-            <div className="user-page-card">
+            <Card style={{ width: "100%" }} styles={{ body: { paddingTop: 12 } }}>
               <Table
                 dataSource={getWarrantyDataSource()}
                 columns={warrantyColumns}
                 pagination={false}
+                tableLayout="fixed"
                 locale={{
                   emptyText: <Empty description={messages.devices.emptyText} />,
                 }}
@@ -465,7 +466,7 @@ export default function UserDevicesPage() {
                   showSizeChanger={false}
                 />
               </div>
-            </div>
+            </Card>
           </>
         )}
       </section>
