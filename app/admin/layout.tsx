@@ -12,6 +12,8 @@ import {
   UserOutlined,
   TeamOutlined,
   BellOutlined,
+  SendOutlined,
+  HistoryOutlined,
   FileTextOutlined,
   PictureOutlined,
   LogoutOutlined,
@@ -226,6 +228,12 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     setOpenKeys((prev) => (prev.includes("notifications") ? prev : [...prev, "notifications"]));
   }, [pathname]);
 
+  // Ensure user management submenu is expanded when inside /admin/users/* or /admin/admins/*
+  useEffect(() => {
+    if (!pathname.startsWith("/admin/users") && !pathname.startsWith("/admin/admins")) return;
+    setOpenKeys((prev) => (prev.includes("user_management") ? prev : [...prev, "user_management"]));
+  }, [pathname]);
+
   const commonConfigProviderProps = {
     theme: {
       algorithm:
@@ -353,6 +361,31 @@ function AdminAntdShell({
 
   const layoutBgColor = token.colorBgContainer;
 
+  const userManagementChildren: NonNullable<MenuProps["items"]> = [
+    ...(isSuperAdmin
+      ? ([
+          {
+            key: "admins",
+            icon: <TeamOutlined />,
+            label: messages.layout.navAdmins,
+            onClick: () => {
+              router.push("/admin/admins");
+              setMobileDrawerOpen(false);
+            },
+          } as NonNullable<MenuProps["items"]>[number],
+        ] as NonNullable<MenuProps["items"]>)
+      : []),
+    {
+      key: "users",
+      icon: <UserOutlined />,
+      label: messages.layout.navUsers,
+      onClick: () => {
+        router.push("/admin/users");
+        setMobileDrawerOpen(false);
+      },
+    },
+  ];
+
   const menuItems: MenuProps["items"] = [
     {
       key: "home",
@@ -372,27 +405,11 @@ function AdminAntdShell({
         setMobileDrawerOpen(false);
       },
     },
-    ...(isSuperAdmin
-      ? [
-          {
-            key: "admins",
-            icon: <TeamOutlined />,
-            label: messages.layout.navAdmins,
-            onClick: () => {
-              router.push("/admin/admins");
-              setMobileDrawerOpen(false);
-            },
-          } as NonNullable<MenuProps["items"]>[number],
-        ]
-      : []),
     {
-      key: "users",
+      key: "user_management",
       icon: <TeamOutlined />,
-      label: messages.layout.navUsers,
-      onClick: () => {
-        router.push("/admin/users");
-        setMobileDrawerOpen(false);
-      },
+      label: messages.layout.navUserManagement,
+      children: userManagementChildren,
     },
     {
       key: "notifications",
@@ -401,6 +418,7 @@ function AdminAntdShell({
       children: [
         {
           key: "notifications_send",
+          icon: <SendOutlined />,
           label: messages.layout.navNotificationsSend,
           onClick: () => {
             router.push("/admin/notifications/send");
@@ -409,6 +427,7 @@ function AdminAntdShell({
         },
         {
           key: "notifications_history",
+          icon: <HistoryOutlined />,
           label: messages.layout.navNotificationsHistory,
           onClick: () => {
             router.push("/admin/notifications/history");

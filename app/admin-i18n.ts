@@ -13,6 +13,7 @@ export type AdminMessages = {
     brand: string;
     navHome: string;
     navProfile: string;
+    navUserManagement: string;
     navAdmins: string;
     navUsers: string;
     navOrders: string;
@@ -244,6 +245,7 @@ const zhCN: AdminMessages = {
     brand: "Skydimo Admin",
     navHome: "首页",
     navProfile: "信息管理",
+    navUserManagement: "成员管理",
     navAdmins: "管理员管理",
     navUsers: "用户管理",
     navOrders: "订单截图",
@@ -481,6 +483,7 @@ const enUS: AdminMessages = {
     brand: "Skydimo Admin",
     navHome: "Dashboard",
     navProfile: "Profile",
+    navUserManagement: "Users & Admins",
     navAdmins: "Admins",
     navUsers: "Users",
     navOrders: "Orders",
