@@ -2,21 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { 
-  Typography, 
-  Button, 
-  Card, 
-  Tabs, 
-  Space, 
-  Alert, 
-  Spin, 
-  Empty, 
-  Pagination, 
-  Table, 
-  Tag 
-} from "antd";
-import { CloudUploadOutlined, SafetyCertificateOutlined, ShoppingCartOutlined } from "@ant-design/icons";
-import type { TabsProps, TableProps } from "antd";
+import { Typography, Button, Alert, Empty, Pagination, Table, Tag } from "antd";
+import { CloudUploadOutlined } from "@ant-design/icons";
+import type { TableProps } from "antd";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
@@ -25,7 +13,7 @@ import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 import UserOrdersList, { OrderSnapshot } from "../../components/UserOrdersList";
 import OrderUploadModal from "../../components/OrderUploadModal";
 
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 type Device = {
   id: number;
@@ -67,23 +55,23 @@ export default function UserDevicesPage() {
   const [uploadingOrderForDevice, setUploadingOrderForDevice] = useState<string | null>(null);
   const [orders, setOrders] = useState<Record<string, OrderSnapshot[]>>({});
   
-  // Tab state synced with hash
-  const [activeTab, setActiveTab] = useState<string>("order");
+  // Section state synced with hash / left menu
+  const [activeSection, setActiveSection] = useState<"order" | "warranty">("order");
   
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const messages = getUserMessages(language);
 
-  // Sync Tabs with Hash and Event
+  // Sync section with hash and left-menu event
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const syncFromHash = () => {
       const hash = window.location.hash;
       if (hash === "#warranty-section") {
-        setActiveTab("warranty");
+        setActiveSection("warranty");
       } else {
-        setActiveTab("order");
+        setActiveSection("order");
       }
     };
 
@@ -94,10 +82,10 @@ export default function UserDevicesPage() {
       const custom = event as CustomEvent<{ section: "order" | "warranty" }>;
       const section = custom.detail?.section;
       if (section === "order") {
-        setActiveTab("order");
+        setActiveSection("order");
         if (window.location.hash !== "#order-section") window.location.hash = "#order-section";
       } else if (section === "warranty") {
-        setActiveTab("warranty");
+        setActiveSection("warranty");
         if (window.location.hash !== "#warranty-section") window.location.hash = "#warranty-section";
       }
     };
@@ -109,11 +97,6 @@ export default function UserDevicesPage() {
       window.removeEventListener("user-devices-section-changed", handler as EventListener);
     };
   }, []);
-
-  const handleTabChange = (key: string) => {
-    setActiveTab(key);
-    window.location.hash = key === "warranty" ? "#warranty-section" : "#order-section";
-  };
 
   // Warranty Calculation Logic
   const getWarrantyExpiresAt = (device: Device): Date => {
@@ -341,126 +324,151 @@ export default function UserDevicesPage() {
 
   if (!isUserInitialized) {
     return (
-      <div style={{ padding: 48, textAlign: "center" }}>
-        <Spin size="large" tip={messages.common.loading} />
+      <div className="vben-page">
+        <p>{messages.common.loading}</p>
       </div>
     );
   }
 
   if (!userEmail) {
     return (
-      <Card style={{ margin: 24, textAlign: "center" }}>
-         <Title level={4}>{messages.common.loginRequired}</Title>
-         <Link href="/login"><Button type="primary">{messages.common.goLogin}</Button></Link>
-      </Card>
+      <div className="vben-page">
+        <p>{messages.common.loginRequired}</p>
+        <Link href="/login">{messages.common.goLogin}</Link>
+      </div>
     );
   }
 
-  const items: TabsProps['items'] = [
-    {
-      key: 'order',
-      label: (
-        <Space>
-          <ShoppingCartOutlined />
-          {language === "zh-CN" ? "订单管理" : "Order Management"}
-        </Space>
-      ),
-      children: (
-        <div style={{ minHeight: 400 }}>
-             <Card 
-                style={{ marginBottom: 24, textAlign: "center" }}
-                styles={{ body: { padding: 32 } }}
-             >
-                <Title level={4} style={{ marginBottom: 8 }}>
-                    {language === "zh-CN" ? "上传订单截图" : "Upload Order Screenshot"}
-                </Title>
-                <Paragraph type="secondary" style={{ marginBottom: 24 }}>
-                    {language === "zh-CN" ? "上传订单截图以绑定设备信息" : "Upload order screenshots to bind device information"}
-                </Paragraph>
-                <Button 
-                    type="primary" 
-                    icon={<CloudUploadOutlined />} 
-                    size="large"
-                    onClick={() => {
-                        setUploadingOrderForDevice(null); // Global upload
-                        setIsUploadModalOpen(true);
-                    }}
-                >
-                    {language === "zh-CN" ? "立即上传" : "Upload Now"}
-                </Button>
-             </Card>
+  const isOrderSectionOpen = activeSection === "order";
+  const isWarrantySectionOpen = activeSection === "warranty";
 
-             <Card 
-                title={language === "zh-CN" ? "已上传订单" : "Uploaded Orders"} 
-                bordered={false}
-             >
-                <UserOrdersList 
-                    language={language}
-                    items={orders[NO_DEVICE_ID] ?? []}
-                    onDelete={handleDeleteOrder}
-                    loading={loading}
+  const getPageTitle = () => {
+    if (isOrderSectionOpen) return language === "zh-CN" ? "订单信息管理" : "Order Management";
+    if (isWarrantySectionOpen) return language === "zh-CN" ? "质保信息查询" : "Warranty Information";
+    return messages.devices.title;
+  };
+
+  const getPageSubtitle = () => {
+    if (isOrderSectionOpen) {
+      return language === "zh-CN"
+        ? "上传订单截图，绑定设备并激活质保服务。"
+        : "Upload order screenshots to bind devices and activate warranty.";
+    }
+    if (isWarrantySectionOpen) {
+      return language === "zh-CN"
+        ? "查看已绑定订单的质保到期时间。"
+        : "View warranty expiration dates for bound orders.";
+    }
+    return messages.devices.subtitle;
+  };
+
+  return (
+    <div className="vben-page">
+      <div className="vben-page__header">
+        <h1 className="vben-page__title">{getPageTitle()}</h1>
+        <p className="vben-page__subtitle">{getPageSubtitle()}</p>
+      </div>
+
+      {error && (
+        <Alert
+          type="error"
+          message={error}
+          showIcon
+          style={{ marginTop: 12 }}
+        />
+      )}
+      {okMsg && (
+        <Alert
+          type="success"
+          message={okMsg}
+          showIcon
+          style={{ marginTop: 12 }}
+        />
+      )}
+
+      {/* 订单信息区块：由左侧菜单/Hash 控制是否显示（避免与菜单重复） */}
+      <section
+        id="order-section"
+        className="user-page-section"
+        style={{ marginTop: 24 }}
+      >
+        {isOrderSectionOpen && (
+          <>
+            <div className="user-page-card">
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 0",
+                  textAlign: "center",
+                }}
+              >
+                <Text type="secondary">
+                  {language === "zh-CN"
+                    ? "上传订单截图以绑定设备信息"
+                    : "Upload order screenshots to bind device information"}
+                </Text>
+                <Button
+                  type="primary"
+                  icon={<CloudUploadOutlined />}
+                  size="large"
+                  onClick={() => {
+                    setUploadingOrderForDevice(null);
+                    setIsUploadModalOpen(true);
+                  }}
+                >
+                  {language === "zh-CN" ? "上传订单截图" : "Upload Order Screenshot"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="user-page-section" style={{ marginTop: 16, padding: 0 }}>
+              <div className="user-page-card">
+                <UserOrdersList
+                  language={language}
+                  items={orders[NO_DEVICE_ID] ?? []}
+                  onDelete={handleDeleteOrder}
+                  loading={loading}
                 />
-             </Card>
-        </div>
-      ),
-    },
-    {
-      key: 'warranty',
-      label: (
-        <Space>
-          <SafetyCertificateOutlined />
-          {language === "zh-CN" ? "质保查询" : "Warranty Check"}
-        </Space>
-      ),
-      children: (
-         <Card title={language === "zh-CN" ? "质保信息列表" : "Warranty List"}>
-            <Alert 
-                message={messages.devices.listSubtitle} 
-                type="info" 
-                showIcon 
-                style={{ marginBottom: 16 }} 
-            />
-            <Table
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* 质保信息区块：由左侧菜单/Hash 控制是否显示（避免与菜单重复） */}
+      <section
+        id="warranty-section"
+        className="user-page-section"
+        style={{ marginTop: 28 }}
+      >
+        {isWarrantySectionOpen && (
+          <>
+            <p className="user-page-section__subtext">{messages.devices.listSubtitle}</p>
+            <div className="user-page-card">
+              <Table
                 dataSource={getWarrantyDataSource()}
                 columns={warrantyColumns}
                 pagination={false}
                 locale={{
-                    emptyText: <Empty description={messages.devices.emptyText} />
+                  emptyText: <Empty description={messages.devices.emptyText} />,
                 }}
-            />
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-                 <Pagination
-                    current={page}
-                    total={totalRowsForPaging}
-                    pageSize={pageSize}
-                    onChange={(p) => setPage(p)}
-                    showSizeChanger={false}
-                 />
+              />
+              <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+                <Pagination
+                  current={page}
+                  total={totalRowsForPaging}
+                  pageSize={pageSize}
+                  onChange={(p) => setPage(p)}
+                  showSizeChanger={false}
+                />
+              </div>
             </div>
-         </Card>
-      ),
-    },
-  ];
-
-  return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
-      <Space direction="vertical" size="large" style={{ width: "100%" }}>
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-             <Title level={2}>{messages.devices.title}</Title>
-             <Text type="secondary">{messages.devices.subtitle}</Text>
-        </div>
-
-        {error && <Alert type="error" message={error} showIcon closable />}
-        {okMsg && <Alert type="success" message={okMsg} showIcon closable />}
-
-        <Tabs 
-            activeKey={activeTab} 
-            onChange={handleTabChange} 
-            items={items} 
-            type="card"
-            size="large"
-        />
-      </Space>
+          </>
+        )}
+      </section>
 
       <OrderUploadModal 
         open={isUploadModalOpen}

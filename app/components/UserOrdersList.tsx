@@ -243,7 +243,8 @@ export default function UserOrdersList({
       rowKey="id"
       loading={loading}
       pagination={{ pageSize: 5 }}
-      scroll={{ x: 1000 }}
+      // 让表格占满容器宽度，避免因为固定 scroll.x 导致表格整体“挤在左边”
+      tableLayout="fixed"
       locale={{
         emptyText: (
             <Empty
