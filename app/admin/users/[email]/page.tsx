@@ -112,7 +112,7 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
     };
   }, [params]);
 
-  const load = async (opts?: { signal?: AbortSignal }) => {
+  const load = async (opts?: { signal?: AbortSignal; bypassCache?: boolean }) => {
     if (!adminEmail || !userEmail) return;
     setLoading(true);
     setError("");
@@ -123,18 +123,15 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
         return `/api/admin/orders?${orderParams.toString()}`;
       })();
 
-      const cachedUser = cache.get<{ user?: UserDetail }>(userUrl);
-      if (cachedUser && cachedUser.user) {
-        setUser(cachedUser.user);
-      }
+      const bypassCache = !!opts?.bypassCache;
+      const cachedUser = bypassCache ? undefined : cache.get<{ user?: UserDetail }>(userUrl);
+      if (cachedUser && cachedUser.user) setUser(cachedUser.user);
 
-      const cachedOrders = cache.get<{ items?: AdminOrderItem[] }>(ordersUrl);
-      if (cachedOrders && Array.isArray(cachedOrders.items)) {
-        setOrders(cachedOrders.items ?? []);
-      }
+      const cachedOrders = bypassCache ? undefined : cache.get<{ items?: AdminOrderItem[] }>(ordersUrl);
+      if (cachedOrders && Array.isArray(cachedOrders.items)) setOrders(cachedOrders.items ?? []);
 
       // If both hit cache, no need to fetch.
-      if (cachedUser?.user && Array.isArray(cachedOrders?.items)) {
+      if (!bypassCache && cachedUser?.user && Array.isArray(cachedOrders?.items)) {
         setLoading(false);
         setError("");
         return;
@@ -210,7 +207,7 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
         description: language === "zh-CN" ? "已完成管理操作" : "Admin action completed",
         duration: 3,
       });
-      await load();
+      await load({ bypassCache: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : messages.common.unknownError;
       api.error({

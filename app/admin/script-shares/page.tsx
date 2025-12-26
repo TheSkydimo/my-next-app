@@ -251,18 +251,21 @@ export default function AdminScriptSharesPage() {
     return `/api/admin/script-shares?${params.toString()}`;
   };
 
-  const fetchList = async (keyword?: string) => {
+  const fetchList = async (keyword?: string, opts?: { bypassCache?: boolean }) => {
+    const bypassCache = !!opts?.bypassCache;
     setLoading(true);
     setError("");
     setOkMsg("");
     try {
       const url = buildListUrl(keyword);
 
-      const cached = cache.get<{ items?: AdminShareItem[] }>(url);
-      if (cached && Array.isArray(cached.items)) {
-        setItems(cached.items ?? []);
-        setLoading(false);
-        return;
+      if (!bypassCache) {
+        const cached = cache.get<{ items?: AdminShareItem[] }>(url);
+        if (cached && Array.isArray(cached.items)) {
+          setItems(cached.items ?? []);
+          setLoading(false);
+          return;
+        }
       }
 
       const res = await fetch(url, {
@@ -323,7 +326,7 @@ export default function AdminScriptSharesPage() {
       setEffectName("");
       setPublicUsername("");
       setUploadFile(null);
-      await fetchList();
+      await fetchList(undefined, { bypassCache: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : (language === "zh-CN" ? "上传失败" : "Upload failed"));
     } finally {
@@ -372,7 +375,7 @@ export default function AdminScriptSharesPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       setOkMsg(language === "zh-CN" ? "已重传" : "Re-uploaded");
-      await fetchList();
+      await fetchList(undefined, { bypassCache: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : (language === "zh-CN" ? "重传失败" : "Re-upload failed"));
     }

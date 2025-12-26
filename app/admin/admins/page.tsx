@@ -108,8 +108,15 @@ export default function AdminAdminsPage() {
     return msg || fallback;
   }
 
-  const fetchAdmins = async (opts?: { q?: string; page?: number; pageSize?: number }) => {
+  const fetchAdmins = async (opts?: {
+    q?: string;
+    page?: number;
+    pageSize?: number;
+    /** 写操作成功后：绕过 cache-first，强制拉取最新数据并覆盖缓存 */
+    bypassCache?: boolean;
+  }) => {
     if (!adminEmail) return;
+    const bypassCache = !!opts?.bypassCache;
     const q = (opts?.q ?? keyword).trim();
     const page = opts?.page ?? pagination?.page ?? 1;
     const pageSize = opts?.pageSize ?? pagination?.pageSize ?? 15;
@@ -122,14 +129,16 @@ export default function AdminAdminsPage() {
       if (q) params.set("q", q);
       const url = `/api/admin/users?${params.toString()}`;
 
-      const cached = cache.get<{ users: AdminItem[]; pagination?: typeof pagination }>(url);
-      if (cached && Array.isArray((cached as { users?: unknown }).users)) {
-        const c = cached as { users: AdminItem[]; pagination?: typeof pagination };
-        setAdmins(c.users ?? []);
-        setPagination((c.pagination as typeof pagination) ?? null);
-        setLoading(false);
-        setError("");
-        return;
+      if (!bypassCache) {
+        const cached = cache.get<{ users: AdminItem[]; pagination?: typeof pagination }>(url);
+        if (cached && Array.isArray((cached as { users?: unknown }).users)) {
+          const c = cached as { users: AdminItem[]; pagination?: typeof pagination };
+          setAdmins(c.users ?? []);
+          setPagination((c.pagination as typeof pagination) ?? null);
+          setLoading(false);
+          setError("");
+          return;
+        }
       }
 
       setLoading(true);
@@ -196,7 +205,7 @@ export default function AdminAdminsPage() {
         duration: 3,
       });
 
-      await fetchAdmins();
+      await fetchAdmins({ bypassCache: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : messages.common.unknownError;
       api.error({

@@ -109,8 +109,15 @@ export default function AdminUsersPage() {
       window.removeEventListener("app-theme-changed", handler as EventListener);
   }, []);
 
-  const fetchUsers = async (opts?: { q?: string; page?: number; pageSize?: number }) => {
+  const fetchUsers = async (opts?: {
+    q?: string;
+    page?: number;
+    pageSize?: number;
+    /** 写操作成功后：绕过 cache-first，强制拉取最新数据并覆盖缓存 */
+    bypassCache?: boolean;
+  }) => {
     if (!adminEmail) return;
+    const bypassCache = !!opts?.bypassCache;
     const q = (opts?.q ?? keyword).trim();
     const page = opts?.page ?? pagination?.page ?? 1;
     const pageSize = opts?.pageSize ?? pagination?.pageSize ?? 15;
@@ -124,13 +131,15 @@ export default function AdminUsersPage() {
       const url = `/api/admin/users?${params.toString()}`;
 
       // Cache-first: if present, use it and skip loading/request.
-      const cached = cache.get<{ users: UserItem[]; pagination: Pagination }>(url);
-      if (cached && Array.isArray(cached.users) && cached.pagination) {
-        setUsers(cached.users ?? []);
-        setPagination(cached.pagination);
-        setLoading(false);
-        setError("");
-        return;
+      if (!bypassCache) {
+        const cached = cache.get<{ users: UserItem[]; pagination: Pagination }>(url);
+        if (cached && Array.isArray(cached.users) && cached.pagination) {
+          setUsers(cached.users ?? []);
+          setPagination(cached.pagination);
+          setLoading(false);
+          setError("");
+          return;
+        }
       }
 
       setLoading(true);
@@ -182,7 +191,7 @@ export default function AdminUsersPage() {
         description: language === "zh-CN" ? "已完成管理操作" : "Admin action completed",
         duration: 3,
       });
-      await fetchUsers();
+      await fetchUsers({ bypassCache: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : messages.common.unknownError;
       api.error({
