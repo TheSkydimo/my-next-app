@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Table, Card, Button, Typography, Image, Alert, List, Grid, Tag, Space } from "antd";
+import { Table, Card, Button, Typography, Image, Alert, List, Grid, Tag, Space, Empty } from "antd";
 import type { TableProps } from "antd";
 import { EyeOutlined, CloudUploadOutlined, UnorderedListOutlined, ShopOutlined, CalendarOutlined, NumberOutlined, ContainerOutlined } from "@ant-design/icons";
 import type { AppLanguage } from "../client-prefs";
@@ -52,14 +52,12 @@ export default function UserOrdersReadOnlyPanel({
     {
       title: language === "zh-CN" ? "店铺" : "Shop",
       key: "shop",
-      width: 120,
       render: (_, record) => record.shopName ?? record.platform ?? "-",
     },
     {
       title: language === "zh-CN" ? "订单号" : "Order No",
       dataIndex: "orderNo",
       key: "orderNo",
-      width: 150,
       ellipsis: true,
       render: (text, record) => (
         <Text copyable={{ text: text ?? String(record.id) }}>
@@ -71,21 +69,18 @@ export default function UserOrdersReadOnlyPanel({
       title: language === "zh-CN" ? "创建时间" : "Created At",
       dataIndex: "orderCreatedTime",
       key: "orderCreatedTime",
-      width: 160,
       render: (text, record) => text ?? new Date(record.createdAt).toLocaleString(),
     },
     {
       title: language === "zh-CN" ? "付款时间" : "Paid At",
       dataIndex: "orderPaidTime",
       key: "orderPaidTime",
-      width: 160,
       render: (text) => text ?? "-",
     },
     {
       title: language === "zh-CN" ? "数量" : "Qty",
       dataIndex: "deviceCount",
       key: "deviceCount",
-      width: 80,
       align: "center",
       render: (count) => (count ? <Tag>{count}</Tag> : "-"),
     },
@@ -102,7 +97,14 @@ export default function UserOrdersReadOnlyPanel({
     <List
       dataSource={topItems}
       loading={loading}
-      locale={{ emptyText: messages.home.orderPreviewEmpty }}
+      locale={{ 
+        emptyText: (
+          <Empty 
+            image={Empty.PRESENTED_IMAGE_SIMPLE} 
+            description={messages.home.orderPreviewEmpty} 
+          />
+        ) 
+      }}
       renderItem={(item) => (
         <List.Item>
           <Card 
@@ -197,7 +199,12 @@ export default function UserOrdersReadOnlyPanel({
             pagination={false}
             loading={loading}
             locale={{
-              emptyText: messages.home.orderPreviewEmpty,
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={messages.home.orderPreviewEmpty}
+                />
+              ),
             }}
             scroll={{ x: 800 }}
           />
