@@ -607,6 +607,34 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		0 0 18px rgba(37, 99, 235, 0.22);
 }
 
+/* AntD Pagination：上一页/下一页按钮里的箭头强制居中
+ * 说明：AntD 的 prev/next 是普通 button（.ant-pagination-item-link），会被上面的“原生 button 基础样式”加上 padding
+ * 导致图标不在按钮正中间。这里用更高优先级做覆盖，保证居中与点击区域一致。
+ */
+.ant-pagination .ant-pagination-prev button.ant-pagination-item-link,
+.ant-pagination .ant-pagination-next button.ant-pagination-item-link {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	padding: 0 !important;
+	min-width: 34px !important;
+	height: 34px !important;
+	line-height: 1 !important;
+}
+
+.ant-pagination .ant-pagination-prev button.ant-pagination-item-link > .anticon,
+.ant-pagination .ant-pagination-next button.ant-pagination-item-link > .anticon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 1;
+}
+
+.ant-pagination .ant-pagination-prev button.ant-pagination-item-link svg,
+.ant-pagination .ant-pagination-next button.ant-pagination-item-link svg {
+	display: block;
+}
+
 /* ========== 统一按钮系统 ========== */
 
 /*
