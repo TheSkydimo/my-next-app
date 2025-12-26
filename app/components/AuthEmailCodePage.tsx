@@ -11,6 +11,7 @@ import {
   type AppLanguage,
   type AppTheme,
 } from "../client-prefs";
+import { USER_BOOTSTRAP_SESSION_STORAGE_KEY } from "../contexts/ApiCacheContext";
 
 type PrimaryColorKey =
   | "charcoal"
@@ -287,6 +288,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const loginEndpoint = variant === "admin" ? "/api/admin/login" : "/api/login";
   const emailPurpose = variant === "admin" ? "admin-login" : "user-login";
   const postLoginRedirect = variant === "admin" ? "/admin" : "/";
+  const userBootstrapEndpoint =
+    variant === "user" ? "/api/user/dashboard-bootstrap" : null;
   const sendCodeStage = useMemo(() => {
     if (variant === "admin") return "admin-login:send-code" as const;
     return "user-login:send-code" as const;
@@ -776,6 +779,33 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
           window.localStorage.setItem("loggedInUserAvatar", data.user.avatarUrl);
         } else {
           window.localStorage.removeItem("loggedInUserAvatar");
+        }
+      }
+
+      // 登录成功：预加载用户端 Dashboard 核心数据，并写入 sessionStorage（一次性）
+      // 注意：这里不引入第三方状态库，不改现有页面逻辑，只是“暖缓存”让后续页面优先命中。
+      if (typeof window !== "undefined" && userBootstrapEndpoint) {
+        try {
+          const ctrl = new AbortController();
+          const timeout = window.setTimeout(() => ctrl.abort(), 1500);
+          const pre = await fetch(userBootstrapEndpoint, {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+            signal: ctrl.signal,
+          }).finally(() => window.clearTimeout(timeout));
+
+          if (pre.ok) {
+            const payload = await pre.json().catch(() => null);
+            if (payload && typeof payload === "object") {
+              window.sessionStorage.setItem(
+                USER_BOOTSTRAP_SESSION_STORAGE_KEY,
+                JSON.stringify(payload)
+              );
+            }
+          }
+        } catch {
+          // best-effort: ignore preload failure
         }
       }
     } else {

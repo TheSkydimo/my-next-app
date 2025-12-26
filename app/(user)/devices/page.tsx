@@ -9,6 +9,7 @@ import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
+import { useApiCache } from "../../contexts/ApiCacheContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 import UserOrdersList, { OrderSnapshot } from "../../components/UserOrdersList";
 import OrderUploadModal from "../../components/OrderUploadModal";
@@ -42,6 +43,7 @@ export default function UserDevicesPage() {
   const userContext = useUser();
   const userEmail = userContext.profile?.email ?? null;
   const isUserInitialized = userContext.initialized;
+  const cache = useApiCache();
 
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [devices, setDevices] = useState<Device[]>([]);
@@ -161,9 +163,33 @@ export default function UserDevicesPage() {
 
   useEffect(() => {
     const loadDevices = async (email: string, pageNumber: number) => {
+      const url = `/api/user/devices?email=${encodeURIComponent(email)}&page=${pageNumber}`;
+
+      const cached = cache.get<unknown>(url);
+      if (cached) {
+        try {
+          const parsed = cached as DevicesApiResponse;
+          if (Array.isArray(parsed)) {
+            setDevices(parsed);
+            setDeviceTotal(parsed.length);
+            setPage(1);
+          } else {
+            const items = parsed.items ?? [];
+            setDevices(items);
+            setDeviceTotal(
+              typeof parsed.total === "number" ? parsed.total : items.length
+            );
+          }
+          setLoading(false);
+          return;
+        } catch {
+          // ignore cache parse issues and fall back to network
+        }
+      }
+
       setLoading(true);
       try {
-        const res = await fetch(`/api/user/devices?email=${encodeURIComponent(email)}&page=${pageNumber}`);
+        const res = await fetch(url);
         if (!res.ok) {
            if (res.status === 404) {
              setDevices([]);
@@ -174,6 +200,7 @@ export default function UserDevicesPage() {
            throw new Error(text || messages.devices.fetchFailed);
         }
         const data: unknown = await res.json();
+        cache.set(url, data);
         const parsed = data as DevicesApiResponse;
         if (Array.isArray(parsed)) {
           setDevices(parsed);
@@ -194,16 +221,27 @@ export default function UserDevicesPage() {
     };
 
     if (userEmail) loadDevices(userEmail, page);
-  }, [messages.devices.fetchFailed, page, setError, userEmail]);
+  }, [cache, messages.devices.fetchFailed, page, setError, userEmail]);
 
   useEffect(() => {
     const loadOrders = async (email: string) => {
       try {
-        const res = await fetch(`/api/user/orders?email=${encodeURIComponent(email)}`);
-        if (!res.ok) return;
-        const data = (await res.json()) as { items: OrderSnapshot[] };
+        const url = `/api/user/orders?email=${encodeURIComponent(email)}`;
+        const cached = cache.get<{ items?: OrderSnapshot[] }>(url);
+        const data = cached
+          ? cached
+          : ((await (async () => {
+              const res = await fetch(url);
+              if (!res.ok) return null;
+              const json = (await res.json()) as { items?: OrderSnapshot[] };
+              cache.set(url, { items: Array.isArray(json.items) ? json.items : [] });
+              return json;
+            })()) ?? null);
+
+        if (!data) return;
+        const list = Array.isArray(data.items) ? data.items : [];
         const grouped: Record<string, OrderSnapshot[]> = {};
-        for (const item of data.items) {
+        for (const item of list) {
           if (!grouped[item.deviceId]) grouped[item.deviceId] = [];
           grouped[item.deviceId].push(item);
         }
@@ -211,7 +249,7 @@ export default function UserDevicesPage() {
       } catch {}
     };
     if (userEmail) loadOrders(userEmail);
-  }, [userEmail]);
+  }, [cache, userEmail]);
 
   // Data Processing
   const getUniqueOrders = (): OrderSnapshot[] => {
@@ -253,6 +291,15 @@ export default function UserDevicesPage() {
         else delete next[key];
         return next;
       });
+
+      // 同步更新缓存（best-effort）：避免用户删除后切页回来又看到旧数据
+      const ordersUrl = `/api/user/orders?email=${encodeURIComponent(userEmail)}`;
+      const cached = cache.get<{ items?: OrderSnapshot[] }>(ordersUrl);
+      if (cached && Array.isArray(cached.items)) {
+        cache.set(ordersUrl, {
+          items: cached.items.filter((x) => x.id !== order.id),
+        });
+      }
       setOkMsg(language === "zh-CN" ? "删除成功" : "Deleted successfully");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : (language === "zh-CN" ? "删除失败" : "Delete failed"));
@@ -319,6 +366,16 @@ export default function UserDevicesPage() {
       const list = prev[key] ?? [];
       return { ...prev, [key]: [data, ...list] };
     });
+
+    // 同步更新缓存（best-effort）：避免上传后切页返回仍触发加载/显示旧列表
+    if (userEmail) {
+      const ordersUrl = `/api/user/orders?email=${encodeURIComponent(userEmail)}`;
+      const cached = cache.get<{ items?: OrderSnapshot[] }>(ordersUrl);
+      if (cached && Array.isArray(cached.items)) {
+        const exists = cached.items.some((x) => x.id === data.id);
+        cache.set(ordersUrl, { items: exists ? cached.items : [data, ...cached.items] });
+      }
+    }
     setUploadingOrderForDevice(null);
   };
 

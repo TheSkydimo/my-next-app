@@ -44,6 +44,7 @@ import { getUserMessages, type UserMessages } from "../user-i18n";
 import FeedbackBubble from "../components/FeedbackBubble";
 import UserNotificationBell from "../components/UserNotificationBell";
 import { UserProvider, useOptionalUser } from "../contexts/UserContext";
+import { ApiCacheProvider } from "../contexts/ApiCacheContext";
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -92,7 +93,9 @@ interface AppLayoutProps {
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   return (
     <UserProvider>
-      <UserLayoutInner>{children}</UserLayoutInner>
+      <ApiCacheProvider>
+        <UserLayoutInner>{children}</UserLayoutInner>
+      </ApiCacheProvider>
     </UserProvider>
   );
 }

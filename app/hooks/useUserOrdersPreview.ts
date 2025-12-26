@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AppLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
+import { useApiCache } from "../contexts/ApiCacheContext";
 
 export type OrderSnapshot = {
   id: number;
@@ -20,6 +21,7 @@ export type OrderSnapshot = {
 
 export function useUserOrdersPreview(email: string | null, language: AppLanguage) {
   const messages = useMemo(() => getUserMessages(language), [language]);
+  const cache = useApiCache();
 
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -38,18 +40,29 @@ export function useUserOrdersPreview(email: string | null, language: AppLanguage
         return;
       }
 
+      const url = `/api/user/orders?email=${encodeURIComponent(email)}`;
+      const cached = cache.get<{ items?: OrderSnapshot[] }>(url);
+      if (cached && Array.isArray(cached.items)) {
+        setItems(cached.items);
+        setError("");
+        setLoaded(true);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setLoaded(false);
       setError("");
 
       try {
-        const res = await fetch(`/api/user/orders?email=${encodeURIComponent(email)}`);
+        const res = await fetch(url);
         if (!res.ok) {
           throw new Error(messages.home.orderPreviewFetchFailed);
         }
 
         const data = (await res.json()) as { items?: OrderSnapshot[] };
         const list = Array.isArray(data.items) ? data.items : [];
+        cache.set(url, { items: list });
         if (!ignore) setItems(list);
       } catch (e) {
         if (!ignore) {
@@ -69,7 +82,7 @@ export function useUserOrdersPreview(email: string | null, language: AppLanguage
     return () => {
       ignore = true;
     };
-  }, [email, messages.home.orderPreviewFetchFailed]);
+  }, [cache, email, messages.home.orderPreviewFetchFailed]);
 
   return { loading, loaded, error, items };
 }
