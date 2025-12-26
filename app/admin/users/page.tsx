@@ -7,6 +7,7 @@ import type { AppLanguage, AppTheme } from "../../client-prefs";
 import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { useApiCache } from "../../contexts/ApiCacheContext";
 import {
   Alert,
   Button,
@@ -57,6 +58,7 @@ export default function AdminUsersPage() {
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
   const isSuperAdmin = adminContext.profile?.isSuperAdmin ?? false;
+  const cache = useApiCache();
 
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const [appTheme, setAppTheme] = useState<AppTheme>(() => getInitialTheme());
@@ -112,8 +114,6 @@ export default function AdminUsersPage() {
     const q = (opts?.q ?? keyword).trim();
     const page = opts?.page ?? pagination?.page ?? 1;
     const pageSize = opts?.pageSize ?? pagination?.pageSize ?? 15;
-    setLoading(true);
-    setError("");
     try {
       const params = new URLSearchParams({
         role: "user",
@@ -121,7 +121,22 @@ export default function AdminUsersPage() {
         pageSize: String(pageSize),
       });
       if (q) params.set("q", q);
-      const res = await fetch(`/api/admin/users?${params.toString()}`, {
+      const url = `/api/admin/users?${params.toString()}`;
+
+      // Cache-first: if present, use it and skip loading/request.
+      const cached = cache.get<{ users: UserItem[]; pagination: Pagination }>(url);
+      if (cached && Array.isArray(cached.users) && cached.pagination) {
+        setUsers(cached.users ?? []);
+        setPagination(cached.pagination);
+        setLoading(false);
+        setError("");
+        return;
+      }
+
+      setLoading(true);
+      setError("");
+
+      const res = await fetch(url, {
         credentials: "include",
       });
       if (!res.ok) {
@@ -129,6 +144,7 @@ export default function AdminUsersPage() {
         throw new Error(safeErrorFromResponse(res, text, messages.common.unknownError));
       }
       const data = (await res.json()) as { users: UserItem[]; pagination: Pagination };
+      cache.set(url, data);
       setUsers(data.users ?? []);
       setPagination(data.pagination);
     } catch (e) {

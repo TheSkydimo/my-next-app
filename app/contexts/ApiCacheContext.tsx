@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 export const USER_BOOTSTRAP_SESSION_STORAGE_KEY = "user-dashboard-bootstrap:v1";
+export const ADMIN_BOOTSTRAP_SESSION_STORAGE_KEY = "admin-dashboard-bootstrap:v1";
 
 export type ApiCacheEntry = {
   value: unknown;
@@ -32,12 +33,12 @@ function safeParseJson(text: string): unknown | null {
   }
 }
 
-function readAndClearBootstrapFromSessionStorage(): unknown | null {
+function readAndClearBootstrapFromSessionStorage(storageKey: string): unknown | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.sessionStorage.getItem(USER_BOOTSTRAP_SESSION_STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(storageKey);
     if (!raw) return null;
-    window.sessionStorage.removeItem(USER_BOOTSTRAP_SESSION_STORAGE_KEY);
+    window.sessionStorage.removeItem(storageKey);
     return safeParseJson(raw);
   } catch {
     // If storage is blocked or quota exceeded, just skip bootstrap.
@@ -50,6 +51,7 @@ function seedCacheFromBootstrap(input: unknown): ApiCacheState {
 
   const bootstrap = input as {
     ok?: boolean;
+    cacheSeed?: Record<string, unknown>;
     user?: { email?: string };
     preloaded?: {
       orders?: { items?: unknown };
@@ -58,10 +60,21 @@ function seedCacheFromBootstrap(input: unknown): ApiCacheState {
   };
 
   if (!bootstrap.ok) return {};
+  const now = Date.now();
+
+  // Generic fast-path: allow server to provide exact URL->JSON seeds.
+  if (bootstrap.cacheSeed && typeof bootstrap.cacheSeed === "object") {
+    const out: ApiCacheState = {};
+    for (const [key, value] of Object.entries(bootstrap.cacheSeed)) {
+      if (typeof key !== "string" || !key) continue;
+      out[key] = { value, updatedAt: now };
+    }
+    return out;
+  }
+
   const email = bootstrap.user?.email;
   if (typeof email !== "string" || !email) return {};
 
-  const now = Date.now();
   const state: ApiCacheState = {};
 
   // Seed orders list (used by Home preview + Devices page).
@@ -81,9 +94,13 @@ function seedCacheFromBootstrap(input: unknown): ApiCacheState {
   return state;
 }
 
-export function ApiCacheProvider({ children }: { children: React.ReactNode }) {
+export function ApiCacheProvider(props: {
+  children: React.ReactNode;
+  bootstrapStorageKey?: string;
+}) {
+  const { children, bootstrapStorageKey = USER_BOOTSTRAP_SESSION_STORAGE_KEY } = props;
   const [state, setState] = useState<ApiCacheState>(() => {
-    const bootstrap = readAndClearBootstrapFromSessionStorage();
+    const bootstrap = readAndClearBootstrapFromSessionStorage(bootstrapStorageKey);
     return seedCacheFromBootstrap(bootstrap);
   });
 

@@ -43,6 +43,10 @@ import {
 } from "../client-prefs";
 import { getAdminMessages } from "../admin-i18n";
 import { AdminProvider, useOptionalAdmin } from "../contexts/AdminContext";
+import {
+  ADMIN_BOOTSTRAP_SESSION_STORAGE_KEY,
+  ApiCacheProvider,
+} from "../contexts/ApiCacheContext";
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -55,7 +59,9 @@ const { useToken } = antTheme;
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <AdminProvider>
-      <AdminLayoutInner>{children}</AdminLayoutInner>
+      <ApiCacheProvider bootstrapStorageKey={ADMIN_BOOTSTRAP_SESSION_STORAGE_KEY}>
+        <AdminLayoutInner>{children}</AdminLayoutInner>
+      </ApiCacheProvider>
     </AdminProvider>
   );
 }

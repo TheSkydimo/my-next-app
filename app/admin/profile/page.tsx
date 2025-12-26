@@ -8,6 +8,7 @@ import type { AppLanguage, AppTheme } from "../../client-prefs";
 import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { useApiCache } from "../../contexts/ApiCacheContext";
 import {
   Alert,
   Avatar,
@@ -49,6 +50,7 @@ export default function AdminProfilePage() {
   const adminContext = useAdmin();
   const adminProfile = adminContext.profile;
   const adminEmail = adminProfile?.email ?? null;
+  const cache = useApiCache();
   const adminRole = adminProfile?.role ?? null;
 
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
@@ -124,7 +126,24 @@ export default function AdminProfilePage() {
       setOrdersLoading(true);
       try {
         const params = new URLSearchParams({ userEmail: email });
-        const res = await fetch(`/api/admin/orders?${params.toString()}`, {
+        const url = `/api/admin/orders?${params.toString()}`;
+
+        const cached = cache.get<{ items?: { id: number; deviceId: string; imageUrl: string; note: string | null; createdAt: string }[] }>(url);
+        if (cached && Array.isArray(cached.items)) {
+          setOrders(
+            (cached.items ?? []).map((o) => ({
+              id: o.id,
+              deviceId: o.deviceId,
+              imageUrl: o.imageUrl,
+              note: o.note,
+              createdAt: o.createdAt,
+            }))
+          );
+          setOrdersLoading(false);
+          return;
+        }
+
+        const res = await fetch(url, {
           credentials: "include",
         });
         if (!res.ok) return;
@@ -137,6 +156,7 @@ export default function AdminProfilePage() {
             createdAt: string;
           }[];
         };
+        cache.set(url, data);
         setOrders(
           (data.items ?? []).map((o) => ({
             id: o.id,
@@ -154,7 +174,7 @@ export default function AdminProfilePage() {
     };
 
     void loadOrders(adminEmail);
-  }, [adminEmail]);
+  }, [adminEmail, cache]);
 
   const openUsernameModal = () => {
     usernameForm.setFieldsValue({ username: adminProfile?.username ?? "" });

@@ -11,7 +11,10 @@ import {
   type AppLanguage,
   type AppTheme,
 } from "../client-prefs";
-import { USER_BOOTSTRAP_SESSION_STORAGE_KEY } from "../contexts/ApiCacheContext";
+import {
+  ADMIN_BOOTSTRAP_SESSION_STORAGE_KEY,
+  USER_BOOTSTRAP_SESSION_STORAGE_KEY,
+} from "../contexts/ApiCacheContext";
 
 type PrimaryColorKey =
   | "charcoal"
@@ -290,6 +293,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const postLoginRedirect = variant === "admin" ? "/admin" : "/";
   const userBootstrapEndpoint =
     variant === "user" ? "/api/user/dashboard-bootstrap" : null;
+  const adminBootstrapEndpoint =
+    variant === "admin" ? "/api/admin/dashboard-bootstrap" : null;
   const sendCodeStage = useMemo(() => {
     if (variant === "admin") return "admin-login:send-code" as const;
     return "user-login:send-code" as const;
@@ -811,6 +816,32 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     } else {
       // admin: do not persist admin identity in localStorage; rely on httpOnly cookie.
       await res.json().catch(() => null);
+
+      // 管理端：登录成功后预加载一次核心列表数据，并写入 sessionStorage（一次性）
+      if (typeof window !== "undefined" && adminBootstrapEndpoint) {
+        try {
+          const ctrl = new AbortController();
+          const timeout = window.setTimeout(() => ctrl.abort(), 1500);
+          const pre = await fetch(adminBootstrapEndpoint, {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+            signal: ctrl.signal,
+          }).finally(() => window.clearTimeout(timeout));
+
+          if (pre.ok) {
+            const payload = await pre.json().catch(() => null);
+            if (payload && typeof payload === "object") {
+              window.sessionStorage.setItem(
+                ADMIN_BOOTSTRAP_SESSION_STORAGE_KEY,
+                JSON.stringify(payload)
+              );
+            }
+          }
+        } catch {
+          // best-effort: ignore preload failure
+        }
+      }
     }
 
     window.location.href = postLoginRedirect;

@@ -6,6 +6,7 @@ import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { useApiCache } from "../../contexts/ApiCacheContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 
 type AdminOrderItem = {
@@ -24,6 +25,7 @@ export default function AdminOrdersPage() {
   // 使用 AdminContext 获取预加载的管理员信息
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
+  const cache = useApiCache();
 
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const [orders, setOrders] = useState<AdminOrderItem[]>([]);
@@ -57,16 +59,28 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     const loadOrders = async () => {
-      setLoading(true);
-      setError("");
       try {
         const params = new URLSearchParams();
-        const res = await fetch(`/api/admin/orders?${params.toString()}`);
+        const url = `/api/admin/orders?${params.toString()}`;
+
+        const cached = cache.get<{ items?: AdminOrderItem[] }>(url);
+        if (cached && Array.isArray(cached.items)) {
+          setOrders(cached.items);
+          setLoading(false);
+          setError("");
+          return;
+        }
+
+        setLoading(true);
+        setError("");
+
+        const res = await fetch(url);
         if (!res.ok) {
           const text = await res.text();
           throw new Error(text || messages.orders.fetchFailed);
         }
         const data = (await res.json()) as { items: AdminOrderItem[] };
+        cache.set(url, data);
         setOrders(data.items);
       } catch (e) {
         setError(
@@ -80,7 +94,7 @@ export default function AdminOrdersPage() {
     if (adminEmail) {
       loadOrders();
     }
-  }, [adminEmail, messages.orders.fetchFailed, setError]);
+  }, [adminEmail, cache, messages.orders.fetchFailed, setError]);
 
   if (!adminEmail) {
     return (

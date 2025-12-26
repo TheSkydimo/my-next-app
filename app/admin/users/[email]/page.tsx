@@ -6,6 +6,7 @@ import type { AppLanguage, AppTheme } from "../../../client-prefs";
 import { getInitialLanguage, getInitialTheme } from "../../../client-prefs";
 import { getAdminMessages } from "../../../admin-i18n";
 import { useAdmin } from "../../../contexts/AdminContext";
+import { useApiCache } from "../../../contexts/ApiCacheContext";
 import {
   Alert,
   Button,
@@ -44,6 +45,7 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
   const isSuperAdmin = adminContext.profile?.isSuperAdmin ?? false;
+  const cache = useApiCache();
 
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const [appTheme, setAppTheme] = useState<AppTheme>(() => getInitialTheme());
@@ -115,32 +117,60 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
     setLoading(true);
     setError("");
     try {
-      const userRes = await fetch(
-        `/api/admin/users/${encodeURIComponent(userEmail)}`,
-        { signal: opts?.signal, credentials: "include" }
-      );
-      if (!userRes.ok) {
-        const text = await userRes.text().catch(() => "");
-        throw new Error(
-          safeErrorFromResponse(userRes, text, messages.common.unknownError)
-        );
-      }
-      const userData = (await userRes.json()) as { user: UserDetail };
-      setUser(userData.user);
+      const userUrl = `/api/admin/users/${encodeURIComponent(userEmail)}`;
+      const ordersUrl = (() => {
+        const orderParams = new URLSearchParams({ userEmail });
+        return `/api/admin/orders?${orderParams.toString()}`;
+      })();
 
-      const orderParams = new URLSearchParams({ userEmail });
-      const ordersRes = await fetch(`/api/admin/orders?${orderParams.toString()}`, {
-        signal: opts?.signal,
-        credentials: "include",
-      });
-      if (!ordersRes.ok) {
-        const text = await ordersRes.text().catch(() => "");
-        throw new Error(
-          safeErrorFromResponse(ordersRes, text, messages.common.unknownError)
-        );
+      const cachedUser = cache.get<{ user?: UserDetail }>(userUrl);
+      if (cachedUser && cachedUser.user) {
+        setUser(cachedUser.user);
       }
-      const ordersData = (await ordersRes.json()) as { items: AdminOrderItem[] };
-      setOrders(ordersData.items ?? []);
+
+      const cachedOrders = cache.get<{ items?: AdminOrderItem[] }>(ordersUrl);
+      if (cachedOrders && Array.isArray(cachedOrders.items)) {
+        setOrders(cachedOrders.items ?? []);
+      }
+
+      // If both hit cache, no need to fetch.
+      if (cachedUser?.user && Array.isArray(cachedOrders?.items)) {
+        setLoading(false);
+        setError("");
+        return;
+      }
+
+      if (!cachedUser?.user) {
+        const userRes = await fetch(userUrl, {
+          signal: opts?.signal,
+          credentials: "include",
+        });
+        if (!userRes.ok) {
+          const text = await userRes.text().catch(() => "");
+          throw new Error(
+            safeErrorFromResponse(userRes, text, messages.common.unknownError)
+          );
+        }
+        const userData = (await userRes.json()) as { user: UserDetail };
+        cache.set(userUrl, userData);
+        setUser(userData.user);
+      }
+
+      if (!Array.isArray(cachedOrders?.items)) {
+        const ordersRes = await fetch(ordersUrl, {
+          signal: opts?.signal,
+          credentials: "include",
+        });
+        if (!ordersRes.ok) {
+          const text = await ordersRes.text().catch(() => "");
+          throw new Error(
+            safeErrorFromResponse(ordersRes, text, messages.common.unknownError)
+          );
+        }
+        const ordersData = (await ordersRes.json()) as { items: AdminOrderItem[] };
+        cache.set(ordersUrl, ordersData);
+        setOrders(ordersData.items ?? []);
+      }
     } catch (e) {
       if ((e as { name?: string } | null)?.name === "AbortError") return;
       setError(e instanceof Error ? e.message : messages.common.unknownError);

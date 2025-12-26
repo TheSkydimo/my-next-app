@@ -6,6 +6,7 @@ import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { useApiCache } from "../../contexts/ApiCacheContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 import { getOfficialPublicNickname } from "../../_utils/officialPublicNickname";
 
@@ -184,6 +185,7 @@ export default function AdminScriptSharesPage() {
   const adminEmail = adminContext.profile?.email ?? null;
   const adminId = adminContext.profile?.id ?? null;
   const isSuperAdmin = !!adminContext.profile?.isSuperAdmin;
+  const cache = useApiCache();
 
   const [language, setLanguage] = useState<AppLanguage>("zh-CN");
   const messages = getAdminMessages(language);
@@ -236,25 +238,39 @@ export default function AdminScriptSharesPage() {
     return !!effectName.trim() && !!publicUsername.trim() && isSkmodeFile(uploadFile);
   }, [effectName, publicUsername, uploadFile]);
 
+  const buildListUrl = (keyword?: string) => {
+    const params = new URLSearchParams({ page: "1", pageSize: "50" });
+    const kw = (keyword ?? q).trim();
+    if (kw) params.set("q", kw);
+    params.set("lang", filterLang);
+    if (isSuperAdmin && includePrivate) {
+      params.set("includePrivate", "1");
+      const reason = auditReason.trim();
+      if (reason) params.set("reason", reason);
+    }
+    return `/api/admin/script-shares?${params.toString()}`;
+  };
+
   const fetchList = async (keyword?: string) => {
     setLoading(true);
     setError("");
     setOkMsg("");
     try {
-      const params = new URLSearchParams({ page: "1", pageSize: "50" });
-      const kw = (keyword ?? q).trim();
-      if (kw) params.set("q", kw);
-      params.set("lang", filterLang);
-      if (isSuperAdmin && includePrivate) {
-        params.set("includePrivate", "1");
-        const reason = auditReason.trim();
-        if (reason) params.set("reason", reason);
+      const url = buildListUrl(keyword);
+
+      const cached = cache.get<{ items?: AdminShareItem[] }>(url);
+      if (cached && Array.isArray(cached.items)) {
+        setItems(cached.items ?? []);
+        setLoading(false);
+        return;
       }
-      const res = await fetch(`/api/admin/script-shares?${params.toString()}`, {
+
+      const res = await fetch(url, {
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as { items?: AdminShareItem[] };
+      cache.set(url, data);
       setItems(data.items ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : (language === "zh-CN" ? "加载失败" : "Failed to load"));
@@ -328,7 +344,11 @@ export default function AdminScriptSharesPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       setOkMsg(language === "zh-CN" ? "已删除" : "Deleted");
-      setItems((prev) => prev.filter((x) => x.id !== id));
+      setItems((prev) => {
+        const next = prev.filter((x) => x.id !== id);
+        cache.set(buildListUrl(), { items: next });
+        return next;
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : (language === "zh-CN" ? "删除失败" : "Delete failed"));
     }
@@ -381,7 +401,11 @@ export default function AdminScriptSharesPage() {
             ? "Now public"
             : "Now private"
       );
-      setItems((prev) => prev.map((x) => (x.id === id ? { ...x, isPublic: next } : x)));
+      setItems((prev) => {
+        const nextItems = prev.map((x) => (x.id === id ? { ...x, isPublic: next } : x));
+        cache.set(buildListUrl(), { items: nextItems });
+        return nextItems;
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : (language === "zh-CN" ? "操作失败" : "Action failed"));
     }
@@ -402,9 +426,13 @@ export default function AdminScriptSharesPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as { id: string; isPinned: boolean; pinnedAt: string | null };
-      setItems((prev) =>
-        prev.map((x) => (x.id === id ? { ...x, isPinned: data.isPinned, pinnedAt: data.pinnedAt } : x))
-      );
+      setItems((prev) => {
+        const nextItems = prev.map((x) =>
+          x.id === id ? { ...x, isPinned: data.isPinned, pinnedAt: data.pinnedAt } : x
+        );
+        cache.set(buildListUrl(), { items: nextItems });
+        return nextItems;
+      });
       setOkMsg(
         language === "zh-CN"
           ? data.isPinned
