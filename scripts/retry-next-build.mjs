@@ -18,6 +18,11 @@ function shouldRetryFromOutput(output) {
   return (
     s.includes("PageNotFoundError") ||
     s.includes("Cannot find module for page:") ||
+    // Windows race: prerender/export tries to require a .next build artifact that wasn't written yet
+    // e.g. "Cannot find module '...\\.next\\server\\pages\\404.js'" while prerendering /404
+    (s.includes("Cannot find module") &&
+      (s.includes(".next\\server\\pages\\") || s.includes(".next/server/pages/")) &&
+      (s.includes("prerendering page") || s.includes("Export encountered an error"))) ||
     (s.includes("ENOENT") && s.includes(".next")) ||
     s.includes("Failed to collect page data")
   );

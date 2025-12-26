@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 
-const MAX_ATTEMPTS = Number.parseInt(process.env.WRANGLER_DEPLOY_RETRY_MAX ?? "4", 10) || 4;
+const MAX_ATTEMPTS = Number.parseInt(process.env.WRANGLER_DEPLOY_RETRY_MAX ?? "6", 10) || 6;
 const RETRY_DELAY_MS = Number.parseInt(process.env.WRANGLER_DEPLOY_RETRY_DELAY_MS ?? "2500", 10) || 2500;
+const RETRY_DELAY_MAX_MS = Number.parseInt(process.env.WRANGLER_DEPLOY_RETRY_DELAY_MAX_MS ?? "30000", 10) || 30000;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -16,15 +17,35 @@ function isRetryableWranglerError(output) {
     s.includes("Service unavailable [code: 7010]") ||
     s.includes("Completion token has already been consumed [code: 100312]") ||
     s.includes("code: 7010") ||
-    s.includes("code: 100312")
+    s.includes("code: 100312") ||
+    // Common transient network failures (especially on Windows): undici/Node fetch errors
+    s.includes("TypeError: fetch failed") ||
+    s.includes("fetch failed") ||
+    s.includes("ECONNRESET") ||
+    s.includes("ETIMEDOUT") ||
+    s.includes("ENOTFOUND") ||
+    s.includes("EAI_AGAIN") ||
+    s.includes("socket hang up") ||
+    s.includes("Client network socket disconnected")
   );
+}
+
+function withIpv4FirstNodeOptions(env) {
+  const nextEnv = { ...env };
+  const existing = String(nextEnv.NODE_OPTIONS ?? "");
+  const flag = "--dns-result-order=ipv4first";
+  if (!existing.includes(flag)) {
+    nextEnv.NODE_OPTIONS = existing ? `${existing} ${flag}` : flag;
+  }
+  return nextEnv;
 }
 
 async function runOnce(args) {
   return await new Promise((resolve) => {
     const child = spawn("wrangler", args, {
       shell: true, // Windows compatibility
-      env: process.env,
+      // Helps with Windows networks where IPv6 DNS resolution can cause long hangs/timeouts
+      env: withIpv4FirstNodeOptions(process.env),
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -65,11 +86,14 @@ async function main() {
       process.exit(code || 1);
     }
 
+    const jitter = Math.floor(Math.random() * 250);
+    const backoff = Math.min(RETRY_DELAY_MS * Math.pow(2, attempt - 1), RETRY_DELAY_MAX_MS);
+    const delay = backoff + jitter;
     console.warn(
       `\n[retry-wrangler-deploy] Detected Cloudflare transient deploy failure (7010/100312). ` +
-        `Retrying ${attempt}/${MAX_ATTEMPTS} in ${RETRY_DELAY_MS}ms...\n`
+        `Retrying ${attempt}/${MAX_ATTEMPTS} in ${delay}ms...\n`
     );
-    await sleep(RETRY_DELAY_MS);
+    await sleep(delay);
   }
 }
 

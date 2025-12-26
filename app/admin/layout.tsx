@@ -10,7 +10,6 @@ import {
   MenuUnfoldOutlined,
   HomeOutlined,
   UserOutlined,
-  TeamOutlined,
   BellOutlined,
   SendOutlined,
   HistoryOutlined,
@@ -366,7 +365,7 @@ function AdminAntdShell({
       ? ([
           {
             key: "admins",
-            icon: <TeamOutlined />,
+            icon: <UserOutlined />,
             label: messages.layout.navAdmins,
             onClick: () => {
               router.push("/admin/admins");
@@ -407,7 +406,7 @@ function AdminAntdShell({
     },
     {
       key: "user_management",
-      icon: <TeamOutlined />,
+      icon: <UserOutlined />,
       label: messages.layout.navUserManagement,
       children: userManagementChildren,
     },
