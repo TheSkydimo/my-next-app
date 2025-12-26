@@ -72,6 +72,26 @@ This project uses **Cloudflare Turnstile** on the register page.
 For local preview on the Cloudflare runtime, copy `.dev.vars.example` to `.dev.vars` and fill values.
 For production, set the secret via `wrangler secret put TURNSTILE_SECRET_KEY` (do not commit it).
 
+### Local dev: bypass Turnstile (recommended for local testing)
+
+You can bypass human verification **only in local dev**.
+
+- **Next.js dev server** (`npm run dev`): set env vars in PowerShell before starting:
+
+```bash
+$env:DEV_BYPASS_TURNSTILE="1"
+$env:DEV_RETURN_EMAIL_CODE="1"
+npm run dev
+```
+
+- **Cloudflare runtime preview** (`npm run preview`): put these in `.dev.vars`:
+  - `DEV_BYPASS_TURNSTILE="1"`
+  - `DEV_RETURN_EMAIL_CODE="1"`
+
+Notes:
+- When bypass is enabled, `/api/public-config` will return `turnstileRequired=false`, and the UI will skip the Turnstile step.
+- These `DEV_*` helpers are **hard-disabled in production** by runtime checks.
+
 ## Secrets (SMTP / Mole API)
 
 This repo expects the following **server-side secrets** (never commit them):

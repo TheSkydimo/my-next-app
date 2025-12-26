@@ -36,6 +36,12 @@ MOLE_API_KEY=""
 # Load .env.development* files when running `wrangler dev`
 NEXTJS_ENV=development
 
+# Local testing helpers (NEVER enable in production):
+# - DEV_BYPASS_TURNSTILE: skip Turnstile verification (login/register/send-code)
+# - DEV_RETURN_EMAIL_CODE: return the email code in API response (dev only)
+DEV_BYPASS_TURNSTILE="1"
+DEV_RETURN_EMAIL_CODE="1"
+
 # Sentry (Error Monitoring)
 # - Server/Edge SDK: SENTRY_DSN
 # - Client SDK: NEXT_PUBLIC_SENTRY_DSN
