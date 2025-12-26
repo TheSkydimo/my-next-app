@@ -47,6 +47,17 @@ const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 const { useToken } = antTheme;
 
+const TOPBAR_ICON_BTN_STYLE: React.CSSProperties = {
+  width: 30,
+  height: 30,
+  padding: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const TOPBAR_ICON_SIZE = 16;
+
 // Define interface for AppLayout props
 interface AppLayoutProps {
   theme: AppTheme;
@@ -532,16 +543,24 @@ function AppLayout({
 
             <Button
               type="text"
-              icon={<TranslationOutlined />}
+              icon={<TranslationOutlined style={{ fontSize: TOPBAR_ICON_SIZE }} />}
               onClick={toggleLanguage}
               title={language === "zh-CN" ? "Switch to English" : "切换到中文"}
+              style={TOPBAR_ICON_BTN_STYLE}
             />
 
             <Button
               type="text"
-              icon={appTheme === "dark" ? <SunOutlined /> : <MoonOutlined />}
+              icon={
+                appTheme === "dark" ? (
+                  <SunOutlined style={{ fontSize: TOPBAR_ICON_SIZE }} />
+                ) : (
+                  <MoonOutlined style={{ fontSize: TOPBAR_ICON_SIZE }} />
+                )
+              }
               onClick={toggleTheme}
               title="Toggle Theme"
+              style={TOPBAR_ICON_BTN_STYLE}
             />
 
             <Dropdown menu={userMenuProps} placement="bottomRight" arrow>

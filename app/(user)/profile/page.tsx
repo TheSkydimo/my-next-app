@@ -336,8 +336,10 @@ export default function UserProfilePage() {
             <Title level={4} style={{ margin: 0 }}>
               {messages.profile.title || "个人资料"}
             </Title>
-            <Text type="secondary" style={{ marginTop: 6, display: 'block' }}>
-              {messages.profile.currentEmail} {userEmail}
+            <Text type="secondary" style={{ marginTop: 4, display: "block" }}>
+              {messages.profile.currentEmail}
+              {language === "zh-CN" ? "：" : ": "}
+              {userEmail}
             </Text>
           </div>
           <Link href="/">
@@ -359,7 +361,7 @@ export default function UserProfilePage() {
                         style={{ width: "100%", justifyContent: "space-between" }}
                         wrap
                       >
-                        <Space align="center" size={12}>
+                        <Space align="start" size={12}>
                           <Avatar
                             size={56}
                             src={profile.avatarUrl}

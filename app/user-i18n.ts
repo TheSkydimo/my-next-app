@@ -136,8 +136,9 @@ const zhCN: UserMessages = {
     guestSubtitle: "你还没有登录，请先登录或注册。",
     loginButton: "去登录",
     registerButton: "去注册",
-    orderUploadCtaTitle: "下一步：上传订单截图，获得用户权益",
-    orderUploadCtaDesc: "上传订单截图后，我们将为你绑定设备并激活质保权益。",
+    
+    orderUploadCtaTitle: "专属提醒：上传订单截图，开启设备保障旅程",
+    orderUploadCtaDesc: "截图上传成功后，我们将为你的设备完成身份确认，并正式激活质保和用户专属权益。",
     orderUploadCtaButton: "去上传订单",
     orderPreviewTitle: "我的订单信息",
     orderPreviewSubtitle: (total: number) =>
@@ -189,8 +190,8 @@ const zhCN: UserMessages = {
   profile: {
     title: "个人信息",
     avatarNone: "无头像",
-    currentEmail: "当前邮箱：",
-    username: "用户名：",
+    currentEmail: "邮箱",
+    username: "用户名",
     editUsername: "修改",
     setAvatar: "设置头像",
     changeAvatar: "更换头像",
@@ -255,9 +256,8 @@ const enUS: UserMessages = {
       "You are not signed in yet. Please sign in or create an account.",
     loginButton: "Sign in",
     registerButton: "Sign up",
-    orderUploadCtaTitle: "Next step: upload your order screenshot to unlock benefits",
-    orderUploadCtaDesc:
-      "After uploading, we will bind your device and activate your warranty benefits.",
+    orderUploadCtaTitle: "Special reminder: upload order screenshot, start device warranty journey",
+    orderUploadCtaDesc: "After uploading, we will confirm the identity of your device and activate your warranty and user exclusive benefits.",
     orderUploadCtaButton: "Upload order",
     orderPreviewTitle: "My order info",
     orderPreviewSubtitle: (total: number) =>
@@ -312,8 +312,8 @@ const enUS: UserMessages = {
   profile: {
     title: "Profile",
     avatarNone: "No avatar",
-    currentEmail: "Current email: ",
-    username: "Username: ",
+    currentEmail: "Email",
+    username: "Username",
     editUsername: "Edit",
     setAvatar: "Set avatar",
     changeAvatar: "Change avatar",

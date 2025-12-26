@@ -25,6 +25,17 @@ import { getUserMessages } from "../user-i18n";
 const { Text } = Typography;
 const { useToken } = theme;
 
+const TOPBAR_ICON_BTN_STYLE: React.CSSProperties = {
+  width: 30,
+  height: 30,
+  padding: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const TOPBAR_ICON_SIZE = 16;
+
 type NotificationItem = {
   id: number;
   type: string;
@@ -234,11 +245,17 @@ export default function UserNotificationBell() {
       overlayInnerStyle={{ padding: 0 }}
       arrow={false}
     >
-      <Button type="text" style={{ width: 40, height: 40 }}>
-        <Badge count={unreadCount} overflowCount={99} size="small">
-          <BellOutlined style={{ fontSize: 18 }} />
-        </Badge>
-      </Button>
+      <Button
+        type="text"
+        aria-label={messages.notifications.ariaLabel}
+        title={messages.notifications.title}
+        style={TOPBAR_ICON_BTN_STYLE}
+        icon={
+          <Badge count={unreadCount} overflowCount={99} size="small">
+            <BellOutlined style={{ fontSize: TOPBAR_ICON_SIZE, lineHeight: 1 }} />
+          </Badge>
+        }
+      />
     </Popover>
   );
 }

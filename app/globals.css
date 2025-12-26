@@ -1791,6 +1791,25 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	color: #eff6ff;
 }
 
+/* AntD Typography copy 按钮：不要继承全局 button 背景/描边，否则会导致复制按钮有底色且挤乱对齐 */
+.ant-typography-copy {
+	background: transparent !important;
+	border: 0 !important;
+	box-shadow: none !important;
+	padding: 0 !important;
+	width: auto !important;
+	height: auto !important;
+	line-height: inherit !important;
+}
+
+.ant-typography-copy:hover,
+.ant-typography-copy:focus-visible,
+.ant-typography-copy:active {
+	background: transparent !important;
+	border: 0 !important;
+	box-shadow: none !important;
+}
+
 /* 用户资料页：底部说明文字，增强可读性 */
 .user-profile-helper-text {
 	font-size: 13px;
