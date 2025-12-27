@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { applyLanguage, type AppLanguage } from "../../client-prefs";
 
 export default function LangRouteClient({
@@ -10,7 +10,8 @@ export default function LangRouteClient({
   lang: AppLanguage;
   children: React.ReactNode;
 }) {
-  useEffect(() => {
+  // Use layout effect to apply language before paint (reduces first-render flicker).
+  useLayoutEffect(() => {
     applyLanguage(lang);
   }, [lang]);
 
