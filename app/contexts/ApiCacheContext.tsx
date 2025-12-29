@@ -52,11 +52,6 @@ function seedCacheFromBootstrap(input: unknown): ApiCacheState {
   const bootstrap = input as {
     ok?: boolean;
     cacheSeed?: Record<string, unknown>;
-    user?: { email?: string };
-    preloaded?: {
-      orders?: { items?: unknown };
-      devicesPage1?: unknown;
-    };
   };
 
   if (!bootstrap.ok) return {};
@@ -71,27 +66,7 @@ function seedCacheFromBootstrap(input: unknown): ApiCacheState {
     }
     return out;
   }
-
-  const email = bootstrap.user?.email;
-  if (typeof email !== "string" || !email) return {};
-
-  const state: ApiCacheState = {};
-
-  // Seed orders list (used by Home preview + Devices page).
-  const ordersItems = bootstrap.preloaded?.orders?.items;
-  if (Array.isArray(ordersItems)) {
-    const key = `/api/user/orders?email=${encodeURIComponent(email)}`;
-    state[key] = { value: { items: ordersItems }, updatedAt: now };
-  }
-
-  // Seed devices first page (used by Devices page).
-  const devicesPage1 = bootstrap.preloaded?.devicesPage1;
-  if (devicesPage1 && typeof devicesPage1 === "object") {
-    const key = `/api/user/devices?email=${encodeURIComponent(email)}&page=1`;
-    state[key] = { value: devicesPage1, updatedAt: now };
-  }
-
-  return state;
+  return {};
 }
 
 export function ApiCacheProvider(props: {

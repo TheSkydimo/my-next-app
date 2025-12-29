@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { requireUserFromRequest } from "../_utils/userSession";
 
 type DeviceRow = {
   id: number;
@@ -10,15 +11,13 @@ type DeviceRow = {
 // 获取用户设备列表
 export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const email = searchParams.get("email");
   const rawPage = searchParams.get("page");
-
-  if (!email) {
-    return new Response("缺少 email 参数", { status: 400 });
-  }
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
+
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   // 确保 user_devices 表存在（兼容旧库）
   await db
@@ -50,15 +49,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     )
     .run();
 
-  const userQuery = await db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .bind(email)
-    .all<{ id: number }>();
-
-  const user = userQuery.results?.[0];
-  if (!user) {
-    return new Response("用户不存在", { status: 404 });
-  }
+  const userId = authed.user.id;
 
   const hasPageParam = rawPage !== null;
   const pageSize = 5;
@@ -75,12 +66,12 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
       .prepare(
         "SELECT id, device_id, warranty_expires_at FROM user_devices WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
       )
-      .bind(user.id, pageSize, offset)
+      .bind(userId, pageSize, offset)
       .all<DeviceRow>();
 
     const countQuery = await db
       .prepare("SELECT COUNT(*) as count FROM user_devices WHERE user_id = ?")
-      .bind(user.id)
+      .bind(userId)
       .all<{ count: number }>();
 
     const total = countQuery.results?.[0]?.count ?? 0;
@@ -106,7 +97,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     .prepare(
       "SELECT id, device_id, warranty_expires_at FROM user_devices WHERE user_id = ? ORDER BY created_at DESC"
     )
-    .bind(user.id)
+    .bind(userId)
     .all<DeviceRow>();
 
   const devices =
@@ -122,21 +113,19 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
 // 添加用户设备
 export const POST = withApiMonitoring(async function POST(request: Request) {
   const body = (await request.json()) as {
-    email?: string;
     deviceId?: string;
   };
 
-  const { email, deviceId } = body;
-
-  if (!email) {
-    return new Response("邮箱不能为空", { status: 400 });
-  }
+  const { deviceId } = body;
   if (!deviceId || !deviceId.trim()) {
     return new Response("设备 ID 不能为空", { status: 400 });
   }
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
+
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   // 确保 user_devices 表存在（兼容旧库）
   await db
@@ -168,22 +157,14 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     )
     .run();
 
-  const userQuery = await db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .bind(email)
-    .all<{ id: number }>();
-
-  const user = userQuery.results?.[0];
-  if (!user) {
-    return new Response("用户不存在", { status: 404 });
-  }
+  const userId = authed.user.id;
 
   // 校验同一用户是否已经绑定了相同的设备 ID
   const existsQuery = await db
     .prepare(
       "SELECT id FROM user_devices WHERE user_id = ? AND device_id = ? LIMIT 1"
     )
-    .bind(user.id, deviceId.trim())
+    .bind(userId, deviceId.trim())
     .all<{ id: number }>();
 
   if (existsQuery.results && existsQuery.results.length > 0) {
@@ -203,7 +184,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     .prepare(
       "INSERT INTO user_devices (user_id, device_id, warranty_expires_at) VALUES (?, ?, ?)"
     )
-    .bind(user.id, deviceId.trim(), warrantyExpiresIso)
+    .bind(userId, deviceId.trim(), warrantyExpiresIso)
     .run();
 
   const insertedId = insert.meta.last_row_id as number;
@@ -218,16 +199,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 // 删除用户设备
 export const DELETE = withApiMonitoring(async function DELETE(request: Request) {
   const body = (await request.json()) as {
-    email?: string;
     id?: number;
     deviceId?: string;
   };
 
-  const { email, id, deviceId } = body;
-
-  if (!email) {
-    return new Response("邮箱不能为空", { status: 400 });
-  }
+  const { id, deviceId } = body;
 
   if (typeof id !== "number" && (!deviceId || !deviceId.trim())) {
     return new Response("缺少设备标识", { status: 400 });
@@ -235,6 +211,9 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
+
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
 
   // 表和索引依然保持兼容处理
   await db
@@ -264,15 +243,7 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
     )
     .run();
 
-  const userQuery = await db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .bind(email)
-    .all<{ id: number }>();
-
-  const user = userQuery.results?.[0];
-  if (!user) {
-    return new Response("用户不存在", { status: 404 });
-  }
+  const userId = authed.user.id;
 
   const deleteStmtBase =
     typeof id === "number"
@@ -282,7 +253,7 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
   const bindValue =
     typeof id === "number" ? id : (deviceId as string).trim();
 
-  const result = await db.prepare(deleteStmtBase).bind(bindValue, user.id).run();
+  const result = await db.prepare(deleteStmtBase).bind(bindValue, userId).run();
 
   const changes = (result.meta.changes ?? 0) as number;
   if (changes === 0) {

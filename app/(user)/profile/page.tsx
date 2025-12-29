@@ -285,8 +285,6 @@ export default function UserProfilePage() {
         } catch {
           // ignore
         }
-        window.localStorage.removeItem("loggedInUserEmail");
-        window.localStorage.removeItem("loggedInUserName");
         setTimeout(() => {
           window.location.href = "/login";
         }, 1200);

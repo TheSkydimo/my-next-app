@@ -15,6 +15,7 @@ import {
 } from "@ant-design/icons";
 import type { AppLanguage } from "../client-prefs";
 import { getInitialLanguage } from "../client-prefs";
+import { useOptionalUser } from "../contexts/UserContext";
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -54,9 +55,9 @@ const messages: Record<AppLanguage, FeedbackBubbleMessages> = {
 };
 
 export default function FeedbackBubble() {
+  const userContext = useOptionalUser();
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sending, setSending] = useState(false);
   
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
@@ -66,10 +67,6 @@ export default function FeedbackBubble() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    // 检查用户是否已登录
-    const userEmail = window.localStorage.getItem("loggedInUserEmail");
-    setIsLoggedIn(!!userEmail);
 
     // 监听语言切换事件
     const langHandler = (e: Event) => {
@@ -91,9 +88,7 @@ export default function FeedbackBubble() {
     isSendingRef.current = true;
     setSending(true);
 
-    const userEmail = typeof window !== "undefined" 
-      ? window.localStorage.getItem("loggedInUserEmail") 
-      : null;
+    const userEmail = userContext?.profile?.email ?? null;
 
     try {
       const res = await fetch("/api/feedback/quick", {
@@ -139,7 +134,7 @@ export default function FeedbackBubble() {
     }
   };
 
-  if (!isLoggedIn) {
+  if (!userContext?.profile?.email) {
     return null;
   }
 

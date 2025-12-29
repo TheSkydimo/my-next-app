@@ -62,7 +62,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     await ensureUsersIsAdminColumn(db);
     await ensureUsersIsSuperAdminColumn(db);
     await ensureUsersAvatarUrlColumn(db);
-  } catch (e) {
+  } catch {
     console.error("确保 users 表字段存在失败");
     return new Response("服务器内部错误", { status: 500 });
   }

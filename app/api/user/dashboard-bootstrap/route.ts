@@ -227,7 +227,18 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   return withNoStore(
     Response.json({
       ok: true,
-      user: authed.user,
+      // Minimal identity snapshot (avoid relying on it for auth; client should call /api/user/me when needed).
+      user: {
+        id: authed.user.id,
+        username: authed.user.username,
+        avatarUrl: authed.user.avatarUrl,
+        isAdmin: authed.user.isAdmin,
+      },
+      // Provide exact URL -> JSON seeds so the client can do cache-first without leaking email params.
+      cacheSeed: {
+        "/api/user/devices?page=1": devicesPage1,
+        ...(orders.ok ? { "/api/user/orders": { items: orders.items } } : {}),
+      },
       preloaded: {
         devicesPage1,
         orders: orders.ok ? { items: orders.items } : null,

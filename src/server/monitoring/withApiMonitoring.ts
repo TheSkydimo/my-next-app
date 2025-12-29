@@ -204,8 +204,12 @@ export function withApiMonitoring<TArgs extends readonly unknown[]>(
         err: {
           name: err.name,
           message: err.message,
-          // stack may be missing in some runtimes; don't bloat logs
-          stack: err.stack?.slice(0, 4000),
+          // Security: avoid leaking internal paths/stack traces in production logs.
+          // Use Sentry (reportError) for stack traces instead.
+          stack:
+            process.env.NODE_ENV === "development"
+              ? err.stack?.slice(0, 2000)
+              : undefined,
         },
       });
       emitStructuredLog(entries[entries.length - 1]);

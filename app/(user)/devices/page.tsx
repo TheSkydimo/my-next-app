@@ -162,8 +162,8 @@ export default function UserDevicesPage() {
   }, []);
 
   useEffect(() => {
-    const loadDevices = async (email: string, pageNumber: number) => {
-      const url = `/api/user/devices?email=${encodeURIComponent(email)}&page=${pageNumber}`;
+    const loadDevices = async (pageNumber: number) => {
+      const url = `/api/user/devices?page=${pageNumber}`;
 
       const cached = cache.get<unknown>(url);
       if (cached) {
@@ -220,13 +220,13 @@ export default function UserDevicesPage() {
       }
     };
 
-    if (userEmail) loadDevices(userEmail, page);
+    if (userEmail) loadDevices(page);
   }, [cache, messages.devices.fetchFailed, page, setError, userEmail]);
 
   useEffect(() => {
-    const loadOrders = async (email: string) => {
+    const loadOrders = async () => {
       try {
-        const url = `/api/user/orders?email=${encodeURIComponent(email)}`;
+        const url = `/api/user/orders`;
         const cached = cache.get<{ items?: OrderSnapshot[] }>(url);
         const data = cached
           ? cached
@@ -248,7 +248,7 @@ export default function UserDevicesPage() {
         setOrders(grouped);
       } catch {}
     };
-    if (userEmail) loadOrders(userEmail);
+    if (userEmail) loadOrders();
   }, [cache, userEmail]);
 
   // Data Processing
@@ -268,7 +268,7 @@ export default function UserDevicesPage() {
   const hasOrderData = totalOrders > 0;
   const totalRowsForPaging = hasOrderData ? totalOrders : deviceTotal;
   const ordersCacheUrl = userEmail
-    ? `/api/user/orders?email=${encodeURIComponent(userEmail)}`
+    ? `/api/user/orders`
     : null;
 
   // Delete Order Logic
@@ -278,7 +278,7 @@ export default function UserDevicesPage() {
       const res = await fetch("/api/user/orders", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, id: order.id }),
+        body: JSON.stringify({ id: order.id }),
       });
       if (!res.ok) {
         const text = await res.text();
@@ -553,7 +553,6 @@ export default function UserDevicesPage() {
             setUploadingOrderForDevice(null);
         }}
         onSuccess={handleUploadSuccess}
-        email={userEmail}
         deviceId={uploadingOrderForDevice}
         language={language}
       />

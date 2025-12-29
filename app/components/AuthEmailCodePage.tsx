@@ -765,27 +765,10 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     }
 
     if (variant === "user") {
-      const data = (await res.json()) as {
-        ok: boolean;
-        user: {
-          id: number;
-          username: string;
-          email: string;
-          avatarUrl: string | null;
-          isAdmin: boolean;
-        };
-      };
+      // Response body is not needed here (auth is via httpOnly cookie).
+      await res.json().catch(() => null);
 
-      // 登录成功：保存完整用户信息到 localStorage，避免进入后台后再次请求加载
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("loggedInUserEmail", data.user.email);
-        window.localStorage.setItem("loggedInUserName", data.user.username);
-        if (data.user.avatarUrl) {
-          window.localStorage.setItem("loggedInUserAvatar", data.user.avatarUrl);
-        } else {
-          window.localStorage.removeItem("loggedInUserAvatar");
-        }
-      }
+      // 安全：不要把邮箱/头像等用户信息持久化写入 localStorage（避免 XSS/共享设备泄露）
 
       // 登录成功：预加载用户端 Dashboard 核心数据，并写入 sessionStorage（一次性）
       // 注意：这里不引入第三方状态库，不改现有页面逻辑，只是“暖缓存”让后续页面优先命中。

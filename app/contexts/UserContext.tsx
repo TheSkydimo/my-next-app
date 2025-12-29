@@ -69,7 +69,8 @@ interface UserProviderProps {
 
 /**
  * 用户状态提供者组件
- * 在应用最外层包裹，自动从 localStorage 读取登录状态并预加载用户信息
+ * 在应用最外层包裹：基于 httpOnly session cookie 获取“我”的信息
+ * 安全：不在 localStorage/sessionStorage 持久化保存用户邮箱等敏感信息（避免 XSS/共享设备泄露）
  */
 export function UserProvider({ children }: UserProviderProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -93,25 +94,7 @@ export function UserProvider({ children }: UserProviderProps) {
   }, []);
 
   /**
-   * 从后端加载用户资料
-   */
-  const loadProfile = useCallback(async (email: string): Promise<UserProfile | null> => {
-    try {
-      // 安全：不再通过 email 参数拉取资料，统一基于 httpOnly session cookie 获取“我”的信息
-      void email;
-      const res = await fetch("/api/user/me", { method: "GET", credentials: "include" });
-      if (!res.ok) {
-        return null;
-      }
-      const data = (await res.json()) as UserProfile;
-      return data;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  /**
-   * 初始化：从 localStorage 读取登录状态，并预加载用户信息
+   * 初始化：通过 cookie 恢复登录（未登录则 profile 为 null）
    */
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -121,51 +104,8 @@ export function UserProvider({ children }: UserProviderProps) {
       setError(null);
 
       try {
-        // 优先使用 session cookie 恢复登录（避免每次都邮箱验证）
         const me = await loadMe();
-        if (me) {
-          setProfile(me);
-          window.localStorage.setItem("loggedInUserEmail", me.email);
-          window.localStorage.setItem("loggedInUserName", me.username || "");
-          if (me.avatarUrl) {
-            window.localStorage.setItem("loggedInUserAvatar", me.avatarUrl);
-          } else {
-            window.localStorage.removeItem("loggedInUserAvatar");
-          }
-          return;
-        }
-
-        const email = window.localStorage.getItem("loggedInUserEmail");
-        const username = window.localStorage.getItem("loggedInUserName");
-        const avatarUrl = window.localStorage.getItem("loggedInUserAvatar");
-
-        if (!email) {
-          // 未登录
-          setProfile(null);
-          return;
-        }
-
-        // 先使用 localStorage 中的缓存数据立即显示
-        const cachedProfile: UserProfile = {
-          email,
-          username: username || email,
-          avatarUrl: avatarUrl || null,
-        };
-        setProfile(cachedProfile);
-
-        // 然后在后台静默刷新最新数据
-        const freshProfile = await loadProfile(email);
-        if (freshProfile) {
-          setProfile(freshProfile);
-
-          // 同步更新 localStorage 缓存
-          window.localStorage.setItem("loggedInUserName", freshProfile.username || "");
-          if (freshProfile.avatarUrl) {
-            window.localStorage.setItem("loggedInUserAvatar", freshProfile.avatarUrl);
-          } else {
-            window.localStorage.removeItem("loggedInUserAvatar");
-          }
-        }
+        setProfile(me);
       } catch (e) {
         setError(e instanceof Error ? e.message : "加载用户信息失败");
       } finally {
@@ -175,7 +115,7 @@ export function UserProvider({ children }: UserProviderProps) {
     };
 
     initUser();
-  }, [loadMe, loadProfile]);
+  }, [loadMe]);
 
   /**
    * 刷新用户资料
@@ -183,45 +123,9 @@ export function UserProvider({ children }: UserProviderProps) {
   const refreshProfile = useCallback(async () => {
     if (typeof window === "undefined") return;
 
-    // 优先 cookie
     const me = await loadMe();
-    if (me) {
-      setProfile(me);
-      window.localStorage.setItem("loggedInUserEmail", me.email);
-      window.localStorage.setItem("loggedInUserName", me.username || "");
-      if (me.avatarUrl) {
-        window.localStorage.setItem("loggedInUserAvatar", me.avatarUrl);
-      } else {
-        window.localStorage.removeItem("loggedInUserAvatar");
-      }
-      return;
-    }
-
-    const email = window.localStorage.getItem("loggedInUserEmail");
-    if (!email) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const freshProfile = await loadProfile(email);
-      if (freshProfile) {
-        setProfile(freshProfile);
-
-        // 同步更新 localStorage
-        window.localStorage.setItem("loggedInUserName", freshProfile.username || "");
-        if (freshProfile.avatarUrl) {
-          window.localStorage.setItem("loggedInUserAvatar", freshProfile.avatarUrl);
-        } else {
-          window.localStorage.removeItem("loggedInUserAvatar");
-        }
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "刷新用户信息失败");
-    } finally {
-      setLoading(false);
-    }
-  }, [loadMe, loadProfile]);
+    setProfile(me);
+  }, [loadMe]);
 
   /**
    * 局部更新用户资料（用于资料修改后同步）
@@ -230,23 +134,6 @@ export function UserProvider({ children }: UserProviderProps) {
     setProfile((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, ...updates };
-
-      // 同步更新 localStorage
-      if (typeof window !== "undefined") {
-        if (updates.username !== undefined) {
-          window.localStorage.setItem("loggedInUserName", updates.username || "");
-        }
-        if (updates.avatarUrl !== undefined) {
-          if (updates.avatarUrl) {
-            window.localStorage.setItem("loggedInUserAvatar", updates.avatarUrl);
-          } else {
-            window.localStorage.removeItem("loggedInUserAvatar");
-          }
-        }
-        if (updates.email !== undefined) {
-          window.localStorage.setItem("loggedInUserEmail", updates.email);
-        }
-      }
 
       // 触发事件通知其他组件更新
       if (typeof window !== "undefined") {
@@ -266,16 +153,25 @@ export function UserProvider({ children }: UserProviderProps) {
 
   /**
    * 清除用户状态（登出时调用）
-   * 同时清空所有本地缓存（localStorage 和 sessionStorage）
+   * 安全：不清空主题/语言偏好（localStorage）；仅清理一次性缓存 + 遗留用户信息 key
    */
   const clearUser = useCallback(() => {
     setProfile(null);
     setError(null);
 
     if (typeof window !== "undefined") {
-      // 清空所有本地缓存
-      window.localStorage.clear();
-      window.sessionStorage.clear();
+      try {
+        window.sessionStorage.clear();
+      } catch {
+        // ignore
+      }
+      try {
+        window.localStorage.removeItem("loggedInUserEmail");
+        window.localStorage.removeItem("loggedInUserName");
+        window.localStorage.removeItem("loggedInUserAvatar");
+      } catch {
+        // ignore
+      }
     }
   }, []);
 

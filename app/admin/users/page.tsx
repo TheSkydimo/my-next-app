@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ColumnsType } from "antd/es/table";
 import type { AppLanguage, AppTheme } from "../../client-prefs";
 import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
@@ -109,7 +109,7 @@ export default function AdminUsersPage() {
       window.removeEventListener("app-theme-changed", handler as EventListener);
   }, []);
 
-  const fetchUsers = async (opts?: {
+  const fetchUsers = useCallback(async (opts?: {
     q?: string;
     page?: number;
     pageSize?: number;
@@ -161,51 +161,52 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminEmail, cache, keyword, messages.common.unknownError, pagination]);
 
   useEffect(() => {
     if (adminEmail) void fetchUsers({ q: "", page: 1, pageSize: 15 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminEmail]);
-
-  const doAdminAction = async (body: {
-    action: "remove" | "set-admin" | "unset-admin";
-    userEmail: string;
-  }) => {
-    if (!adminEmail) return;
-    setActionLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(safeErrorFromResponse(res, text, messages.common.unknownError));
-      }
-      api.success({
-        title: language === "zh-CN" ? "操作成功" : "Success",
-        description: language === "zh-CN" ? "已完成管理操作" : "Admin action completed",
-        duration: 3,
-      });
-      await fetchUsers({ bypassCache: true });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : messages.common.unknownError;
-      api.error({
-        title: messages.common.unknownError,
-        description: msg,
-        duration: 4.5,
-      });
-      setError(msg);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  }, [adminEmail, fetchUsers]);
 
   const columns: ColumnsType<UserItem> = useMemo(() => {
+    const doAdminAction = async (body: {
+      action: "remove" | "set-admin" | "unset-admin";
+      userEmail: string;
+    }) => {
+      if (!adminEmail) return;
+      setActionLoading(true);
+      setError("");
+      try {
+        const res = await fetch("/api/admin/users", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(
+            safeErrorFromResponse(res, text, messages.common.unknownError)
+          );
+        }
+        api.success({
+          title: language === "zh-CN" ? "操作成功" : "Success",
+          description: language === "zh-CN" ? "已完成管理操作" : "Admin action completed",
+          duration: 3,
+        });
+        await fetchUsers({ bypassCache: true });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : messages.common.unknownError;
+        api.error({
+          title: messages.common.unknownError,
+          description: msg,
+          duration: 4.5,
+        });
+        setError(msg);
+      } finally {
+        setActionLoading(false);
+      }
+    };
+
     return [
       {
         title: language === "zh-CN" ? "序号" : "#",
@@ -327,7 +328,7 @@ export default function AdminUsersPage() {
         },
       },
     ];
-  }, [actionLoading, adminEmail, doAdminAction, isMobile, isSuperAdmin, language, pagination, screens.md]);
+  }, [actionLoading, adminEmail, api, fetchUsers, isMobile, isSuperAdmin, language, messages.common.unknownError, pagination, screens.md]);
 
   if (!adminEmail) {
     return (

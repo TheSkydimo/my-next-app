@@ -40,7 +40,7 @@ export function useUserOrdersPreview(email: string | null, language: AppLanguage
         return;
       }
 
-      const url = `/api/user/orders?email=${encodeURIComponent(email)}`;
+      const url = `/api/user/orders`;
       const cached = cache.get<{ items?: OrderSnapshot[] }>(url);
       if (cached && Array.isArray(cached.items)) {
         setItems(cached.items);

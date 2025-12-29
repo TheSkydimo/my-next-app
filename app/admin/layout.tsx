@@ -14,7 +14,6 @@ import {
   SendOutlined,
   HistoryOutlined,
   FileTextOutlined,
-  PictureOutlined,
   LogoutOutlined,
   TranslationOutlined,
   MoonOutlined,

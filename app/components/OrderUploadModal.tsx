@@ -14,7 +14,6 @@ interface OrderUploadModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: (data: OrderSnapshot) => void;
-  email: string;
   deviceId?: string | null; // Optional specific device ID
   language: AppLanguage;
 }
@@ -23,7 +22,6 @@ export default function OrderUploadModal({
   open,
   onClose,
   onSuccess,
-  email,
   deviceId,
   language,
 }: OrderUploadModalProps) {
@@ -65,7 +63,6 @@ export default function OrderUploadModal({
 
     try {
       const formData = new FormData();
-      formData.append("email", email);
       if (deviceId) {
         formData.append("deviceId", deviceId);
       }

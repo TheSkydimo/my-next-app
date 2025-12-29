@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Layout,
@@ -466,9 +467,12 @@ function AppLayout({
               transition: "all 0.2s",
             }}
           >
-            <img
+            <Image
               src="/logo.png"
               alt={messages.layout.brand}
+              width={32}
+              height={32}
+              priority
               style={{
                 width: 32,
                 height: 32,

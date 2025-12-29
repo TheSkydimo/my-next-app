@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { requireUserFromRequest } from "../_utils/userSession";
 
 type OrderRow = {
   id: number;
@@ -25,7 +26,6 @@ const DEFAULT_DEVICE_ID = "__NO_DEVICE__";
 type ApiLanguage = "zh-CN" | "en-US";
 
 type UserOrderApiMessages = {
-  missingEmail: string;
   missingDeviceImage: string;
   missingOrderId: string;
   missingOrderNo: string;
@@ -54,7 +54,6 @@ function detectApiLanguage(request: Request): ApiLanguage {
 function getUserOrderApiMessages(lang: ApiLanguage): UserOrderApiMessages {
   if (lang === "en-US") {
     return {
-      missingEmail: "Email is required",
       missingDeviceImage: "Screenshot file is required",
       missingOrderId: "Order ID is required",
       missingOrderNo: "Order number is required",
@@ -70,7 +69,6 @@ function getUserOrderApiMessages(lang: ApiLanguage): UserOrderApiMessages {
 
   // 默认中文
   return {
-    missingEmail: "邮箱不能为空",
     missingDeviceImage: "缺少图片文件",
     missingOrderId: "缺少订单 ID",
     missingOrderNo: "缺少订单号",
@@ -341,33 +339,18 @@ function convertImageUrl(dbUrl: string): string {
 // 获取当前用户的订单截图列表（按设备可选过滤）
 export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const email = searchParams.get("email");
   const deviceId = searchParams.get("deviceId");
-
-  const lang = detectApiLanguage(request);
-  const t = getUserOrderApiMessages(lang);
-
-  if (!email) {
-    return new Response(t.missingEmail, { status: 400 });
-  }
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
+
   await ensureOrderTable(db);
 
-  const userQuery = await db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .bind(email)
-    .all<{ id: number }>();
-
-  const user = userQuery.results?.[0];
-  if (!user) {
-    return new Response(t.userNotFound, { status: 404 });
-  }
-
   const whereParts = ["user_id = ?"];
-  const bindValues: unknown[] = [user.id];
+  const bindValues: unknown[] = [authed.user.id];
 
   if (deviceId) {
     whereParts.push("device_id = ?");
@@ -436,16 +419,23 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const t = getUserOrderApiMessages(lang);
 
   const form = await request.formData();
-  const email = form.get("email");
   const rawDeviceId = form.get("deviceId");
   const file = form.get("file");
   const note = form.get("note");
 
-  if (typeof email !== "string" || !email) {
-    return new Response(t.missingEmail, { status: 400 });
-  }
   if (!(file instanceof File)) {
     return new Response(t.missingDeviceImage, { status: 400 });
+  }
+
+  // Basic upload hardening: only allow images and cap payload size.
+  // (Note: Cloudflare/Next may still have its own body limits; this is defense-in-depth.)
+  const contentType = String(file.type || "");
+  if (!contentType.startsWith("image/")) {
+    return new Response(t.missingDeviceImage, { status: 400 });
+  }
+  const maxBytes = 8 * 1024 * 1024; // 8MB
+  if (typeof file.size === "number" && file.size > maxBytes) {
+    return new Response("图片过大（最大 8MB）", { status: 400 });
   }
 
   // 设备 ID 现在是可选的：
@@ -460,17 +450,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;
 
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
+
   await ensureOrderTable(db);
-
-  const userQuery = await db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .bind(email)
-    .all<{ id: number }>();
-
-  const user = userQuery.results?.[0];
-  if (!user) {
-    return new Response(t.userNotFound, { status: 404 });
-  }
+  const userId = authed.user.id;
 
   // 在将截图入库前，尝试做一次 OCR 识别，提取订单号与时间信息
   const parsed =
@@ -519,12 +503,12 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       },
       customMetadata: {
         order_no: orderNo,
-        user_id: String(user.id),
+        user_id: String(userId),
       },
     });
-  } catch (e) {
+  } catch {
     // 对象已存在/条件不满足：视为订单号已被使用
-    console.error("R2 put failed:", e);
+    console.error("R2 put failed");
     return new Response(t.duplicateOrderNo, { status: 400 });
   }
 
@@ -541,7 +525,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const insert = await db
     .prepare(insertSql)
     .bind(
-      user.id,
+      userId,
       deviceId,
       imageUrl,
       typeof note === "string" ? note : null,
@@ -560,8 +544,8 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     // 订单号已被占用：删除刚才上传的对象（最佳努力）
     try {
       await r2.delete(r2Key);
-    } catch (err) {
-      console.error(`Failed to rollback R2 object: ${r2Key}`, err);
+    } catch {
+      console.error("Failed to rollback R2 object");
     }
     return new Response(t.duplicateOrderNo, { status: 400 });
   }
@@ -591,15 +575,10 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
   const t = getUserOrderApiMessages(lang);
 
   const body = (await request.json()) as {
-    email?: string;
     id?: number;
   };
 
-  const { email, id } = body;
-
-  if (!email) {
-    return new Response(t.missingEmail, { status: 400 });
-  }
+  const { id } = body;
   if (typeof id !== "number") {
     return new Response(t.missingOrderId, { status: 400 });
   }
@@ -608,22 +587,16 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;
 
+  const authed = await requireUserFromRequest({ request, env, db });
+  if (authed instanceof Response) return authed;
+  const userId = authed.user.id;
+
   await ensureOrderTable(db);
-
-  const userQuery = await db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .bind(email)
-    .all<{ id: number }>();
-
-  const user = userQuery.results?.[0];
-  if (!user) {
-    return new Response(t.userNotFound, { status: 404 });
-  }
 
   // 先查询订单记录，获取 image_url 以便删除 R2 中的文件
   const orderQuery = await db
     .prepare("SELECT image_url FROM user_orders WHERE id = ? AND user_id = ?")
-    .bind(id, user.id)
+    .bind(id, userId)
     .all<{ image_url: string }>();
 
   const order = orderQuery.results?.[0];
@@ -638,14 +611,14 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
       await r2.delete(r2Key);
     } catch {
       // R2 删除失败不阻断流程，只记录错误
-      console.error(`Failed to delete R2 object: ${r2Key}`);
+      console.error("Failed to delete R2 object");
     }
   }
 
   // 删除数据库记录
   const result = await db
     .prepare("DELETE FROM user_orders WHERE id = ? AND user_id = ?")
-    .bind(id, user.id)
+    .bind(id, userId)
     .run();
 
   const changes = (result.meta.changes ?? 0) as number;
@@ -655,4 +628,5 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
 
   return Response.json({ success: true });
 }, { name: "DELETE /api/user/orders" });
+
 
