@@ -198,7 +198,22 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
     await updateAdminNotificationEventStatus({ db, id: eventId, status: "sent", errorMessage: null });
   } catch (e) {
-    console.error("broadcast notification failed:", e);
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error(
+      "broadcast notification failed:",
+      JSON.stringify(
+        {
+          name: err.name,
+          message: err.message,
+          stack:
+            process.env.NODE_ENV === "development"
+              ? err.stack?.slice(0, 2000)
+              : undefined,
+        },
+        null,
+        0
+      )
+    );
     const safeErr = sanitizeOneLine(e instanceof Error ? e.message : String(e), 300) || "failed";
     await updateAdminNotificationEventStatus({ db, id: eventId, status: "failed", errorMessage: safeErr });
     throw e;

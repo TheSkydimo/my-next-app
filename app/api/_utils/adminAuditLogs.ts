@@ -79,7 +79,23 @@ export async function writeAdminAuditLog(options: {
       )
       .run();
   } catch (e) {
-    console.error("writeAdminAuditLog failed:", e);
+    const err = e instanceof Error ? e : new Error(String(e));
+    // Security: avoid leaking internal stacks/paths in production logs.
+    console.error(
+      "writeAdminAuditLog failed:",
+      JSON.stringify(
+        {
+          name: err.name,
+          message: err.message,
+          stack:
+            process.env.NODE_ENV === "development"
+              ? err.stack?.slice(0, 2000)
+              : undefined,
+        },
+        null,
+        0
+      )
+    );
   }
 }
 

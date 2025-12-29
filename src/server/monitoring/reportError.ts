@@ -15,12 +15,19 @@ export function reportError(
   const safeContext = context
     ? JSON.stringify(context, (_k, v) => (typeof v === "string" && v.length > 500 ? `${v.slice(0, 500)}…` : v))
     : undefined;
+  const includeStackInConsole = process.env.NODE_ENV === "development";
   try {
     console.error(
       JSON.stringify({
         level: "error",
         message: "monitoring.error",
-        err: { name: err.name, message: err.message, stack: err.stack?.slice(0, 2000) },
+        // Security: avoid leaking internal paths/stack traces in production console logs.
+        // Use Sentry (when configured) for stack traces.
+        err: {
+          name: err.name,
+          message: err.message,
+          stack: includeStackInConsole ? err.stack?.slice(0, 2000) : undefined,
+        },
         context: safeContext ? JSON.parse(safeContext) : undefined,
       })
     );

@@ -247,7 +247,24 @@ export const PUT = withApiMonitoring(async function PUT(
       updatedAt: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("reupload migrate failed:", e);
+    {
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error(
+        "reupload migrate failed:",
+        JSON.stringify(
+          {
+            name: err.name,
+            message: err.message,
+            stack:
+              process.env.NODE_ENV === "development"
+                ? err.stack?.slice(0, 2000)
+                : undefined,
+          },
+          null,
+          0
+        )
+      );
+    }
     await r2.delete(newR2Key).catch(() => {});
     if (newCoverKey) await r2.delete(newCoverKey).catch(() => {});
     return new Response("重新上传失败", { status: 500 });

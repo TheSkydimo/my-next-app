@@ -47,7 +47,22 @@ async function runSeed(): Promise<Response> {
     const msg = e instanceof Error ? e.message : String(e);
     // 已经有该字段时忽略错误
     if (!msg.includes("duplicate column name: is_admin")) {
-      console.error("添加 is_admin 字段失败:", e);
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error(
+        "添加 is_admin 字段失败:",
+        JSON.stringify(
+          {
+            name: err.name,
+            message: err.message,
+            stack:
+              process.env.NODE_ENV === "development"
+                ? err.stack?.slice(0, 2000)
+                : undefined,
+          },
+          null,
+          0
+        )
+      );
       return new Response("初始化管理员表结构失败", { status: 500 });
     }
   }
@@ -63,7 +78,22 @@ async function runSeed(): Promise<Response> {
     const msg = e instanceof Error ? e.message : String(e);
     // 已经有该字段时忽略错误
     if (!msg.includes("duplicate column name: is_super_admin")) {
-      console.error("添加 is_super_admin 字段失败:", e);
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error(
+        "添加 is_super_admin 字段失败:",
+        JSON.stringify(
+          {
+            name: err.name,
+            message: err.message,
+            stack:
+              process.env.NODE_ENV === "development"
+                ? err.stack?.slice(0, 2000)
+                : undefined,
+          },
+          null,
+          0
+        )
+      );
       return new Response("初始化超级管理员表结构失败", { status: 500 });
     }
   }
@@ -77,7 +107,22 @@ async function runSeed(): Promise<Response> {
     const msg = e instanceof Error ? e.message : String(e);
     // 已经有该字段时忽略错误
     if (!msg.includes("duplicate column name: avatar_url")) {
-      console.error("添加 avatar_url 字段失败:", e);
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error(
+        "添加 avatar_url 字段失败:",
+        JSON.stringify(
+          {
+            name: err.name,
+            message: err.message,
+            stack:
+              process.env.NODE_ENV === "development"
+                ? err.stack?.slice(0, 2000)
+                : undefined,
+          },
+          null,
+          0
+        )
+      );
       return new Response("初始化头像字段失败", { status: 500 });
     }
   }
@@ -94,7 +139,22 @@ async function runSeed(): Promise<Response> {
     const msg = e instanceof Error ? e.message : String(e);
     // 已经有该字段时忽略错误
     if (!msg.includes("duplicate column name: vip_expires_at")) {
-      console.error("添加 vip_expires_at 字段失败:", e);
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error(
+        "添加 vip_expires_at 字段失败:",
+        JSON.stringify(
+          {
+            name: err.name,
+            message: err.message,
+            stack:
+              process.env.NODE_ENV === "development"
+                ? err.stack?.slice(0, 2000)
+                : undefined,
+          },
+          null,
+          0
+        )
+      );
       return new Response("初始化会员字段失败", { status: 500 });
     }
   }

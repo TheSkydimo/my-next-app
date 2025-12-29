@@ -37,7 +37,22 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     await ensureUsersIsAdminColumn(db);
     await ensureUsersAvatarUrlColumn(db);
   } catch (e) {
-    console.error("确保 users 表字段存在失败:", e);
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error(
+      "确保 users 表字段存在失败:",
+      JSON.stringify(
+        {
+          name: err.name,
+          message: err.message,
+          stack:
+            process.env.NODE_ENV === "development"
+              ? err.stack?.slice(0, 2000)
+              : undefined,
+        },
+        null,
+        0
+      )
+    );
     return new Response("服务器内部错误", { status: 500 });
   }
 

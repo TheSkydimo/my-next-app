@@ -54,7 +54,22 @@ export async function requireAdminFromRequest(options: {
     await ensureUsersIsSuperAdminColumn(db);
     await ensureUsersAvatarUrlColumn(db);
   } catch (e) {
-    console.error("ensure users columns failed:", e);
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error(
+      "ensure users columns failed:",
+      JSON.stringify(
+        {
+          name: err.name,
+          message: err.message,
+          stack:
+            process.env.NODE_ENV === "development"
+              ? err.stack?.slice(0, 2000)
+              : undefined,
+        },
+        null,
+        0
+      )
+    );
     return new Response("服务器内部错误", { status: 500 });
   }
 

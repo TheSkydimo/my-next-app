@@ -274,7 +274,24 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
         { status: 409 }
       );
     }
-    console.error("admin create script share failed:", e);
+    {
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error(
+        "admin create script share failed:",
+        JSON.stringify(
+          {
+            name: err.name,
+            message: err.message,
+            stack:
+              process.env.NODE_ENV === "development"
+                ? err.stack?.slice(0, 2000)
+                : undefined,
+          },
+          null,
+          0
+        )
+      );
+    }
     await r2.delete(r2Key).catch(() => {});
     if (coverKey) await r2.delete(coverKey).catch(() => {});
     return new Response("上传失败，请稍后重试", { status: 500 });
