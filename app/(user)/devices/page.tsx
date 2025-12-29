@@ -13,6 +13,7 @@ import { useApiCache } from "../../contexts/ApiCacheContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 import UserOrdersList, { OrderSnapshot } from "../../components/UserOrdersList";
 import OrderUploadModal from "../../components/OrderUploadModal";
+import { apiFetch } from "../../lib/apiFetch";
 
 const { Text } = Typography;
 
@@ -189,7 +190,7 @@ export default function UserDevicesPage() {
 
       setLoading(true);
       try {
-        const res = await fetch(url);
+        const res = await apiFetch(url);
         if (!res.ok) {
            if (res.status === 404) {
              setDevices([]);
@@ -231,7 +232,7 @@ export default function UserDevicesPage() {
         const data = cached
           ? cached
           : ((await (async () => {
-              const res = await fetch(url);
+              const res = await apiFetch(url);
               if (!res.ok) return null;
               const json = (await res.json()) as { items?: OrderSnapshot[] };
               cache.set(url, { items: Array.isArray(json.items) ? json.items : [] });
@@ -275,7 +276,7 @@ export default function UserDevicesPage() {
   const handleDeleteOrder = async (order: OrderSnapshot) => {
     if (!userEmail) return;
     try {
-      const res = await fetch("/api/user/orders", {
+      const res = await apiFetch("/api/user/orders", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: order.id }),

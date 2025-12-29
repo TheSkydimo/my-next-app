@@ -15,6 +15,7 @@ import {
   Space,
   Drawer,
   Grid,
+  notification,
 } from "antd";
 import type { MenuProps } from "antd";
 import antdEnUS from "antd/locale/en_US";
@@ -134,6 +135,12 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
   
   // 搜索
   const [searchValue, setSearchValue] = useState("");
+  const [notificationApi, notificationContextHolder] = notification.useNotification({
+    placement: "topRight",
+    showProgress: true,
+    pauseOnHover: true,
+    maxCount: 2,
+  });
 
   // 初始化主题 / 语言
   useEffect(() => {
@@ -141,6 +148,29 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     applyLanguage(language);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
+
+  // 全局：遇到 401（例如账号被管理员删除）时，立刻清理本地状态并引导重新登录
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = () => {
+      userContext?.clearUser();
+      notificationApi.warning({
+        message: language === "zh-CN" ? "登录已失效" : "Signed out",
+        description:
+          language === "zh-CN"
+            ? "你的账号已退出登录或已不可用，请重新登录。"
+            : "Your session is no longer valid. Please sign in again.",
+        duration: 3.5,
+      });
+      window.setTimeout(() => {
+        window.location.href = "/login";
+      }, 300);
+    };
+
+    window.addEventListener("app-auth-unauthorized", handler as EventListener);
+    return () => window.removeEventListener("app-auth-unauthorized", handler as EventListener);
+  }, [language, notificationApi, userContext]);
 
   // 监听全局语言变更事件（例如 /en、/zh 路由在进入时会触发 applyLanguage）
   useEffect(() => {
@@ -355,6 +385,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
   ) {
     return (
       <ConfigProvider {...commonConfigProviderProps}>
+        {notificationContextHolder}
         {children}
       </ConfigProvider>
     );
@@ -364,6 +395,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
   if (!hasUser) {
     return (
       <ConfigProvider {...commonConfigProviderProps}>
+        {notificationContextHolder}
         {children}
       </ConfigProvider>
     );
@@ -371,6 +403,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <ConfigProvider {...commonConfigProviderProps}>
+      {notificationContextHolder}
       <AppLayout
         theme={theme}
         isMobile={isMobile}

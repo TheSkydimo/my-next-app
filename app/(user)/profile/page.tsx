@@ -28,6 +28,7 @@ import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
+import { apiFetch } from "../../lib/apiFetch";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -132,7 +133,7 @@ export default function UserProfilePage() {
       if (!userEmail) return;
 
       setUsernameLoading(true);
-      const res = await fetch("/api/user/profile", {
+      const res = await apiFetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -168,7 +169,7 @@ export default function UserProfilePage() {
     if (!userEmail) return;
     setAvatarLoading(true);
     try {
-      const res = await fetch("/api/user/profile", {
+      const res = await apiFetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatarUrl }),
@@ -258,7 +259,7 @@ export default function UserProfilePage() {
       if (!userEmail) return;
 
       setEmailLoading(true);
-      const res = await fetch("/api/user/profile", {
+      const res = await apiFetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -488,7 +489,7 @@ export default function UserProfilePage() {
                   try {
                     const formData = new FormData();
                     formData.append("file", file);
-                    const res = await fetch("/api/avatar/upload", {
+                    const res = await apiFetch("/api/avatar/upload", {
                        method: "POST",
                        body: formData
                     });

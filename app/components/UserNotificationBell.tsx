@@ -21,6 +21,7 @@ import {
 import type { AppLanguage } from "../client-prefs";
 import { getInitialLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
+import { apiFetch } from "../lib/apiFetch";
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -75,9 +76,7 @@ export default function UserNotificationBell() {
         pageSize: "20",
         lang: language,
       });
-      const res = await fetch(`/api/user/notifications?${params.toString()}`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/api/user/notifications?${params.toString()}`);
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as {
         items?: NotificationItem[];
@@ -94,9 +93,8 @@ export default function UserNotificationBell() {
 
   const markRead = async (id: number) => {
     try {
-      const res = await fetch(`/api/user/notifications/${id}`, {
+      const res = await apiFetch(`/api/user/notifications/${id}`, {
         method: "PATCH",
-        credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
       setItems((prev) => prev.map((x) => (x.id === id ? { ...x, isRead: true } : x)));
@@ -110,9 +108,8 @@ export default function UserNotificationBell() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/user/notifications", {
+      const res = await apiFetch("/api/user/notifications", {
         method: "POST",
-        credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
       setItems((prev) => prev.map((x) => ({ ...x, isRead: true })));

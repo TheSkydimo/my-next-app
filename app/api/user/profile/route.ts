@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { verifyAndUseEmailCode } from "../../_utils/emailCode";
 import { requireUserFromRequest } from "../_utils/userSession";
+import { unauthorizedWithClearedSession } from "../../_utils/unauthorized";
 import {
   convertDbAvatarUrlToPublicUrl,
   makeR2SchemeUrl,
@@ -75,7 +76,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const user = queryResult.results?.[0];
 
   if (!user) {
-    return withNoStore(new Response("用户不存在", { status: 404 }));
+    return withNoStore(unauthorizedWithClearedSession(request));
   }
 
   return withNoStore(Response.json({

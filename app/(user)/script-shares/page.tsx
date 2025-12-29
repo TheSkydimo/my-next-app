@@ -7,6 +7,7 @@ import { getInitialLanguage } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
+import { apiFetch } from "../../lib/apiFetch";
 
 type ShareItem = {
   id: string;
@@ -288,9 +289,7 @@ export default function ScriptSharesPage() {
         page: "1",
         pageSize: "50",
       });
-      const res = await fetch(`/api/user/script-shares?${params.toString()}`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/api/user/script-shares?${params.toString()}`);
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as { items?: ShareItem[] };
       setMine(data.items ?? []);
@@ -381,10 +380,9 @@ export default function ScriptSharesPage() {
       form.append("isPublic", isPublic ? "1" : "0");
       form.append("file", uploadFile);
 
-      const res = await fetch("/api/user/script-shares", {
+      const res = await apiFetch("/api/user/script-shares", {
         method: "POST",
         body: form,
-        credentials: "include",
       });
       if (!res.ok) {
         const text = await res.text();
@@ -419,9 +417,8 @@ export default function ScriptSharesPage() {
     setError("");
     setOkMsg("");
     try {
-      const res = await fetch(`/api/user/script-shares/${encodeURIComponent(id)}`, {
+      const res = await apiFetch(`/api/user/script-shares/${encodeURIComponent(id)}`, {
         method: "DELETE",
-        credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
       setMine((prev) => prev.filter((x) => x.id !== id));
@@ -442,10 +439,9 @@ export default function ScriptSharesPage() {
     const form = new FormData();
     form.append("file", file);
     try {
-      const res = await fetch(`/api/user/script-shares/${encodeURIComponent(id)}`, {
+      const res = await apiFetch(`/api/user/script-shares/${encodeURIComponent(id)}`, {
         method: "PUT",
         body: form,
-        credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
       setOkMsg(language === "zh-CN" ? "已重新上传" : "Re-uploaded");
@@ -479,9 +475,8 @@ export default function ScriptSharesPage() {
     setOkMsg("");
     setInteractionBusyKey(`like:${id}`);
     try {
-      const res = await fetch(`/api/user/script-shares/${encodeURIComponent(id)}/like`, {
+      const res = await apiFetch(`/api/user/script-shares/${encodeURIComponent(id)}/like`, {
         method: "POST",
-        credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as {
@@ -514,9 +509,8 @@ export default function ScriptSharesPage() {
     setOkMsg("");
     setInteractionBusyKey(`fav:${id}`);
     try {
-      const res = await fetch(`/api/user/script-shares/${encodeURIComponent(id)}/favorite`, {
+      const res = await apiFetch(`/api/user/script-shares/${encodeURIComponent(id)}/favorite`, {
         method: "POST",
-        credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as {

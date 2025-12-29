@@ -3,6 +3,7 @@ import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { getSessionCookieName, verifySessionToken } from "../../_utils/session";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../../_utils/usersTable";
+import { unauthorizedWithClearedSession } from "../../_utils/unauthorized";
 
 export type UserAuthed = {
   id: number;
@@ -34,12 +35,12 @@ export async function requireUserFromRequest(options: {
 
   const token = getRequestCookie(request, getSessionCookieName());
   if (!token) {
-    return new Response("Unauthorized", { status: 401 });
+    return unauthorizedWithClearedSession(request);
   }
 
   const payload = await verifySessionToken({ secret: sessionSecret, token });
   if (!payload) {
-    return new Response("Unauthorized", { status: 401 });
+    return unauthorizedWithClearedSession(request);
   }
 
   // Best-effort: ensure required columns exist.
@@ -73,7 +74,7 @@ export async function requireUserFromRequest(options: {
 
   const row = results?.[0];
   if (!row) {
-    return new Response("Unauthorized", { status: 401 });
+    return unauthorizedWithClearedSession(request);
   }
 
   return {

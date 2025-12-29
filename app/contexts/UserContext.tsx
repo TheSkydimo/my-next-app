@@ -8,6 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { apiFetch } from "../lib/apiFetch";
 
 /**
  * 用户个人资料类型定义
@@ -83,7 +84,7 @@ export function UserProvider({ children }: UserProviderProps) {
    */
   const loadMe = useCallback(async (): Promise<UserProfile | null> => {
     try {
-      const res = await fetch("/api/user/me", { method: "GET", credentials: "include" });
+      const res = await apiFetch("/api/user/me", { method: "GET" });
       if (!res.ok) return null;
       const data = (await res.json()) as UserProfile;
       if (!data?.email) return null;

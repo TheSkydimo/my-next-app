@@ -6,6 +6,7 @@ import { InboxOutlined } from "@ant-design/icons";
 import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 import type { AppLanguage } from "../client-prefs";
 import type { OrderSnapshot } from "./UserOrdersList";
+import { apiFetch } from "../lib/apiFetch";
 
 const { Dragger } = Upload;
 const { TextArea } = Input;
@@ -71,7 +72,7 @@ export default function OrderUploadModal({
         formData.append("note", note.trim());
       }
 
-      const res = await fetch("/api/user/orders", {
+      const res = await apiFetch("/api/user/orders", {
         method: "POST",
         body: formData,
       });

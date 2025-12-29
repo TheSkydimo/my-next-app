@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { AppLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import { useApiCache } from "../contexts/ApiCacheContext";
+import { apiFetch } from "../lib/apiFetch";
 
 export type OrderSnapshot = {
   id: number;
@@ -55,7 +56,7 @@ export function useUserOrdersPreview(email: string | null, language: AppLanguage
       setError("");
 
       try {
-        const res = await fetch(url);
+        const res = await apiFetch(url);
         if (!res.ok) {
           throw new Error(messages.home.orderPreviewFetchFailed);
         }
