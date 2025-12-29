@@ -7,6 +7,17 @@ const nextConfig: NextConfig = {
   // Required by OpenNext adapters (Cloudflare/AWS) to locate server output under `.next/standalone`.
   output: "standalone",
   /**
+   * OpenNext + Cloudflare (Workers) does not reliably support Next.js' built-in image optimizer
+   * route (`/_next/image`) in all environments. When it fails, local images like `/logo.png`
+   * will render as broken images.
+   *
+   * Setting this to true makes `next/image` serve assets as-is (i.e. a plain <img src="...">),
+   * which is the most compatible option for our deployment target.
+   */
+  images: {
+    unoptimized: true,
+  },
+  /**
    * Allow loading `/_next/*` assets from additional origins in dev.
    *
    * This prevents warnings like:
