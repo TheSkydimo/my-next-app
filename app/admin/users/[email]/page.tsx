@@ -56,6 +56,7 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
   const [orders, setOrders] = useState<AdminOrderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [orderActionLoadingId, setOrderActionLoadingId] = useState<number | null>(null);
   const [error, setError] = useState<string>("");
 
   const [api, contextHolder] = notification.useNotification({
@@ -70,6 +71,17 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
       algorithm: appTheme === "dark" ? antdTheme.darkAlgorithm : undefined,
     };
   }, [appTheme]);
+
+  const userUrl = useMemo(() => {
+    if (!userEmail) return null;
+    return `/api/admin/users/${encodeURIComponent(userEmail)}`;
+  }, [userEmail]);
+
+  const ordersUrl = useMemo(() => {
+    if (!userEmail) return null;
+    const orderParams = new URLSearchParams({ userEmail });
+    return `/api/admin/orders?${orderParams.toString()}`;
+  }, [userEmail]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -117,11 +129,7 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
     setLoading(true);
     setError("");
     try {
-      const userUrl = `/api/admin/users/${encodeURIComponent(userEmail)}`;
-      const ordersUrl = (() => {
-        const orderParams = new URLSearchParams({ userEmail });
-        return `/api/admin/orders?${orderParams.toString()}`;
-      })();
+      if (!userUrl || !ordersUrl) return;
 
       const bypassCache = !!opts?.bypassCache;
       const cachedUser = bypassCache ? undefined : cache.get<{ user?: UserDetail }>(userUrl);
@@ -218,6 +226,49 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
       setError(msg);
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const updateOrdersCache = (next: AdminOrderItem[]) => {
+    if (!ordersUrl) return;
+    cache.set(ordersUrl, { items: next });
+  };
+
+  const doOrderDelete = async (row: AdminOrderItem) => {
+    if (!adminEmail) return;
+    setOrderActionLoadingId(row.id);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: row.id }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(safeErrorFromResponse(res, text, messages.common.unknownError));
+      }
+
+      const next = orders.filter((o) => o.id !== row.id);
+      setOrders(next);
+      updateOrdersCache(next);
+
+      api.success({
+        title: language === "zh-CN" ? "删除成功" : "Deleted",
+        description: language === "zh-CN" ? "已删除该订单截图" : "Order screenshot deleted",
+        duration: 3,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : messages.common.unknownError;
+      api.error({
+        title: messages.common.unknownError,
+        description: msg,
+        duration: 4.5,
+      });
+      setError(msg);
+    } finally {
+      setOrderActionLoadingId(null);
     }
   };
 
@@ -372,6 +423,8 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
                     <UserOrdersTable
                       items={orders}
                       language={language}
+                      onDelete={doOrderDelete}
+                      actionLoadingId={orderActionLoadingId}
                     />
                   ),
                 },

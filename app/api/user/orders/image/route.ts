@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireUserFromRequest } from "../../_utils/userSession";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { ensureUserOrdersTable } from "../../../_utils/userOrdersTable";
 
 /**
  * 从 R2 存储中读取订单图片
@@ -29,25 +30,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;
 
-  // 兼容新库/空库：确保 user_orders 表存在（至少包含归属校验所需字段）
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS user_orders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        device_id TEXT NOT NULL,
-        image_url TEXT NOT NULL,
-        note TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        order_no TEXT,
-        order_created_time TEXT,
-        order_paid_time TEXT,
-        platform TEXT,
-        shop_name TEXT,
-        device_count INTEGER
-      )`
-    )
-    .run();
+  await ensureUserOrdersTable(db);
 
   // 必须登录；普通用户只能读取自己的订单截图；管理员可读取任意用户订单截图。
   const authed = await requireUserFromRequest({ request, env, db });

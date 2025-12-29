@@ -199,7 +199,11 @@ export default function UserOrdersList({
                   <Text strong ellipsis>
                     {item.shopName ?? item.platform ?? "-"}
                   </Text>
-                  {item.deviceCount && <Tag color="geekblue" style={{ margin: 0 }}>x{item.deviceCount}</Tag>}
+                  {item.deviceCount ? (
+                    <Tag color="geekblue" style={{ margin: 0 }}>
+                      x{item.deviceCount}
+                    </Tag>
+                  ) : null}
                 </div>
 
                 <Space size={4} style={{ color: "rgba(0, 0, 0, 0.45)", fontSize: 12 }}>

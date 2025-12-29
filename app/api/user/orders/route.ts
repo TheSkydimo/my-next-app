@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 import { requireUserFromRequest } from "../_utils/userSession";
+import { ensureUserOrdersTable } from "../../_utils/userOrdersTable";
 
 type OrderRow = {
   id: number;
@@ -80,61 +81,7 @@ function getUserOrderApiMessages(lang: ApiLanguage): UserOrderApiMessages {
   };
 }
 
-async function ensureOrderTable(db: D1Database) {
-  // 尽量保持 SQL 简单，避免某些 D1 运行时对复杂约束解析失败
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS user_orders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        device_id TEXT NOT NULL,
-        image_url TEXT NOT NULL,
-        note TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        order_no TEXT,
-        order_created_time TEXT,
-        order_paid_time TEXT,
-        platform TEXT,
-        shop_name TEXT,
-        device_count INTEGER
-      )`
-    )
-    .run();
 
-  await db
-    .prepare("CREATE INDEX IF NOT EXISTS idx_user_orders_user ON user_orders (user_id)")
-    .run();
-
-  // 对于已经存在的表，尝试补充缺失字段（如果字段已存在，忽略错误）
-  try {
-    await db.prepare("ALTER TABLE user_orders ADD COLUMN order_no TEXT").run();
-  } catch {}
-  try {
-    await db
-      .prepare("ALTER TABLE user_orders ADD COLUMN order_created_time TEXT")
-      .run();
-  } catch {}
-  try {
-    await db
-      .prepare("ALTER TABLE user_orders ADD COLUMN order_paid_time TEXT")
-      .run();
-  } catch {}
-  try {
-    await db
-      .prepare("ALTER TABLE user_orders ADD COLUMN platform TEXT")
-      .run();
-  } catch {}
-  try {
-    await db
-      .prepare("ALTER TABLE user_orders ADD COLUMN shop_name TEXT")
-      .run();
-  } catch {}
-  try {
-    await db
-      .prepare("ALTER TABLE user_orders ADD COLUMN device_count INTEGER")
-      .run();
-  } catch {}
-}
 
 type ParsedOrderInfo = {
   orderNo: string | null;
@@ -347,7 +294,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const authed = await requireUserFromRequest({ request, env, db });
   if (authed instanceof Response) return authed;
 
-  await ensureOrderTable(db);
+  await ensureUserOrdersTable(db);
 
   const whereParts = ["user_id = ?"];
   const bindValues: unknown[] = [authed.user.id];
@@ -357,7 +304,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     bindValues.push(deviceId);
   }
 
-  const sql = `SELECT id, user_id, device_id, image_url, note, created_at, order_no, order_created_time, order_paid_time, platform, shop_name, device_count
+  const sql = `SELECT id, user_id, device_id, image_url, note, created_at, order_no, order_created_time, order_paid_time, platform, shop_name, device_count, review_status, reviewed_at, reviewed_by, review_note
     FROM user_orders
     WHERE ${whereParts.join(" AND ")}
     ORDER BY created_at DESC`;
@@ -387,7 +334,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
       deviceCount: typeof row.device_count === "number" ? row.device_count : null,
     })) ?? [];
 
-  return Response.json({ items });
+  return Response.json({ items }, { headers: { "Cache-Control": "no-store" } });
 }, { name: "GET /api/user/orders" });
 
 /**
@@ -453,7 +400,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const authed = await requireUserFromRequest({ request, env, db });
   if (authed instanceof Response) return authed;
 
-  await ensureOrderTable(db);
+  await ensureUserOrdersTable(db);
   const userId = authed.user.id;
 
   // 在将截图入库前，尝试做一次 OCR 识别，提取订单号与时间信息
@@ -518,8 +465,8 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   // 并发安全：只在“订单号不存在”时插入（避免两个请求同时通过前置 SELECT）
   // 若插入失败（0 changes），需要回滚删除刚才上传的对象，避免占用 key
   const insertSql =
-    "INSERT INTO user_orders (user_id, device_id, image_url, note, order_no, order_created_time, order_paid_time, platform, shop_name, device_count) " +
-    "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? " +
+    "INSERT INTO user_orders (user_id, device_id, image_url, note, order_no, order_created_time, order_paid_time, platform, shop_name, device_count, upload_lang) " +
+    "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? " +
     "WHERE NOT EXISTS (SELECT 1 FROM user_orders WHERE order_no = ?)";
 
   const insert = await db
@@ -535,6 +482,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       parsed?.platform ?? null,
       parsed?.shopName ?? null,
       parsed?.deviceCount ?? null,
+      lang === "en-US" ? "en" : "zh",
       orderNo
     )
     .run();
@@ -566,7 +514,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     deviceCount: parsed?.deviceCount ?? null,
     // 前端展示用时间，真实入库时间仍由数据库默认值生成
     createdAt: new Date().toISOString(),
-  });
+  }, { headers: { "Cache-Control": "no-store" } });
 }, { name: "POST /api/user/orders" });
 
 // 删除指定订单截图（仅允许删除当前用户自己的记录，同时删除 R2 中的图片）
@@ -591,7 +539,7 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
   if (authed instanceof Response) return authed;
   const userId = authed.user.id;
 
-  await ensureOrderTable(db);
+  await ensureUserOrdersTable(db);
 
   // 先查询订单记录，获取 image_url 以便删除 R2 中的文件
   const orderQuery = await db
@@ -626,7 +574,7 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
     return new Response(t.deleteNotFoundOrNotOwned, { status: 404 });
   }
 
-  return Response.json({ success: true });
+  return Response.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
 }, { name: "DELETE /api/user/orders" });
 
 

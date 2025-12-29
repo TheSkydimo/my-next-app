@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Button, Grid, Image, Space, Table, Typography } from "antd";
+import { Button, Grid, Image, Popconfirm, Space, Table, Typography } from "antd";
 
 export type AdminOrderItem = {
   id: number;
@@ -13,6 +13,9 @@ export type AdminOrderItem = {
   orderNo?: string | null;
   orderCreatedTime?: string | null;
   orderPaidTime?: string | null;
+  platform?: string | null;
+  shopName?: string | null;
+  deviceCount?: number | null;
 };
 
 function formatDateTime(input: string) {
@@ -24,16 +27,36 @@ function formatDateTime(input: string) {
 export function UserOrdersTable({
   items,
   language,
+  showUserEmail = false,
+  onDelete,
+  actionLoadingId,
 }: {
   items: AdminOrderItem[];
   language: "zh-CN" | "en-US";
+  showUserEmail?: boolean;
+  onDelete?: (row: AdminOrderItem) => void;
+  actionLoadingId?: number | null;
 }) {
   const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
 
   const columns = useMemo(() => {
-    return [
+    const cols: unknown[] = [];
+
+    if (showUserEmail) {
+      cols.push({
+        title: language === "zh-CN" ? "用户邮箱" : "User Email",
+        dataIndex: "userEmail",
+        key: "userEmail",
+        width: 220,
+        render: (v: string) => (
+          <Typography.Text style={{ fontSize: 12 }}>{v}</Typography.Text>
+        ),
+      });
+    }
+
+    cols.push(
       {
         title: language === "zh-CN" ? "时间" : "Time",
         dataIndex: "createdAt",
@@ -97,6 +120,55 @@ export function UserOrdersTable({
         },
       },
       {
+        title: language === "zh-CN" ? "店铺/平台" : "Shop/Platform",
+        key: "shop",
+        responsive: ["md"],
+        render: (_: unknown, row: AdminOrderItem) => (
+          <Typography.Text>
+            {(row.shopName || "-") + " / " + (row.platform || "-")}
+          </Typography.Text>
+        ),
+      },
+      {
+        title: language === "zh-CN" ? "订单号" : "Order No",
+        dataIndex: "orderNo",
+        key: "orderNo",
+        responsive: ["md"],
+        render: (v: string | null | undefined, row: AdminOrderItem) => (
+          <Typography.Text>
+            {v || String(row.id)}
+          </Typography.Text>
+        ),
+      },
+      {
+        title: language === "zh-CN" ? "创建时间" : "Created",
+        dataIndex: "orderCreatedTime",
+        key: "orderCreatedTime",
+        responsive: ["lg"],
+        render: (v: string | null | undefined, row: AdminOrderItem) => (
+          <Typography.Text type="secondary">
+            {v || formatDateTime(row.createdAt)}
+          </Typography.Text>
+        ),
+      },
+      {
+        title: language === "zh-CN" ? "付款时间" : "Paid",
+        dataIndex: "orderPaidTime",
+        key: "orderPaidTime",
+        responsive: ["xl"],
+        render: (v: string | null | undefined) => (
+          <Typography.Text type="secondary">{v || "-"}</Typography.Text>
+        ),
+      },
+      {
+        title: language === "zh-CN" ? "数量" : "Qty",
+        dataIndex: "deviceCount",
+        key: "deviceCount",
+        width: 90,
+        align: "center",
+        render: (v: number | null | undefined) => v ?? "-",
+      },
+      {
         title: language === "zh-CN" ? "备注" : "Note",
         dataIndex: "note",
         key: "note",
@@ -110,8 +182,43 @@ export function UserOrdersTable({
             <Typography.Text type="secondary">-</Typography.Text>
           ),
       },
-    ] as const;
-  }, [brokenImages, language]);
+    );
+
+    if (onDelete) {
+      cols.push({
+        title: language === "zh-CN" ? "操作" : "Actions",
+        key: "actions",
+        width: 140,
+        render: (_: unknown, row: AdminOrderItem) => {
+          const loading = actionLoadingId === row.id;
+          return (
+            <Space wrap size={8}>
+              {onDelete ? (
+                <Popconfirm
+                  title={language === "zh-CN" ? "确认删除该订单？" : "Delete this order?"}
+                  description={
+                    language === "zh-CN"
+                      ? "该操作不可撤销，将同时删除截图文件。"
+                      : "This action cannot be undone and will delete the screenshot."
+                  }
+                  okText={language === "zh-CN" ? "删除" : "Delete"}
+                  cancelText={language === "zh-CN" ? "取消" : "Cancel"}
+                  okButtonProps={{ danger: true }}
+                  onConfirm={() => onDelete(row)}
+                >
+                  <Button size="small" danger disabled={loading}>
+                    {language === "zh-CN" ? "删除" : "Delete"}
+                  </Button>
+                </Popconfirm>
+              ) : null}
+            </Space>
+          );
+        },
+      });
+    }
+
+    return cols;
+  }, [actionLoadingId, brokenImages, language, onDelete, showUserEmail]);
 
   return (
     <Table<AdminOrderItem>
@@ -124,6 +231,20 @@ export function UserOrdersTable({
       expandable={{
         expandedRowRender: (row) => (
           <Space direction="vertical" size={6} style={{ width: "100%" }}>
+            <Space size={12} wrap>
+              <Typography.Text type="secondary">
+                {language === "zh-CN" ? "店铺/平台：" : "Shop/Platform:"}
+              </Typography.Text>
+              <Typography.Text>
+                {(row.platform || "-") + " / " + (row.shopName || "-")}
+              </Typography.Text>
+            </Space>
+            <Space size={12} wrap>
+              <Typography.Text type="secondary">
+                {language === "zh-CN" ? "数量：" : "Qty:"}
+              </Typography.Text>
+              <Typography.Text>{row.deviceCount ?? "-"}</Typography.Text>
+            </Space>
             <Space size={12} wrap>
               <Typography.Text type="secondary">
                 {language === "zh-CN" ? "订单号：" : "Order No:"}
@@ -145,7 +266,12 @@ export function UserOrdersTable({
           </Space>
         ),
         rowExpandable: (row) =>
-          !!row.orderNo || !!row.orderCreatedTime || !!row.orderPaidTime,
+          !!row.orderNo ||
+          !!row.orderCreatedTime ||
+          !!row.orderPaidTime ||
+          !!row.platform ||
+          !!row.shopName ||
+          typeof row.deviceCount === "number",
       }}
     />
   );
