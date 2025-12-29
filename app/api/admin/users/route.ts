@@ -23,8 +23,9 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const pageParam = searchParams.get("page");
   const pageSizeParam = searchParams.get("pageSize");
 
-  const page = Math.max(Number(pageParam) || 1, 1);
-  const pageSize = Math.max(Number(pageSizeParam) || 15, 1);
+  // Input hardening: clamp paging (avoid huge responses).
+  const page = Math.min(Math.max(Number(pageParam) || 1, 1), 10_000);
+  const pageSize = Math.min(Math.max(Number(pageSizeParam) || 15, 1), 100);
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -32,7 +33,10 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const authed = await requireAdminFromRequest({ request, env, db });
   if (authed instanceof Response) return authed;
 
-  const q = searchParams.get("q");
+  const q = (searchParams.get("q") ?? "").trim();
+  if (q.length > 80) {
+    return new Response("Invalid q", { status: 400 });
+  }
 
   const whereParts: string[] = [];
   const bindValues: unknown[] = [];

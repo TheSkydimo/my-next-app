@@ -167,6 +167,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     return new Response(msg.emailRequired, { status: 400 });
   }
 
+  // Basic length hardening (RFC-ish upper bound is 254, but allow a bit extra).
+  if (email.length > 320) {
+    return new Response(msg.emailInvalid, { status: 400 });
+  }
+
   if (!isValidEmail(email)) {
     return new Response(msg.emailInvalid, { status: 400 });
   }

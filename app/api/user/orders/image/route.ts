@@ -21,6 +21,11 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     return new Response("Missing key parameter", { status: 400 });
   }
 
+  // Basic hardening: cap key length.
+  if (key.length > 512) {
+    return new Response("Invalid key", { status: 400 });
+  }
+
   // 安全检查：确保 key 以 orders/ 开头，防止访问其他文件
   if (!key.startsWith("orders/")) {
     return new Response("Invalid key", { status: 400 });
@@ -50,7 +55,8 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   }
 
   if (!authed.user.isAdmin && owner !== authed.user.id) {
-    return new Response("Forbidden", { status: 403 });
+    // Privacy: avoid leaking ownership/existence across users.
+    return new Response("Image not found", { status: 404 });
   }
 
   const object = await r2.get(key);
@@ -69,8 +75,8 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   // 设置 ETag 用于缓存验证
   headers.set("ETag", object.httpEtag);
   
-  // 设置缓存控制：私有缓存 1 天，可重新验证
-  headers.set("Cache-Control", "private, max-age=86400, stale-while-revalidate=3600");
+  // Privacy: do not store order images in caches by default.
+  headers.set("Cache-Control", "no-store");
 
   return new Response(object.body, { headers });
 }, { name: "GET /api/user/orders/image" });

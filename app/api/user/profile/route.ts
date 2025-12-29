@@ -2,6 +2,8 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { verifyAndUseEmailCode } from "../../_utils/emailCode";
 import { requireUserFromRequest } from "../_utils/userSession";
 import { unauthorizedWithClearedSession } from "../../_utils/unauthorized";
+import { isValidEmail } from "../../_utils/auth";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import {
   convertDbAvatarUrlToPublicUrl,
   makeR2SchemeUrl,
@@ -111,6 +113,9 @@ function isOwnedAvatarR2KeyForUser(userId: number, key: string): boolean {
 
 // 更新用户个人信息
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const body = (await request.json()) as {
     username?: string;
     newEmail?: string;
@@ -134,6 +139,38 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   if (!username && !newEmail && !hasAvatarField) {
     return withNoStore(new Response("没有需要更新的字段", { status: 400 }));
+  }
+
+  // ---- input hardening (length + basic format) ----
+  const usernameTrimmed = typeof username === "string" ? username.trim() : null;
+  if (usernameTrimmed != null) {
+    if (!usernameTrimmed) {
+      return withNoStore(new Response("用户名不能为空", { status: 400 }));
+    }
+    if (usernameTrimmed.length > 50) {
+      return withNoStore(new Response("用户名过长", { status: 400 }));
+    }
+  }
+
+  const newEmailTrimmed = typeof newEmail === "string" ? newEmail.trim() : null;
+  if (newEmailTrimmed != null) {
+    if (!newEmailTrimmed) {
+      return withNoStore(new Response("邮箱不能为空", { status: 400 }));
+    }
+    if (newEmailTrimmed.length > 320 || !isValidEmail(newEmailTrimmed)) {
+      return withNoStore(new Response("邮箱格式不正确", { status: 400 }));
+    }
+  }
+
+  if (typeof emailCode === "string" && emailCode.length > 32) {
+    return withNoStore(new Response("邮箱验证码错误或已过期", { status: 400 }));
+  }
+  if (typeof emailCodeChallengeId === "string" && emailCodeChallengeId.length > 64) {
+    return withNoStore(new Response("邮箱验证码错误或已过期", { status: 400 }));
+  }
+
+  if (typeof avatarUrl === "string" && avatarUrl.length > 2048) {
+    return withNoStore(new Response("头像地址过长", { status: 400 }));
   }
 
   const { env } = await getCloudflareContext();
@@ -167,7 +204,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   }
 
   // 如需修改邮箱，必须经过邮箱验证码验证（验证码发到新邮箱）
-  if (newEmail) {
+  if (newEmailTrimmed) {
     if (!emailCode) {
       return withNoStore(new Response("修改邮箱需要提供邮箱验证码", { status: 400 }));
     }
@@ -178,7 +215,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
     const okCode = await verifyAndUseEmailCode({
       db,
-      email: newEmail,
+      email: newEmailTrimmed,
       code: emailCode,
       purpose: "change-email",
       challengeId: emailCodeChallengeId,
@@ -195,12 +232,12 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   if (username) {
     fields.push("username = ?");
-    values.push(username);
+    values.push(usernameTrimmed ?? username);
   }
 
-  if (newEmail) {
+  if (newEmailTrimmed) {
     fields.push("email = ?");
-    values.push(newEmail);
+    values.push(newEmailTrimmed);
   }
 
   // 头像允许设置为空字符串代表清空，所以只要客户端传了 avatarUrl 字段（即使为空字符串）

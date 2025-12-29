@@ -4,6 +4,7 @@ import {
   makeR2SchemeUrl,
 } from "../../_utils/r2ObjectUrls";
 import { requireUserFromRequest } from "../../user/_utils/userSession";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 /**
@@ -12,6 +13,9 @@ import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
  * - publicUrl: /api/avatar/image?key=...  (前端可直接展示)
  */
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const contentType = request.headers.get("content-type") || "";
 
   // 与前端保持一致：最大 2MB（移动端相册/相机图片通常会超过 300KB）

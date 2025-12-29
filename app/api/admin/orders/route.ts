@@ -37,8 +37,16 @@ function convertImageUrl(dbUrl: string): string {
 // 管理端查看所有用户的订单截图（可按邮箱 / 设备 ID 过滤，最多返回最近 200 条）
 export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const userEmail = searchParams.get("userEmail");
-  const deviceId = searchParams.get("deviceId");
+  const userEmail = (searchParams.get("userEmail") ?? "").trim() || null;
+  const deviceId = (searchParams.get("deviceId") ?? "").trim() || null;
+
+  // Input hardening (avoid very large strings / log/DB abuse).
+  if (userEmail && userEmail.length > 320) {
+    return new Response("Invalid userEmail", { status: 400 });
+  }
+  if (deviceId && deviceId.length > 120) {
+    return new Response("Invalid deviceId", { status: 400 });
+  }
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;

@@ -48,6 +48,12 @@ export async function writeAdminAuditLog(options: {
       request.headers.get("X-Admin-Reason") ??
       null;
 
+    // Avoid storing unbounded user-provided strings (log/DB abuse hardening).
+    const safeReason =
+      typeof reason === "string"
+        ? (reason.trim().length > 200 ? reason.trim().slice(0, 200) : reason.trim())
+        : null;
+
     const metaJson =
       options.meta == null
         ? null
@@ -74,7 +80,7 @@ export async function writeAdminAuditLog(options: {
         options.targetOwnerUserId ?? null,
         requestIp,
         userAgent,
-        reason,
+        safeReason,
         metaJson
       )
       .run();

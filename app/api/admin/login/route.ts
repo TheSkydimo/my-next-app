@@ -118,11 +118,13 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   if (sessionSecret) {
     const rememberMe = remember !== false; // default: true
-    const maxAgeSeconds = rememberMe ? 60 * 60 * 24 * 30 : 0; // 30 days or session cookie
+    // Security: even for session cookies (no Max-Age), keep a bounded server-side token TTL.
+    const cookieMaxAgeSeconds = 60 * 60 * 24 * 30; // 30 days
+    const tokenMaxAgeSeconds = rememberMe ? cookieMaxAgeSeconds : 60 * 60 * 12; // 12 hours (session cookie)
     const { token } = await createSessionToken({
       secret: sessionSecret,
       userId: admin.id,
-      maxAgeSeconds: rememberMe ? maxAgeSeconds : 60 * 60 * 24 * 30,
+      maxAgeSeconds: tokenMaxAgeSeconds,
     });
 
     const secure = isSecureRequest(request);
@@ -131,7 +133,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       secure,
       sameSite: "Lax",
       path: "/",
-      ...(rememberMe ? { maxAge: maxAgeSeconds } : {}),
+      ...(rememberMe ? { maxAge: cookieMaxAgeSeconds } : {}),
     });
   }
   headers["Cache-Control"] = "no-store";

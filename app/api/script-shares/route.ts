@@ -47,6 +47,9 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   // Public browse: hard-limit to 20 per page.
   const pageSize = clampInt(searchParams.get("pageSize"), 20, 1, 20);
   const q = (searchParams.get("q") ?? "").trim();
+  if (q.length > 80) {
+    return new Response("Invalid q", { status: 400 });
+  }
   const offset = (page - 1) * pageSize;
 
   const whereParts: string[] = ["is_public = 1", "lang = ?"];

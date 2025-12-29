@@ -7,6 +7,7 @@ import {
   ensureUsersIsAdminColumn,
   ensureUsersIsSuperAdminColumn,
 } from "../../_utils/usersTable";
+import { unauthorizedWithClearedSession } from "../../_utils/unauthorized";
 
 export type AdminAuthedUser = {
   id: number;
@@ -40,12 +41,12 @@ export async function requireAdminFromRequest(options: {
 
   const token = getRequestCookie(request, getSessionCookieName());
   if (!token) {
-    return new Response("Unauthorized", { status: 401 });
+    return unauthorizedWithClearedSession(request);
   }
 
   const payload = await verifySessionToken({ secret: sessionSecret, token });
   if (!payload) {
-    return new Response("Unauthorized", { status: 401 });
+    return unauthorizedWithClearedSession(request);
   }
 
   // Best-effort: ensure required columns exist.
@@ -82,7 +83,7 @@ export async function requireAdminFromRequest(options: {
 
   const row = results?.[0];
   if (!row) {
-    return new Response("Unauthorized", { status: 401 });
+    return unauthorizedWithClearedSession(request);
   }
 
   if (!row.is_admin) {

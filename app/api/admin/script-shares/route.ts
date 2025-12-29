@@ -45,6 +45,12 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const page = clampInt(searchParams.get("page"), 1, 1, 10_000);
   const pageSize = clampInt(searchParams.get("pageSize"), 20, 1, 50);
   const q = (searchParams.get("q") ?? "").trim();
+  if (q.length > 80) {
+    return new Response("Invalid q", { status: 400 });
+  }
+  if (reason && reason.length > 120) {
+    return new Response("Invalid reason", { status: 400 });
+  }
   const offset = (page - 1) * pageSize;
 
   const whereParts: string[] = [];

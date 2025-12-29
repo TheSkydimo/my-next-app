@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 import { requireUserFromRequest } from "../_utils/userSession";
 import { ensureUserOrdersTable } from "../../_utils/userOrdersTable";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 
 type OrderRow = {
   id: number;
@@ -286,7 +287,10 @@ function convertImageUrl(dbUrl: string): string {
 // 获取当前用户的订单截图列表（按设备可选过滤）
 export const GET = withApiMonitoring(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const deviceId = searchParams.get("deviceId");
+  const deviceId = (searchParams.get("deviceId") ?? "").trim() || null;
+  if (deviceId && deviceId.length > 120) {
+    return new Response("Invalid deviceId", { status: 400 });
+  }
 
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -362,6 +366,9 @@ function generateR2KeyByOrderNo(orderNo: string, mimeType: string): string {
 
 // 上传订单截图（图片存储到 R2，数据库只保存 R2 Key）
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const lang = detectApiLanguage(request);
   const t = getUserOrderApiMessages(lang);
 
@@ -519,6 +526,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
 // 删除指定订单截图（仅允许删除当前用户自己的记录，同时删除 R2 中的图片）
 export const DELETE = withApiMonitoring(async function DELETE(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const lang = detectApiLanguage(request);
   const t = getUserOrderApiMessages(lang);
 

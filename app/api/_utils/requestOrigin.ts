@@ -46,4 +46,32 @@ export function getRequestOrigin(request: Request): string {
   return `${scheme}://${preferred}`;
 }
 
+/**
+ * Lightweight CSRF hardening for cookie-authenticated write endpoints.
+ *
+ * Policy:
+ * - If the request includes an `Origin` header, it must match the request's host.
+ * - If `Origin` is missing (some non-browser clients), we allow it (compat).
+ *
+ * Note: This is defense-in-depth; SameSite cookies already reduce CSRF risk.
+ */
+export function assertSameOriginOrNoOrigin(request: Request): Response | null {
+  const originHeader = request.headers.get("Origin");
+  if (!originHeader) return null;
+
+  let originHost = "";
+  try {
+    originHost = new URL(originHeader).host;
+  } catch {
+    return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "no-store" } });
+  }
+
+  const expectedHost = new URL(getRequestOrigin(request)).host;
+  if (!originHost || originHost !== expectedHost) {
+    return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "no-store" } });
+  }
+
+  return null;
+}
+
 
