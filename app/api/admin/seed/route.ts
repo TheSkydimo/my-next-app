@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureUsersTable } from "../../_utils/usersTable";
+import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 // 简单的初始化脚本：
@@ -18,9 +19,19 @@ import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 // - 或直接在浏览器访问 GET /api/admin/seed（仅在 ALLOW_ADMIN_SEED 为 "true" 时生效）
 
 function assertSeedAllowed(env: unknown): Response | null {
-  const envRecord = env as Record<string, unknown>;
-  const flag = String(envRecord.ALLOW_ADMIN_SEED ?? "");
-  if (flag !== "true") {
+  /**
+   * Security:
+   * - Never allow seed in production even if someone accidentally sets the flag.
+   * - Allow in local dev only, and accept both:
+   *   - Wrangler/OpenNext bindings (env.ALLOW_ADMIN_SEED, via `.dev.vars`), and
+   *   - Next.js dev env (process.env.ALLOW_ADMIN_SEED, via PowerShell / `.env.local`).
+   */
+  const isDev =
+    process.env.NODE_ENV === "development" ||
+    getRuntimeEnvVar(env, "NEXTJS_ENV") === "development";
+
+  const flag = String(getRuntimeEnvVar(env, "ALLOW_ADMIN_SEED") ?? "");
+  if (!isDev || flag !== "true") {
     // 对外表现为 404，避免暴露此接口存在
     return new Response("Not found", { status: 404 });
   }
