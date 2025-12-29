@@ -11,6 +11,7 @@ export type UserAuthed = {
   email: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  createdAt: string;
 };
 
 type UserRow = {
@@ -19,6 +20,7 @@ type UserRow = {
   email: string;
   avatar_url: string | null;
   is_admin: number;
+  created_at: string;
 };
 
 export async function requireUserFromRequest(options: {
@@ -68,7 +70,7 @@ export async function requireUserFromRequest(options: {
   }
 
   const { results } = await db
-    .prepare("SELECT id, username, email, avatar_url, is_admin FROM users WHERE id = ? LIMIT 1")
+    .prepare("SELECT id, username, email, avatar_url, is_admin, created_at FROM users WHERE id = ? LIMIT 1")
     .bind(payload.uid)
     .all<UserRow>();
 
@@ -84,6 +86,7 @@ export async function requireUserFromRequest(options: {
       email: row.email,
       avatarUrl: convertDbAvatarUrlToPublicUrl(row.avatar_url),
       isAdmin: !!row.is_admin,
+      createdAt: row.created_at,
     },
   };
 }

@@ -200,7 +200,7 @@ export const DELETE = withApiMonitoring(async function DELETE(request: Request) 
         uploadLang: langKey,
       },
     });
-  } catch (e) {
+  } catch {
     console.error("admin delete order: notify user failed");
   }
 

@@ -8,6 +8,8 @@ import { ensureUsersTable } from "./usersTable";
 import type { AppLanguage } from "./appLanguage";
 import { normalizeAppLanguage } from "./appLanguage";
 
+const USER_NOTIFICATIONS_TTL_DAYS = 30;
+
 function clampInt(value: string | null, def: number, min: number, max: number): number {
   const n = Number.parseInt(String(value ?? ""), 10);
   if (!Number.isFinite(n)) return def;
@@ -167,9 +169,11 @@ function getAudienceLangKey(lang: AppLanguage | undefined): "zh" | "en" {
 export async function getUserUnreadNotificationCount(
   db: D1Database,
   userId: number,
-  lang?: AppLanguage
+  lang?: AppLanguage,
+  userCreatedAt?: string
 ) {
   await ensureUserNotificationsTable(db);
+  const afterUserCreatedAt = userCreatedAt ? "AND created_at >= ?" : "";
   const query = (() => {
     // When lang is omitted, count all languages (legacy behavior).
     if (!lang) {
@@ -178,8 +182,10 @@ export async function getUserUnreadNotificationCount(
               FROM user_notifications
               WHERE user_id = ?
                 AND is_deleted = 0
-                AND is_read = 0`,
-        binds: [userId] as unknown[],
+                AND is_read = 0
+                AND created_at >= datetime('now', '-${USER_NOTIFICATIONS_TTL_DAYS} days')
+                ${afterUserCreatedAt}`,
+        binds: (userCreatedAt ? [userId, userCreatedAt] : [userId]) as unknown[],
       };
     }
 
@@ -192,8 +198,10 @@ export async function getUserUnreadNotificationCount(
                 WHERE user_id = ?
                   AND is_deleted = 0
                   AND is_read = 0
+                  AND created_at >= datetime('now', '-${USER_NOTIFICATIONS_TTL_DAYS} days')
+                  ${afterUserCreatedAt}
                   AND (audience_lang IS NULL OR audience_lang = 'zh' OR audience_lang = 'both')`,
-          binds: [userId] as unknown[],
+          binds: (userCreatedAt ? [userId, userCreatedAt] : [userId]) as unknown[],
         }
       : {
           sql: `SELECT COUNT(*) AS c
@@ -201,13 +209,70 @@ export async function getUserUnreadNotificationCount(
                 WHERE user_id = ?
                   AND is_deleted = 0
                   AND is_read = 0
+                  AND created_at >= datetime('now', '-${USER_NOTIFICATIONS_TTL_DAYS} days')
+                  ${afterUserCreatedAt}
                   AND (audience_lang = 'en' OR audience_lang = 'both')`,
-          binds: [userId] as unknown[],
+          binds: (userCreatedAt ? [userId, userCreatedAt] : [userId]) as unknown[],
         };
   })();
 
   const { results } = await db.prepare(query.sql).bind(...query.binds).all<{ c: number }>();
   return results?.[0]?.c ?? 0;
+}
+
+export async function cleanupExpiredUserNotifications(options: {
+  db: D1Database;
+  userId: number;
+  userCreatedAt?: string;
+}) {
+  const { db, userId, userCreatedAt } = options;
+  await ensureUserNotificationsTable(db);
+
+  // Best-effort: soft delete (keeps DB history, but hides from UI).
+  const binds: unknown[] = [userId];
+  const extraUserCreatedAt = userCreatedAt ? " OR created_at < ?" : "";
+  if (userCreatedAt) binds.push(userCreatedAt);
+
+  await db
+    .prepare(
+      `UPDATE user_notifications
+       SET is_deleted = 1
+       WHERE user_id = ?
+         AND is_deleted = 0
+         AND (created_at < datetime('now', '-${USER_NOTIFICATIONS_TTL_DAYS} days')${extraUserCreatedAt})`
+    )
+    .bind(...binds)
+    .run();
+}
+
+export async function softDeleteAllUserNotifications(options: { db: D1Database; userId: number }) {
+  const { db, userId } = options;
+  await ensureUserNotificationsTable(db);
+  await db
+    .prepare(
+      `UPDATE user_notifications
+       SET is_deleted = 1
+       WHERE user_id = ? AND is_deleted = 0`
+    )
+    .bind(userId)
+    .run();
+}
+
+export async function softDeleteUserNotificationById(options: {
+  db: D1Database;
+  userId: number;
+  id: number;
+}) {
+  const { db, userId, id } = options;
+  await ensureUserNotificationsTable(db);
+  await db
+    .prepare(
+      `UPDATE user_notifications
+       SET is_deleted = 1
+       WHERE id = ? AND user_id = ? AND is_deleted = 0`
+    )
+    .bind(id, userId)
+    .run();
 }
 
 export async function listUserNotifications(options: {
@@ -217,6 +282,7 @@ export async function listUserNotifications(options: {
   pageSize: number;
   unreadOnly?: boolean;
   lang?: AppLanguage;
+  userCreatedAt?: string;
 }) {
   const { db, userId, page, pageSize } = options;
   await ensureUserNotificationsTable(db);
@@ -230,6 +296,8 @@ export async function listUserNotifications(options: {
     key === "zh"
       ? "(audience_lang IS NULL OR audience_lang = 'zh' OR audience_lang = 'both')"
       : "(audience_lang = 'en' OR audience_lang = 'both')";
+  const afterUserCreatedAt = options.userCreatedAt ? "AND created_at >= ?" : "";
+  const bindsForCreatedAt = options.userCreatedAt ? [options.userCreatedAt] : [];
 
   const countRes = await db
     .prepare(
@@ -237,10 +305,12 @@ export async function listUserNotifications(options: {
        FROM user_notifications
        WHERE user_id = ?
          AND is_deleted = 0
+         AND created_at >= datetime('now', '-${USER_NOTIFICATIONS_TTL_DAYS} days')
+         ${afterUserCreatedAt}
          AND ${audienceWhere}
          ${whereUnread}`
     )
-    .bind(userId)
+    .bind(userId, ...bindsForCreatedAt)
     .all<{ c: number }>();
   const total = countRes.results?.[0]?.c ?? 0;
 
@@ -250,12 +320,14 @@ export async function listUserNotifications(options: {
        FROM user_notifications
        WHERE user_id = ?
          AND is_deleted = 0
+         AND created_at >= datetime('now', '-${USER_NOTIFICATIONS_TTL_DAYS} days')
+         ${afterUserCreatedAt}
          AND ${audienceWhere}
          ${whereUnread}
        ORDER BY created_at DESC, id DESC
        LIMIT ? OFFSET ?`
     )
-    .bind(userId, pageSize, offset)
+    .bind(userId, ...bindsForCreatedAt, pageSize, offset)
     .all<UserNotificationRow>();
 
   const items = (results ?? []).map((r) => ({

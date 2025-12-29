@@ -115,6 +115,19 @@ export type UserMessages = {
     title: string;
     refresh: string;
     markAllRead: string;
+    clearAll: string;
+    clearAllConfirmTitle: string;
+    clearAllConfirmDesc: string;
+    clearAllOk: string;
+    clearAllCancel: string;
+    clearAllSuccess: string;
+    clearAllFailed: string;
+    deleteOne: string;
+    deleteOneConfirmTitle: string;
+    deleteOneOk: string;
+    deleteOneCancel: string;
+    deleteOneSuccess: string;
+    deleteOneFailed: string;
     loadingText: string;
     emptyText: string;
     loadFailed: string;
@@ -233,7 +246,20 @@ const zhCN: UserMessages = {
     panelAriaLabel: "通知面板",
     title: "通知",
     refresh: "刷新",
-    markAllRead: "全部已读",
+    markAllRead: "一键全读",
+    clearAll: "清空",
+    clearAllConfirmTitle: "清空所有通知？",
+    clearAllConfirmDesc: "此操作会移除当前账号下的全部通知（包含未读），且无法恢复。",
+    clearAllOk: "确认清空",
+    clearAllCancel: "取消",
+    clearAllSuccess: "通知已清空",
+    clearAllFailed: "清空失败",
+    deleteOne: "删除",
+    deleteOneConfirmTitle: "删除这条通知？",
+    deleteOneOk: "确认删除",
+    deleteOneCancel: "取消",
+    deleteOneSuccess: "已删除",
+    deleteOneFailed: "删除失败",
     loadingText: "加载中...",
     emptyText: "暂无通知",
     loadFailed: "加载失败",
@@ -358,6 +384,19 @@ const enUS: UserMessages = {
     title: "Notifications",
     refresh: "Refresh",
     markAllRead: "Mark all read",
+    clearAll: "Clear",
+    clearAllConfirmTitle: "Clear all notifications?",
+    clearAllConfirmDesc: "This will remove all notifications (including unread) for your account. This cannot be undone.",
+    clearAllOk: "Clear",
+    clearAllCancel: "Cancel",
+    clearAllSuccess: "Notifications cleared",
+    clearAllFailed: "Failed to clear",
+    deleteOne: "Delete",
+    deleteOneConfirmTitle: "Delete this notification?",
+    deleteOneOk: "Delete",
+    deleteOneCancel: "Cancel",
+    deleteOneSuccess: "Deleted",
+    deleteOneFailed: "Failed to delete",
     loadingText: "Loading...",
     emptyText: "No notifications",
     loadFailed: "Failed to load",

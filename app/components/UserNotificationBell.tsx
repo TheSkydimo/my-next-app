@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { 
+import {
   Badge, 
   Button, 
+  Popconfirm,
   Popover, 
   List, 
   Typography, 
@@ -11,19 +12,21 @@ import {
   Empty, 
   Space, 
   Tag, 
+  message,
   theme 
 } from "antd";
 import { 
   BellOutlined, 
   CheckOutlined, 
-  ReloadOutlined 
+  ReloadOutlined,
+  DeleteOutlined
 } from "@ant-design/icons";
 import type { AppLanguage } from "../client-prefs";
 import { getInitialLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import { apiFetch } from "../lib/apiFetch";
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 const { useToken } = theme;
 
 const TOPBAR_ICON_BTN_STYLE: React.CSSProperties = {
@@ -121,6 +124,41 @@ export default function UserNotificationBell() {
     }
   };
 
+  const clearAll = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/api/user/notifications", { method: "DELETE" });
+      if (!res.ok) throw new Error(await res.text());
+      setItems([]);
+      setUnreadCount(0);
+      message.success(messages.notifications.clearAllSuccess);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : messages.notifications.clearAllFailed);
+      message.error(messages.notifications.clearAllFailed);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteOne = async (id: number, wasUnread: boolean) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`/api/user/notifications/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(await res.text());
+      setItems((prev) => prev.filter((x) => x.id !== id));
+      // If it was unread, decrement count (best-effort; avoid negative).
+      if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1));
+      message.success(messages.notifications.deleteOneSuccess);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : messages.notifications.deleteOneFailed);
+      message.error(messages.notifications.deleteOneFailed);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
@@ -163,6 +201,22 @@ export default function UserNotificationBell() {
       }}>
         <Text strong>{messages.notifications.title}</Text>
         <Space>
+          <Popconfirm
+            title={messages.notifications.clearAllConfirmTitle}
+            description={messages.notifications.clearAllConfirmDesc}
+            okText={messages.notifications.clearAllOk}
+            cancelText={messages.notifications.clearAllCancel}
+            onConfirm={() => void clearAll()}
+            disabled={items.length <= 0 || loading}
+          >
+            <Button
+              type="text"
+              size="small"
+              icon={<DeleteOutlined />}
+              disabled={items.length <= 0 || loading}
+              title={messages.notifications.clearAll}
+            />
+          </Popconfirm>
           <Button 
             type="text" 
             size="small" 
@@ -208,15 +262,42 @@ export default function UserNotificationBell() {
                 }}
               >
                 <div style={{ width: '100%' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, gap: 12 }}>
                     <Text strong={!item.isRead}>
                       {!item.isRead && <Badge status="processing" style={{ marginRight: 8 }} />}
                       {item.title}
                     </Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(item.createdAt)}</Text>
+                    <Space size={4}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(item.createdAt)}</Text>
+                      <Popconfirm
+                        title={messages.notifications.deleteOneConfirmTitle}
+                        okText={messages.notifications.deleteOneOk}
+                        cancelText={messages.notifications.deleteOneCancel}
+                        onConfirm={(e) => {
+                          e?.stopPropagation?.();
+                          void deleteOne(item.id, !item.isRead);
+                        }}
+                        disabled={loading}
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          title={messages.notifications.deleteOne}
+                          disabled={loading}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </Popconfirm>
+                    </Space>
                   </div>
                   <div style={{ marginBottom: 4 }}>
-                    <Text type="secondary" ellipsis={{ tooltip: item.body }}>{item.body}</Text>
+                    <Paragraph
+                      type="secondary"
+                      style={{ marginBottom: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+                      ellipsis={{ rows: 3, tooltip: item.body }}
+                    >
+                      {item.body}
+                    </Paragraph>
                   </div>
                   {item.level !== 'info' && (
                     <Tag color={getLevelColor(item.level)} bordered={false} style={{ fontSize: 10, lineHeight: '18px' }}>
