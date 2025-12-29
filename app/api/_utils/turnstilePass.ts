@@ -1,4 +1,5 @@
 import { getRuntimeEnvVar } from "./runtimeEnv";
+import { getSessionSecret } from "./sessionSecret";
 import { serializeCookie, getRequestCookie } from "./cookies";
 import { isSecureRequest } from "./request";
 import { createSessionToken, verifySessionToken } from "./session";
@@ -26,7 +27,7 @@ function getTurnstilePassSecret(env: unknown): string {
   // Prefer SESSION_SECRET if present (already required for remember-login in prod),
   // fall back to TURNSTILE_SECRET_KEY (also server-only).
   return (
-    String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "").trim() ||
+    getSessionSecret(env).trim() ||
     String(getRuntimeEnvVar(env, "TURNSTILE_SECRET_KEY") ?? "").trim()
   );
 }

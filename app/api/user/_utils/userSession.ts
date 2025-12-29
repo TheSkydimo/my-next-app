@@ -1,5 +1,5 @@
 import { getRequestCookie } from "../../_utils/cookies";
-import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
+import { getSessionSecret } from "../../_utils/sessionSecret";
 import { getSessionCookieName, verifySessionToken } from "../../_utils/session";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../../_utils/usersTable";
@@ -30,7 +30,7 @@ export async function requireUserFromRequest(options: {
 }): Promise<{ user: UserAuthed } | Response> {
   const { request, env, db } = options;
 
-  const sessionSecret = String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "");
+  const sessionSecret = getSessionSecret(env);
   if (!sessionSecret) {
     return new Response("Session not configured", { status: 501 });
   }
@@ -98,7 +98,7 @@ export async function getOptionalUserIdFromRequest(options: {
 }): Promise<number | null> {
   const { request, env, db } = options;
 
-  const sessionSecret = String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "");
+  const sessionSecret = getSessionSecret(env);
   if (!sessionSecret) return null;
 
   const token = getRequestCookie(request, getSessionCookieName());

@@ -7,7 +7,7 @@ import { createSessionToken, getSessionCookieName } from "../_utils/session";
 import { serializeCookie } from "../_utils/cookies";
 import { readJsonBody } from "../_utils/body";
 import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../_utils/usersTable";
-import { getRuntimeEnvVar } from "../_utils/runtimeEnv";
+import { getSessionSecret } from "../_utils/sessionSecret";
 import { isSecureRequest } from "../_utils/request";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
@@ -147,7 +147,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   }
 
   // 登录成功：可选下发 Session Cookie（用于“记住登录状态”）
-  const sessionSecret = String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "");
+  const sessionSecret = getSessionSecret(env);
 
   const headers: HeadersInit = {};
   if (sessionSecret) {

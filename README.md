@@ -19,6 +19,12 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+### Dev notes (Cloudflare bindings + LAN access)
+
+- For `npm run dev`, this repo initializes the OpenNext Cloudflare dev bridge so that API routes using `getCloudflareContext()` work locally.
+- If you access the dev server from another device on your LAN (e.g. `http://192.168.1.102:3000`), you may need to allow the host for Next dev assets:
+  - Set `DEV_ALLOWED_DEV_ORIGINS="192.168.1.102"` (comma-separated), or edit `allowedDevOrigins` in `next.config.ts`.
+
 ## Preview
 
 Preview the application locally on the Cloudflare runtime:
@@ -87,6 +93,8 @@ npm run dev
 - **Cloudflare runtime preview** (`npm run preview`): put these in `.dev.vars`:
   - `DEV_BYPASS_TURNSTILE="1"`
   - `DEV_RETURN_EMAIL_CODE="1"`
+  
+Tip (Windows): if you prefer not to set PowerShell env vars every time, you can also add these two keys into `.env.local` for `npm run dev` (do not commit `.env.local`).
 
 Notes:
 - When bypass is enabled, `/api/public-config` will return `turnstileRequired=false`, and the UI will skip the Turnstile step.

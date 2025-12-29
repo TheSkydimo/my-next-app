@@ -3,6 +3,17 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import path from "node:path";
 import fs from "node:fs/promises";
 
+function parseCsvEnvHosts(value: string | undefined): string[] {
+  return String(value ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const devExtraAllowedOrigins = parseCsvEnvHosts(
+  process.env.DEV_ALLOWED_DEV_ORIGINS
+);
+
 const nextConfig: NextConfig = {
   // Required by OpenNext adapters (Cloudflare/AWS) to locate server output under `.next/standalone`.
   output: "standalone",
@@ -30,8 +41,11 @@ const nextConfig: NextConfig = {
       ? [
           "localhost",
           "127.0.0.1",
-          // Allow LAN access (e.g. mobile testing). You can add your LAN IP here if needed.
-          // Example: "192.168.1.102",
+          // Allow LAN access (e.g. mobile testing).
+          // - Add your LAN IP here, or
+          // - set `DEV_ALLOWED_DEV_ORIGINS="192.168.1.102,192.168.1.50"` before `npm run dev`
+          "192.168.1.102",
+          ...devExtraAllowedOrigins,
           // Example wildcard: "*.local-origin.dev",
         ]
       : undefined,
@@ -110,9 +124,17 @@ const nextConfig: NextConfig = {
  * before running `npm run dev`.
  */
 export default async () => {
+  /**
+   * In this repo, most `/api/*` routes depend on Cloudflare bindings via
+   * `getCloudflareContext()` (D1/R2/etc). So for `next dev`, we must initialize
+   * the Cloudflare dev bridge, otherwise API routes will 500.
+   *
+   * If you *really* want to disable this for some reason, set:
+   *   DISABLE_CLOUDFLARE_DEV_BRIDGE=1
+   */
   if (
     process.env.NODE_ENV === "development" &&
-    process.env.CLOUDFLARE_DEV === "1"
+    process.env.DISABLE_CLOUDFLARE_DEV_BRIDGE !== "1"
   ) {
     await initOpenNextCloudflareForDev({
       environment: "development",

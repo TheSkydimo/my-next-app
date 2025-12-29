@@ -220,24 +220,29 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const ipKey = `email_send:${purpose}:ip:${ip}`;
   const emailKey = `email_send:${purpose}:email:${emailHash}`;
 
-  const ipLimit = await consumeRateLimit({
-    db,
-    key: ipKey,
-    windowSeconds: 60,
-    limit: 10,
-  });
-  if (!ipLimit.allowed) {
-    return new Response(msg.codeTooFrequent, { status: 429 });
-  }
+  // Local dev ergonomics: if we return the code in the API response, disable rate limits so
+  // manual testing doesn't get blocked by 429s. Production behavior is unchanged because
+  // `shouldReturnEmailCodeInResponse` is hard-disabled outside dev runtime.
+  if (!returnCodeInResponse) {
+    const ipLimit = await consumeRateLimit({
+      db,
+      key: ipKey,
+      windowSeconds: 60,
+      limit: 10,
+    });
+    if (!ipLimit.allowed) {
+      return new Response(msg.codeTooFrequent, { status: 429 });
+    }
 
-  const emailLimit = await consumeRateLimit({
-    db,
-    key: emailKey,
-    windowSeconds: 60,
-    limit: 1,
-  });
-  if (!emailLimit.allowed) {
-    return new Response(msg.codeTooFrequent, { status: 429 });
+    const emailLimit = await consumeRateLimit({
+      db,
+      key: emailKey,
+      windowSeconds: 60,
+      limit: 1,
+    });
+    if (!emailLimit.allowed) {
+      return new Response(msg.codeTooFrequent, { status: 429 });
+    }
   }
 
   // 如果是管理员相关用途，先确认该邮箱为管理员账号

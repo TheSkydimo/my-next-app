@@ -1,5 +1,5 @@
 import { getRequestCookie } from "../../_utils/cookies";
-import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
+import { getSessionSecret } from "../../_utils/sessionSecret";
 import { getSessionCookieName, verifySessionToken } from "../../_utils/session";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 import {
@@ -33,7 +33,7 @@ export async function requireAdminFromRequest(options: {
 }): Promise<{ admin: AdminAuthedUser } | Response> {
   const { request, env, db } = options;
 
-  const sessionSecret = String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "");
+  const sessionSecret = getSessionSecret(env);
   if (!sessionSecret) {
     return new Response("Session not configured", { status: 501 });
   }

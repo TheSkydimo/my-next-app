@@ -5,7 +5,7 @@ import { verifyAndUseEmailCode } from "../../_utils/emailCode";
 import { createSessionToken, getSessionCookieName } from "../../_utils/session";
 import { serializeCookie } from "../../_utils/cookies";
 import { readJsonBody } from "../../_utils/body";
-import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
+import { getSessionSecret } from "../../_utils/sessionSecret";
 import { isSecureRequest } from "../../_utils/request";
 import {
   ensureUsersAvatarUrlColumn,
@@ -113,7 +113,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const role = isSuperAdmin ? "super_admin" : "admin";
 
   // 登录成功：下发与客户端一致的 Session Cookie（用于“记住登录状态”）
-  const sessionSecret = String(getRuntimeEnvVar(env, "SESSION_SECRET") ?? "");
+  const sessionSecret = getSessionSecret(env);
   const headers: HeadersInit = {};
 
   if (sessionSecret) {
