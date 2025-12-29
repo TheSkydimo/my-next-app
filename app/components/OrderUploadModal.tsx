@@ -30,6 +30,7 @@ export default function OrderUploadModal({
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const maxBytes = 8 * 1024 * 1024; // keep consistent with server-side cap
 
   const isImageFile = (file: File) => {
     const type = String(file.type || "");
@@ -59,6 +60,11 @@ export default function OrderUploadModal({
       return;
     }
 
+    if (typeof file.size === "number" && file.size > maxBytes) {
+      setError(language === "zh-CN" ? "图片过大（最大 8MB）" : "Image is too large (max 8MB)");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -72,7 +78,7 @@ export default function OrderUploadModal({
         formData.append("note", note.trim());
       }
 
-      const res = await apiFetch("/api/user/orders", {
+      const res = await apiFetch(`/api/user/orders?lang=${encodeURIComponent(language)}`, {
         method: "POST",
         body: formData,
       });
@@ -104,6 +110,10 @@ export default function OrderUploadModal({
     beforeUpload: (file) => {
       if (!isImageFile(file)) {
         message.error(language === "zh-CN" ? "只能上传图片文件!" : "You can only upload image files!");
+        return Upload.LIST_IGNORE;
+      }
+      if (typeof file.size === "number" && file.size > maxBytes) {
+        message.error(language === "zh-CN" ? "图片过大（最大 8MB）" : "Image is too large (max 8MB)");
         return Upload.LIST_IGNORE;
       }
       // Use onChange to populate UploadFile (with originFileObj).
@@ -151,6 +161,50 @@ export default function OrderUploadModal({
       ]}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Alert
+          type="info"
+          showIcon
+          message={
+            language === "zh-CN"
+              ? "上传前请确认截图包含“订单号/订单编号”，否则会识别失败"
+              : "Before uploading, make sure the screenshot includes an Order Number/Order ID, otherwise recognition will fail"
+          }
+          description={
+            <div>
+              <div style={{ marginBottom: 8 }}>
+                {language === "zh-CN"
+                  ? "建议上传电商订单详情页/发票截图，需清晰可读："
+                  : "Recommended: upload an e-commerce order details or invoice screenshot. The following should be clearly readable:"}
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                <li>
+                  {language === "zh-CN" ? "订单号/订单编号（必须）" : "Order number / Order ID (required)"}
+                </li>
+                <li>
+                  {language === "zh-CN"
+                    ? "平台/店铺信息（推荐）"
+                    : "Platform / shop information (recommended)"}
+                </li>
+                <li>
+                  {language === "zh-CN"
+                    ? "下单时间、付款时间（推荐）"
+                    : "Order created time & paid time (recommended)"}
+                </li>
+                <li>
+                  {language === "zh-CN"
+                    ? "购买数量（推荐）"
+                    : "Purchased quantity (recommended)"}
+                </li>
+              </ul>
+              <div style={{ marginTop: 8 }}>
+                {language === "zh-CN"
+                  ? `仅支持图片，且大小不超过 8MB；同一订单号只能提交一次。`
+                  : "Images only, up to 8MB; the same order number can only be submitted once."}
+              </div>
+            </div>
+          }
+        />
+
         {error && <Alert type="error" message={error} showIcon />}
         
         <Dragger {...uploadProps} style={{ padding: 20 }}>

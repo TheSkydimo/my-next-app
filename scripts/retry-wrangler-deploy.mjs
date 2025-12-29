@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 const MAX_ATTEMPTS = Number.parseInt(process.env.WRANGLER_DEPLOY_RETRY_MAX ?? "6", 10) || 6;
 const RETRY_DELAY_MS = Number.parseInt(process.env.WRANGLER_DEPLOY_RETRY_DELAY_MS ?? "2500", 10) || 2500;
@@ -72,28 +74,71 @@ async function runOnce(args) {
   });
 }
 
+async function suppressDevVarsForDeploy() {
+  const projectRoot = process.cwd();
+  const devVarsPath = path.join(projectRoot, ".dev.vars");
+  const backupPath = path.join(projectRoot, ".dev.vars.__deploy_backup__");
+
+  try {
+    await fs.stat(devVarsPath);
+  } catch {
+    return {
+      restore: async () => undefined,
+    };
+  }
+
+  // If a previous run crashed, try to restore first.
+  try {
+    await fs.stat(backupPath);
+    // If both exist, prefer keeping the current `.dev.vars` and remove the stale backup.
+    await fs.rm(backupPath, { force: true });
+  } catch {
+    // ignore
+  }
+
+  // Temporarily move `.dev.vars` out of the way so Wrangler/OpenNext won't inject
+  // local secrets into a production deploy. (Wrangler may auto-load `.dev.vars`
+  // even for `deploy` in some setups.)
+  await fs.rename(devVarsPath, backupPath);
+
+  return {
+    restore: async () => {
+      try {
+        await fs.rename(backupPath, devVarsPath);
+      } catch {
+        // ignore
+      }
+    },
+  };
+}
+
 async function main() {
   const args = process.argv.slice(2);
   // Default command if none provided
   const finalArgs = args.length > 0 ? args : ["deploy"];
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const { code, output } = await runOnce(finalArgs);
-    if (code === 0) process.exit(0);
+  const { restore } = await suppressDevVarsForDeploy();
+  try {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const { code, output } = await runOnce(finalArgs);
+      if (code === 0) process.exit(0);
 
-    const retryable = isRetryableWranglerError(output);
-    if (!retryable || attempt === MAX_ATTEMPTS) {
-      process.exit(code || 1);
+      const retryable = isRetryableWranglerError(output);
+      if (!retryable || attempt === MAX_ATTEMPTS) {
+        process.exit(code || 1);
+      }
+
+      const jitter = Math.floor(Math.random() * 250);
+      const backoff = Math.min(RETRY_DELAY_MS * Math.pow(2, attempt - 1), RETRY_DELAY_MAX_MS);
+      const delay = backoff + jitter;
+      console.warn(
+        `\n[retry-wrangler-deploy] Detected Cloudflare transient deploy failure (7010/100312). ` +
+          `Retrying ${attempt}/${MAX_ATTEMPTS} in ${delay}ms...\n`
+      );
+      await sleep(delay);
     }
-
-    const jitter = Math.floor(Math.random() * 250);
-    const backoff = Math.min(RETRY_DELAY_MS * Math.pow(2, attempt - 1), RETRY_DELAY_MAX_MS);
-    const delay = backoff + jitter;
-    console.warn(
-      `\n[retry-wrangler-deploy] Detected Cloudflare transient deploy failure (7010/100312). ` +
-        `Retrying ${attempt}/${MAX_ATTEMPTS} in ${delay}ms...\n`
-    );
-    await sleep(delay);
+  } finally {
+    await restore();
   }
 }
 

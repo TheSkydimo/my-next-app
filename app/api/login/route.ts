@@ -10,6 +10,7 @@ import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../_utils/
 import { getSessionSecret } from "../_utils/sessionSecret";
 import { isSecureRequest } from "../_utils/request";
 import { assertSameOriginOrNoOrigin } from "../_utils/requestOrigin";
+import { getSessionCookieDomain } from "../_utils/sessionCookieDomain";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
@@ -166,11 +167,13 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     });
 
     const secure = isSecureRequest(request);
+    const domain = getSessionCookieDomain(env);
 
     headers["Set-Cookie"] = serializeCookie(getSessionCookieName(), token, {
       httpOnly: true,
       secure,
       sameSite: "Lax",
+      ...(domain ? { domain } : {}),
       path: "/",
       // remember=false 时不设置 Max-Age => session cookie（关闭浏览器即失效）
       ...(rememberMe ? { maxAge: cookieMaxAgeSeconds } : {}),

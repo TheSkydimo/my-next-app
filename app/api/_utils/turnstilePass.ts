@@ -3,6 +3,7 @@ import { getSessionSecret } from "./sessionSecret";
 import { serializeCookie, getRequestCookie } from "./cookies";
 import { isSecureRequest } from "./request";
 import { createSessionToken, verifySessionToken } from "./session";
+import { getSessionCookieDomain } from "./sessionCookieDomain";
 
 /**
  * Short-lived "Turnstile passed" cookie.
@@ -49,10 +50,12 @@ export async function issueTurnstilePassCookie(opts: {
   });
 
   const secure = isSecureRequest(opts.request);
+  const domain = getSessionCookieDomain(opts.env);
   return serializeCookie(getTurnstilePassCookieName(), token, {
     httpOnly: true,
     secure,
     sameSite: "Lax",
+    ...(domain ? { domain } : {}),
     path: "/",
     maxAge: maxAgeSeconds,
   });

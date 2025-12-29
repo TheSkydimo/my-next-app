@@ -35,6 +35,8 @@ type UserOrderApiMessages = {
   deleteNotFoundOrNotOwned: string;
   recognizeFailed: string;
   duplicateOrderNo: string;
+  imageTooLarge: string;
+  invalidImageFile: string;
 };
 
 function detectApiLanguage(request: Request): ApiLanguage {
@@ -66,6 +68,8 @@ function getUserOrderApiMessages(lang: ApiLanguage): UserOrderApiMessages {
         "Failed to recognize order information from the screenshot. Please upload a clearer order or invoice image.",
       duplicateOrderNo:
         "This order number has already been used. One order can only be submitted by one user.",
+      imageTooLarge: "Image is too large (max 8MB)",
+      invalidImageFile: "Invalid file type. Please upload an image file.",
     };
   }
 
@@ -79,6 +83,8 @@ function getUserOrderApiMessages(lang: ApiLanguage): UserOrderApiMessages {
     recognizeFailed:
       "未能从图片中识别出订单信息，请上传更清晰的订单或发票截图。",
     duplicateOrderNo: "该订单号已被使用（一个订单只能由一个用户提交）。",
+    imageTooLarge: "图片过大（最大 8MB）",
+    invalidImageFile: "文件类型不正确，请上传图片文件。",
   };
 }
 
@@ -385,11 +391,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   // (Note: Cloudflare/Next may still have its own body limits; this is defense-in-depth.)
   const contentType = String(file.type || "");
   if (!contentType.startsWith("image/")) {
-    return new Response(t.missingDeviceImage, { status: 400 });
+    return new Response(t.invalidImageFile, { status: 400 });
   }
   const maxBytes = 8 * 1024 * 1024; // 8MB
   if (typeof file.size === "number" && file.size > maxBytes) {
-    return new Response("图片过大（最大 8MB）", { status: 400 });
+    return new Response(t.imageTooLarge, { status: 400 });
   }
 
   // 设备 ID 现在是可选的：

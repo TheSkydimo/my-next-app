@@ -1,5 +1,6 @@
 export type CookieSerializeOptions = {
   maxAge?: number;
+  domain?: string;
   path?: string;
   httpOnly?: boolean;
   secure?: boolean;
@@ -37,6 +38,14 @@ export function serializeCookie(
   parts.push(`${name}=${encodeURIComponent(value)}`);
 
   if (options.maxAge != null) parts.push(`Max-Age=${Math.floor(options.maxAge)}`);
+  if (options.domain) {
+    // Cookie Domain should be a host suffix like "example.com" or ".example.com"
+    // Do not accept anything that could inject extra attributes.
+    const d = options.domain.trim();
+    if (d && !/[;\s/\\]/.test(d)) {
+      parts.push(`Domain=${d}`);
+    }
+  }
   parts.push(`Path=${options.path ?? "/"}`);
 
   if (options.httpOnly) parts.push("HttpOnly");
