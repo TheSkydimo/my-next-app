@@ -53,6 +53,7 @@ const TEXTS: Record<
       submitButton: string;
       useDifferentEmail: string;
       rememberMe: string;
+      loginLoading: string;
       loginError: string;
       errorEmailRequired: string;
       errorTurnstileLoadFailed: string;
@@ -91,6 +92,7 @@ const TEXTS: Record<
       submitButton: "提交",
       useDifferentEmail: "使用其他邮箱登录",
       rememberMe: "记住登录",
+      loginLoading: "登录中...",
       loginError: "登录失败，请检查验证码是否正确",
       errorEmailRequired: "请先填写邮箱",
       errorTurnstileLoadFailed: "验证加载失败，请刷新页面重试",
@@ -127,6 +129,7 @@ const TEXTS: Record<
       submitButton: "Submit",
       useDifferentEmail: "Sign in with a different email",
       rememberMe: "Remember me",
+      loginLoading: "Signing in...",
       loginError: "Sign-in failed. Please check the code.",
       errorEmailRequired: "Please enter your email first",
       errorTurnstileLoadFailed:
@@ -166,6 +169,7 @@ const TEXTS: Record<
       submitButton: "登录后台",
       useDifferentEmail: "使用其他邮箱登录",
       rememberMe: "记住登录",
+      loginLoading: "登录中...",
       loginError: "登录失败，请检查验证码是否正确或账号是否为管理员",
       errorEmailRequired: "请先填写管理员邮箱",
       errorTurnstileLoadFailed: "验证加载失败，请刷新页面重试",
@@ -201,6 +205,7 @@ const TEXTS: Record<
       submitButton: "Sign in",
       useDifferentEmail: "Use a different email",
       rememberMe: "Remember me",
+      loginLoading: "Signing in...",
       loginError: "Sign-in failed. Check the code or admin access.",
       errorEmailRequired: "Please enter admin email first",
       errorTurnstileLoadFailed:
@@ -254,11 +259,13 @@ const PRIMARY_SUBMIT_BG: Record<PrimaryColorKey, string> = {
 export function AuthEmailCodePage(props: { variant: Variant }) {
   const { variant } = props;
   const [step, setStep] = useState<LoginStep>("email");
+  const formRef = useRef<HTMLFormElement | null>(null);
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [emailCodeChallengeId, setEmailCodeChallengeId] = useState("");
   const [devEmailCode, setDevEmailCode] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
+  const [loggingIn, setLoggingIn] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
@@ -738,96 +745,109 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     setError("");
     setErrorKind("none");
 
+    // Prevent duplicate submissions (double click / enter spam) which can cause:
+    // 1) request A succeeds and consumes the one-time email code
+    // 2) request B arrives with the same code and gets "expired/invalid"
+    // leading to a confusing flash of error even though the user is logged in.
+    if (loggingIn) return;
+    setLoggingIn(true);
+
     const normalizedCode = normalizeEmailCode(emailCode);
     if (!normalizedCode) {
       setError(t.errorCodeRequired);
       setErrorKind("validation");
+      setLoggingIn(false);
       return;
     }
 
-    const res = await fetch(loginEndpoint, {
-      method: "POST",
-      body: JSON.stringify({
-        email,
-        emailCode: normalizedCode,
-        emailCodeChallengeId,
-        remember: rememberMe,
-      }),
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(loginEndpoint, {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          emailCode: normalizedCode,
+          emailCodeChallengeId,
+          remember: rememberMe,
+        }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      setError(text || t.loginError);
-      setErrorKind("login");
-      return;
-    }
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        setError(text || t.loginError);
+        setErrorKind("login");
+        return;
+      }
 
-    if (variant === "user") {
-      // Response body is not needed here (auth is via httpOnly cookie).
-      await res.json().catch(() => null);
+      if (variant === "user") {
+        // Response body is not needed here (auth is via httpOnly cookie).
+        await res.json().catch(() => null);
 
-      // 安全：不要把邮箱/头像等用户信息持久化写入 localStorage（避免 XSS/共享设备泄露）
+        // 安全：不要把邮箱/头像等用户信息持久化写入 localStorage（避免 XSS/共享设备泄露）
 
-      // 登录成功：预加载用户端 Dashboard 核心数据，并写入 sessionStorage（一次性）
-      // 注意：这里不引入第三方状态库，不改现有页面逻辑，只是“暖缓存”让后续页面优先命中。
-      if (typeof window !== "undefined" && userBootstrapEndpoint) {
-        try {
-          const ctrl = new AbortController();
-          const timeout = window.setTimeout(() => ctrl.abort(), 1500);
-          const pre = await fetch(userBootstrapEndpoint, {
-            method: "GET",
-            credentials: "include",
-            cache: "no-store",
-            signal: ctrl.signal,
-          }).finally(() => window.clearTimeout(timeout));
+        // 登录成功：预加载用户端 Dashboard 核心数据，并写入 sessionStorage（一次性）
+        // 注意：这里不引入第三方状态库，不改现有页面逻辑，只是“暖缓存”让后续页面优先命中。
+        if (typeof window !== "undefined" && userBootstrapEndpoint) {
+          try {
+            const ctrl = new AbortController();
+            const timeout = window.setTimeout(() => ctrl.abort(), 1500);
+            const pre = await fetch(userBootstrapEndpoint, {
+              method: "GET",
+              credentials: "include",
+              cache: "no-store",
+              signal: ctrl.signal,
+            }).finally(() => window.clearTimeout(timeout));
 
-          if (pre.ok) {
-            const payload = await pre.json().catch(() => null);
-            if (payload && typeof payload === "object") {
-              window.sessionStorage.setItem(
-                USER_BOOTSTRAP_SESSION_STORAGE_KEY,
-                JSON.stringify(payload)
-              );
+            if (pre.ok) {
+              const payload = await pre.json().catch(() => null);
+              if (payload && typeof payload === "object") {
+                window.sessionStorage.setItem(
+                  USER_BOOTSTRAP_SESSION_STORAGE_KEY,
+                  JSON.stringify(payload)
+                );
+              }
             }
+          } catch {
+            // best-effort: ignore preload failure
           }
-        } catch {
-          // best-effort: ignore preload failure
+        }
+      } else {
+        // admin: do not persist admin identity in localStorage; rely on httpOnly cookie.
+        await res.json().catch(() => null);
+
+        // 管理端：登录成功后预加载一次核心列表数据，并写入 sessionStorage（一次性）
+        if (typeof window !== "undefined" && adminBootstrapEndpoint) {
+          try {
+            const ctrl = new AbortController();
+            const timeout = window.setTimeout(() => ctrl.abort(), 1500);
+            const pre = await fetch(adminBootstrapEndpoint, {
+              method: "GET",
+              credentials: "include",
+              cache: "no-store",
+              signal: ctrl.signal,
+            }).finally(() => window.clearTimeout(timeout));
+
+            if (pre.ok) {
+              const payload = await pre.json().catch(() => null);
+              if (payload && typeof payload === "object") {
+                window.sessionStorage.setItem(
+                  ADMIN_BOOTSTRAP_SESSION_STORAGE_KEY,
+                  JSON.stringify(payload)
+                );
+              }
+            }
+          } catch {
+            // best-effort: ignore preload failure
+          }
         }
       }
-    } else {
-      // admin: do not persist admin identity in localStorage; rely on httpOnly cookie.
-      await res.json().catch(() => null);
 
-      // 管理端：登录成功后预加载一次核心列表数据，并写入 sessionStorage（一次性）
-      if (typeof window !== "undefined" && adminBootstrapEndpoint) {
-        try {
-          const ctrl = new AbortController();
-          const timeout = window.setTimeout(() => ctrl.abort(), 1500);
-          const pre = await fetch(adminBootstrapEndpoint, {
-            method: "GET",
-            credentials: "include",
-            cache: "no-store",
-            signal: ctrl.signal,
-          }).finally(() => window.clearTimeout(timeout));
-
-          if (pre.ok) {
-            const payload = await pre.json().catch(() => null);
-            if (payload && typeof payload === "object") {
-              window.sessionStorage.setItem(
-                ADMIN_BOOTSTRAP_SESSION_STORAGE_KEY,
-                JSON.stringify(payload)
-              );
-            }
-          }
-        } catch {
-          // best-effort: ignore preload failure
-        }
-      }
+      window.location.href = postLoginRedirect;
+    } finally {
+      // If navigation happens, this doesn't matter; if it doesn't, make sure UI can retry.
+      setLoggingIn(false);
     }
-
-    window.location.href = postLoginRedirect;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1015,6 +1035,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
             {!!headerTitle && <h1 className="auth-plain__title">{headerTitle}</h1>}
 
             <form
+              ref={formRef}
               onSubmit={handleSubmit}
               className="auth-card__form"
               aria-label={headerTitle}
@@ -1146,6 +1167,13 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                       placeholder={t.emailCodePlaceholder}
                       value={emailCode}
                       onChange={(e) => setEmailCode(normalizeEmailCode(e.target.value))}
+                      onKeyDown={(e) => {
+                        // Make "Enter to submit" reliable across browsers/IMEs.
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        if (loggingIn) return;
+                        formRef.current?.requestSubmit();
+                      }}
                       className="auth-card__field-grow"
                       aria-label={t.emailCodeLabel}
                       required
@@ -1158,8 +1186,12 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                     </div>
                   )}
 
-                  <button type="submit" className="auth-card__submit-button">
-                    {t.submitButton}
+                  <button
+                    type="submit"
+                    className="auth-card__submit-button"
+                    disabled={loggingIn}
+                  >
+                    {loggingIn ? t.loginLoading : t.submitButton}
                   </button>
 
                   <button
