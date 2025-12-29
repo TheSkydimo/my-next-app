@@ -143,7 +143,9 @@ export type AdminMessages = {
     title: string;
     desc: string;
     openLogs: string;
+    openIssues: string;
     urlLabel: string;
+    issuesUrlLabel: string;
     urlNotConfigured: string;
     configureHint: string;
   };
@@ -380,7 +382,9 @@ const zhCN: AdminMessages = {
     title: "日志",
     desc: "打开日志系统查看最近的错误、告警与运行日志（通常需要已登录 Sentry 后才能访问）。",
     openLogs: "打开日志系统",
+    openIssues: "打开 Sentry Issues",
     urlLabel: "当前配置：",
+    issuesUrlLabel: "Sentry Issues：",
     urlNotConfigured: "未配置日志系统地址。",
     configureHint:
       "请在构建/运行环境中设置 NEXT_PUBLIC_ADMIN_LOGS_URL（例如指向 Sentry Logs 页面）。",
@@ -622,7 +626,9 @@ const enUS: AdminMessages = {
     desc:
       "Open the log system to view recent errors, alerts, and runtime logs (usually requires being signed in to Sentry).",
     openLogs: "Open log system",
+    openIssues: "Open Sentry Issues",
     urlLabel: "Configured URL: ",
+    issuesUrlLabel: "Sentry Issues:",
     urlNotConfigured: "Log system URL is not configured.",
     configureHint:
       "Set NEXT_PUBLIC_ADMIN_LOGS_URL in your build/runtime environment (e.g. the Sentry Logs page).",

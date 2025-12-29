@@ -38,6 +38,12 @@ export default function AdminLogsPage() {
     return raw.trim();
   }, []);
 
+  const issuesUrl = useMemo(() => {
+    const fallback = "https://skydimo.sentry.io/issues/?statsPeriod=7d";
+    const raw = process.env.NEXT_PUBLIC_ADMIN_SENTRY_ISSUES_URL ?? fallback;
+    return raw.trim();
+  }, []);
+
   if (!adminEmail) {
     return (
       <div className="vben-page">
@@ -66,29 +72,33 @@ export default function AdminLogsPage() {
 
       <div className="vben-card">
         {logsUrl ? (
-          <>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>
-                {messages.logs.urlLabel}
-              </div>
-              <div style={{ wordBreak: "break-all" }}>{logsUrl}</div>
-            </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>{messages.logs.urlLabel}</div>
+            <div style={{ wordBreak: "break-all" }}>{logsUrl}</div>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ marginTop: 0 }}>{messages.logs.urlNotConfigured}</p>
+            <p style={{ opacity: 0.85, marginBottom: 0 }}>{messages.logs.configureHint}</p>
+          </div>
+        )}
 
-            <a
-              className="btn btn-primary"
-              href={logsUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, opacity: 0.8 }}>{messages.logs.issuesUrlLabel}</div>
+          <div style={{ wordBreak: "break-all" }}>{issuesUrl}</div>
+        </div>
+
+        <div className="vben-row vben-row--gap-sm" style={{ flexWrap: "wrap" }}>
+          {logsUrl ? (
+            <a className="btn btn-primary" href={logsUrl} target="_blank" rel="noreferrer">
               {messages.logs.openLogs}
             </a>
-          </>
-        ) : (
-          <>
-            <p style={{ marginTop: 0 }}>{messages.logs.urlNotConfigured}</p>
-            <p style={{ opacity: 0.85 }}>{messages.logs.configureHint}</p>
-          </>
-        )}
+          ) : null}
+
+          <a className="btn btn-secondary" href={issuesUrl} target="_blank" rel="noreferrer">
+            {messages.logs.openIssues}
+          </a>
+        </div>
       </div>
     </div>
   );
