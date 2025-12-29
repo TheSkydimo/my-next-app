@@ -9,9 +9,9 @@
 		"start": "next start",
 		"lint": "next lint",
 		"clean:opennext": "node scripts/clean-open-next.mjs",
-		"deploy": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && node scripts/retry-wrangler-deploy.mjs deploy --config wrangler.jsonc --env=\"\" --keep-vars",
-		"upload": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload",
-		"preview": "npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare preview",
+		"deploy": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && node scripts/retry-wrangler-deploy.mjs deploy --config wrangler.jsonc --env=\"\" --keep-vars",
+		"upload": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload",
+		"preview": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare preview",
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
 		"postinstall": "node scripts/patch-opennext-windows.mjs"
 	},

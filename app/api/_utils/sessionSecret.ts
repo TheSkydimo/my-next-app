@@ -1,10 +1,5 @@
 import { getRuntimeEnvVar } from "./runtimeEnv";
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __DEV_EPHEMERAL_SESSION_SECRET: string | undefined;
-}
-
 function isDevRuntime(env: unknown): boolean {
   // Keep consistent with runtimeEnv.ts rules:
   // - Next.js dev server: NODE_ENV === "development"
@@ -19,11 +14,11 @@ function generateSecret(): string {
   // base64url (no padding)
   const b64 = (() => {
     // Cloudflare Workers: btoa; Node: Buffer.
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (typeof btoa === "function") {
+    const btoaFn = (globalThis as unknown as { btoa?: (s: string) => string }).btoa;
+    if (typeof btoaFn === "function") {
       let bin = "";
       for (const b of bytes) bin += String.fromCharCode(b);
-      return btoa(bin);
+      return btoaFn(bin);
     }
     // Node fallback:
     return Buffer.from(bytes).toString("base64");
@@ -47,10 +42,11 @@ export function getSessionSecret(env: unknown): string {
   // Safety: never auto-generate in production.
   if (!isDevRuntime(env)) return "";
 
-  if (!globalThis.__DEV_EPHEMERAL_SESSION_SECRET) {
-    globalThis.__DEV_EPHEMERAL_SESSION_SECRET = generateSecret();
+  const g = globalThis as unknown as { __DEV_EPHEMERAL_SESSION_SECRET?: string };
+  if (!g.__DEV_EPHEMERAL_SESSION_SECRET) {
+    g.__DEV_EPHEMERAL_SESSION_SECRET = generateSecret();
   }
-  return globalThis.__DEV_EPHEMERAL_SESSION_SECRET;
+  return g.__DEV_EPHEMERAL_SESSION_SECRET;
 }
 
 

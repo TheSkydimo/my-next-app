@@ -26,23 +26,29 @@ if (!fs.existsSync(targetFile)) {
 
 const original = fs.readFileSync(targetFile, "utf8");
 
-const from =
+const fromLegacy =
   "fs.rmSync(options.outputDir, { recursive: true, force: true });";
-const to =
+const fromRetries =
   "fs.rmSync(options.outputDir, { recursive: true, force: true, maxRetries: 30, retryDelay: 200 });";
+const to =
+  "try { fs.rmSync(options.outputDir, { recursive: true, force: true, maxRetries: 30, retryDelay: 200 }); } catch (e) { const code = e && typeof e === 'object' ? e.code : undefined; if (code === 'EBUSY' || code === 'EPERM' || code === 'ENOTEMPTY') { logger.warn(`[patch-opennext-windows] Windows lock (${code}) while cleaning outputDir; continuing with existing directory.`); } else { throw e; } }";
 
-if (original.includes(to)) {
-  process.exit(0);
-}
-
-if (!original.includes(from)) {
+if (
+  !original.includes(fromLegacy) &&
+  !original.includes(fromRetries) &&
+  !original.includes(to)
+) {
   console.warn(
     `[patch-opennext-windows] Skipped: expected snippet not found in ${targetFile}`
   );
   process.exit(0);
 }
 
-const patched = original.replace(from, to);
+const patched = original.includes(to)
+  ? original
+  : original.includes(fromRetries)
+    ? original.replace(fromRetries, to)
+    : original.replace(fromLegacy, to);
 fs.writeFileSync(targetFile, patched, "utf8");
 console.log("[patch-opennext-windows] Patched OpenNext rmSync retries for Windows.");
 

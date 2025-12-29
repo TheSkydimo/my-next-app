@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 
 function sleep(ms) {
   // Synchronous sleep to keep this script simple and cross-platform.
@@ -62,9 +63,47 @@ for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 }
 
 if (lastErr) {
-  console.error(
-    `Failed to remove ${target}. If you're on Windows, close any Explorer window opened in the project folder and temporarily disable AV scanning for this directory.`
-  );
+  const code = lastErr && typeof lastErr === "object" ? lastErr.code : undefined;
+  // On Windows, `.open-next/assets` may be locked by:
+  // - running wrangler/workerd preview
+  // - antivirus/indexer
+  // - file explorer preview pane
+  // In these cases, failing hard breaks deploy even though OpenNext can often proceed by reusing the directory.
+  if (code === "EBUSY" || code === "EPERM" || code === "ENOTEMPTY") {
+    console.warn(
+      `[clean-open-next] Warning: failed to remove ${target} due to Windows file locks (${code}). ` +
+        `Trying partial cleanup (keep assets/) and continuing anyway.`
+    );
+
+    // Best-effort partial cleanup to avoid stale files causing build errors
+    // (e.g. duplicated exports in `.open-next/cloudflare/next-env.mjs`).
+    try {
+      if (fs.existsSync(target)) {
+        const preserve = new Set(["assets"]);
+        const entries = fs.readdirSync(target, { withFileTypes: true });
+        for (const ent of entries) {
+          if (preserve.has(ent.name)) continue;
+          const p = path.join(target, ent.name);
+          try {
+            fs.rmSync(p, {
+              recursive: true,
+              force: true,
+              maxRetries: 10,
+              retryDelay: 100,
+            });
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    process.exit(0);
+  }
+
+  console.error(`Failed to remove ${target}.`);
   throw lastErr;
 }
 
