@@ -2,6 +2,55 @@
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 安全上线前必做（6 条检测）
+
+本项目使用 **httpOnly session cookie** 做鉴权（降低前端泄露 token 风险）。上线/给别人用之前请务必完成以下 6 条检测，否则可能导致隐私/账号风险。
+
+### 1) 生产环境必须是 `NODE_ENV=production`
+- **要求**：生产环境不要出现 `NODE_ENV=development` / `NEXTJS_ENV=development`
+- **原因**：项目里存在 dev-only 安全开关（seed、返回验证码等）只允许在 dev runtime 生效
+
+### 2) 生产环境必须关闭 seed
+- **要求**：不要在生产环境设置 `ALLOW_ADMIN_SEED="true"`
+- **原因**：`/api/admin/seed` 只用于初始化，生产必须不可达（返回 404）
+
+### 3) 生产环境必须关闭 DEV_* 辅助开关
+- **要求**：不要设置：
+  - `DEV_BYPASS_TURNSTILE=1`
+  - `DEV_RETURN_EMAIL_CODE=1`
+- **原因**：它们会弱化人机验证/验证码流程（仅 dev 允许）
+
+### 4) 生产环境必须配置强 `SESSION_SECRET`
+- **要求**：强随机、长度 >= 32、不要以 `dev-` 开头
+- **原因**：用于签发/验证 session；弱 secret 会带来伪造风险
+
+### 5) 必须全站 HTTPS（含代理头正确）
+- **要求**：浏览器访问必须是 HTTPS；Cloudflare/反代需正确传递 scheme（如 `CF-Visitor` / `X-Forwarded-Proto`）
+- **原因**：Cookie 的 `Secure` 与跳转 origin 依赖它；否则可能降级为 http 导致风险
+
+### 6) 写接口 CSRF 兜底（已内置）
+- **现状**：所有写接口（POST/PUT/PATCH/DELETE）已接入 `Origin` 同源校验（有 Origin 必须同源；无 Origin 兼容非浏览器客户端）
+
+## 运行安全预检（Windows PowerShell）
+
+```powershell
+# 运行预检（发现 [FAIL] 会以非 0 退出）
+npm run security:preflight
+```
+
+生产发布前建议显式生成并设置强 `SESSION_SECRET`：
+
+```powershell
+$env:NODE_ENV="production"
+
+# 生成 48 字节随机值并 base64（示例）
+$bytes = New-Object byte[] 48
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$env:SESSION_SECRET = [Convert]::ToBase64String($bytes)
+
+npm run security:preflight
+```
+
 ## Getting Started
 
 Read the documentation at https://opennext.js.org/cloudflare.

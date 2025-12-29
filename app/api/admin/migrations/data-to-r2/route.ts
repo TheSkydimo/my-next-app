@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireSuperAdminFromRequest } from "../../_utils/adminSession";
+import { assertSameOriginOrNoOrigin } from "../../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type DataUrlParseResult =
@@ -83,6 +84,9 @@ type MigrationBody = {
  * - R2 上传使用 onlyIf.etagDoesNotMatch="*"，避免覆盖
  */
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const body = (await request.json().catch(() => ({}))) as MigrationBody;
   const limit = Math.max(Math.min(Number(body.limit) || 50, 200), 1);
   const dryRun = !!body.dryRun;

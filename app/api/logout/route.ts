@@ -2,9 +2,13 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { serializeCookie } from "../_utils/cookies";
 import { getSessionCookieName } from "../_utils/session";
 import { isSecureRequest } from "../_utils/request";
+import { assertSameOriginOrNoOrigin } from "../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   // 仅清理 cookie；不依赖 DB
   const { env } = await getCloudflareContext();
   const secure = isSecureRequest(request);

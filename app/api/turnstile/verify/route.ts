@@ -4,8 +4,12 @@ import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../../_utils/turnstile";
 import { isDevBypassTurnstileEnabled } from "../../_utils/runtimeEnv";
 import { issueTurnstilePassCookie } from "../../_utils/turnstilePass";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const parsed = await readJsonBody<{ token?: string }>(request);
   if (!parsed.ok) return new Response("Invalid JSON", { status: 400 });
 

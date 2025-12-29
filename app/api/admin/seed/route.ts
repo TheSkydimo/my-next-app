@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureUsersTable } from "../../_utils/usersTable";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 // 简单的初始化脚本：
@@ -203,13 +204,18 @@ async function runSeed(): Promise<Response> {
   });
 }
 
-export const POST = withApiMonitoring(async function POST() {
+export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   return await runSeed();
 }, { name: "POST /api/admin/seed" });
 
 // 方便直接在浏览器里访问 URL 完成初始化
 export const GET = withApiMonitoring(async function GET(request: Request) {
-  void request;
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   return await runSeed();
 }, { name: "GET /api/admin/seed" });
 

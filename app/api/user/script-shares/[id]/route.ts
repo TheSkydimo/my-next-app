@@ -17,6 +17,7 @@ import {
   ensureScriptShareInteractionsTables,
 } from "../../../_utils/scriptShareInteractionsTable";
 import { createUserNotification } from "../../../_utils/userNotifications";
+import { assertSameOriginOrNoOrigin } from "../../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type DbRow = {
@@ -51,6 +52,9 @@ export const PATCH = withApiMonitoring(async function PATCH(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -99,6 +103,9 @@ export const PUT = withApiMonitoring(async function PUT(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
@@ -275,6 +282,9 @@ export const DELETE = withApiMonitoring(async function DELETE(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;

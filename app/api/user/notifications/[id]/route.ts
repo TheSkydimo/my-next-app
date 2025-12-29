@@ -2,11 +2,15 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireUserFromRequest } from "../../_utils/userSession";
 import { markUserNotificationRead, softDeleteUserNotificationById } from "../../../_utils/userNotifications";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { assertSameOriginOrNoOrigin } from "../../../_utils/requestOrigin";
 
 export const PATCH = withApiMonitoring(async function PATCH(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { id } = await ctx.params;
   const notifId = Number.parseInt(id, 10);
   if (!Number.isFinite(notifId) || notifId <= 0) {
@@ -27,6 +31,9 @@ export const DELETE = withApiMonitoring(async function DELETE(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { id } = await ctx.params;
   const notifId = Number.parseInt(id, 10);
   if (!Number.isFinite(notifId) || notifId <= 0) {

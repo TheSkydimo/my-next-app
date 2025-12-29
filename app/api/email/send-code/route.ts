@@ -16,6 +16,7 @@ import {
   shouldReturnEmailCodeInResponse,
 } from "../../_utils/runtimeEnv";
 import { consumeRateLimit } from "../../_utils/rateLimit";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 function generateCode(length = 6): string {
@@ -149,6 +150,9 @@ function buildEmailTemplate(options: {
 }
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const parsed = await readJsonBody<{
     email: string;
     purpose: EmailCodePurpose;

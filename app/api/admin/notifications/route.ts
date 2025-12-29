@@ -3,6 +3,7 @@ import { requireAdminFromRequest } from "../_utils/adminSession";
 import { createBroadcastUserNotification } from "../../_utils/userNotifications";
 import { writeAdminAuditLog } from "../../_utils/adminAuditLogs";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import {
   createAdminNotificationEvent,
   listAdminNotificationEvents,
@@ -89,6 +90,9 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
 }, { name: "GET /api/admin/notifications" });
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 

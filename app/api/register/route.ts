@@ -6,9 +6,13 @@ import { isDevBypassTurnstileEnabled } from "../_utils/runtimeEnv";
 import { getTurnstileSecretFromEnv, verifyTurnstileToken } from "../_utils/turnstile";
 import { readJsonBody } from "../_utils/body";
 import { ensureUsersTable } from "../_utils/usersTable";
+import { assertSameOriginOrNoOrigin } from "../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const parsed = await readJsonBody<{
     username?: string;
     email: string;

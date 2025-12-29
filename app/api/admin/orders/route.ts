@@ -3,6 +3,7 @@ import { requireAdminFromRequest } from "../_utils/adminSession";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 import { ensureUserOrdersTable } from "../../_utils/userOrdersTable";
 import { createUserNotification } from "../../_utils/userNotifications";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 
 type OrderRowWithUser = {
   id: number;
@@ -130,6 +131,9 @@ function maskOrderNo(orderNo: string | null | undefined): string {
 type DeleteBody = { id?: number };
 
 export const DELETE = withApiMonitoring(async function DELETE(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   let body: DeleteBody;
   try {
     body = (await request.json()) as DeleteBody;

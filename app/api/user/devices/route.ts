@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 import { requireUserFromRequest } from "../_utils/userSession";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 
 type DeviceRow = {
   id: number;
@@ -112,6 +113,9 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
 
 // 添加用户设备
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const body = (await request.json()) as {
     deviceId?: string;
   };
@@ -198,6 +202,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
 // 删除用户设备
 export const DELETE = withApiMonitoring(async function DELETE(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const body = (await request.json()) as {
     id?: number;
     deviceId?: string;

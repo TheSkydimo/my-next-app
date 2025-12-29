@@ -12,6 +12,7 @@ import { buildScriptShareCoverR2Key, decodeScriptTextPreview, generateScriptShar
 import { requireUserFromRequest } from "../_utils/userSession";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 
 type ScriptShareListItem = {
   id: string;
@@ -137,6 +138,9 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
 }, { name: "GET /api/user/script-shares" });
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;

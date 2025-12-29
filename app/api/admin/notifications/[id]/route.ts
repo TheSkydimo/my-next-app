@@ -4,11 +4,15 @@ import { requireAdminFromRequest } from "../../_utils/adminSession";
 import { softDeleteAdminNotificationEvent } from "../../../_utils/adminNotificationEvents";
 import { softDeleteUserNotificationsByEventId } from "../../../_utils/userNotifications";
 import { writeAdminAuditLog } from "../../../_utils/adminAuditLogs";
+import { assertSameOriginOrNoOrigin } from "../../../_utils/requestOrigin";
 
 export const DELETE = withApiMonitoring(async function DELETE(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { id } = await ctx.params;
   const eventId = Number.parseInt(id, 10);
   if (!Number.isFinite(eventId) || eventId <= 0) {

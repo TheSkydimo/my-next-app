@@ -5,6 +5,7 @@ import {
   getScriptShareInteractionStats,
 } from "../../../../_utils/scriptShareInteractionsTable";
 import { requireUserFromRequest } from "../../../_utils/userSession";
+import { assertSameOriginOrNoOrigin } from "../../../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 async function ensureShareVisibleToUser(options: {
@@ -27,6 +28,9 @@ export const POST = withApiMonitoring(async function POST(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { id } = await ctx.params;
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;

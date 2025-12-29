@@ -9,6 +9,7 @@ import { readJsonBody } from "../_utils/body";
 import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../_utils/usersTable";
 import { getSessionSecret } from "../_utils/sessionSecret";
 import { isSecureRequest } from "../_utils/request";
+import { assertSameOriginOrNoOrigin } from "../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
@@ -20,6 +21,9 @@ type UserRow = {
 };
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   // 解析请求体并显式标注类型，避免 request.json() 推断为 unknown
   const parsed = await readJsonBody<{
     email: string;

@@ -6,9 +6,13 @@ import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { readJsonBody } from "../../_utils/body";
 import { consumeRateLimit } from "../../_utils/rateLimit";
 import { requireUserFromRequest } from "../../user/_utils/userSession";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   try {
     const parsed = await readJsonBody<{ content: string }>(request);
     if (!parsed.ok) {

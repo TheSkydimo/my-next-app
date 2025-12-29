@@ -12,6 +12,7 @@ import { requireAdminFromRequest } from "../_utils/adminSession";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
 import { getOfficialPublicNickname } from "../../../_utils/officialPublicNickname";
 import { writeAdminAuditLog } from "../../_utils/adminAuditLogs";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 function clampInt(
@@ -171,6 +172,9 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
  * - file (.skmode)
  */
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
   const r2 = env.ORDER_IMAGES as R2Bucket;

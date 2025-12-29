@@ -8,6 +8,7 @@
 		"build:opennext": "node -e \"const fs=require('fs'); fs.rmSync('.next',{recursive:true,force:true});\" && node scripts/retry-next-build.mjs",
 		"start": "next start",
 		"lint": "next lint",
+		"security:preflight": "node scripts/security-preflight.mjs",
 		"clean:opennext": "node scripts/clean-open-next.mjs",
 		"deploy": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && node scripts/retry-wrangler-deploy.mjs deploy --config wrangler.jsonc --env=\"\" --keep-vars",
 		"upload": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload",

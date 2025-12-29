@@ -7,6 +7,7 @@ import { serializeCookie } from "../../_utils/cookies";
 import { readJsonBody } from "../../_utils/body";
 import { getSessionSecret } from "../../_utils/sessionSecret";
 import { isSecureRequest } from "../../_utils/request";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import {
   ensureUsersAvatarUrlColumn,
   ensureUsersIsAdminColumn,
@@ -23,6 +24,9 @@ type AdminRow = {
 };
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const parsed = await readJsonBody<{
     email: string;
     emailCode: string;

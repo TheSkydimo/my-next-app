@@ -10,6 +10,7 @@ import {
 } from "../../_utils/userNotifications";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 import { normalizeAppLanguage } from "../../_utils/appLanguage";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 
 export const GET = withApiMonitoring(async function GET(request: Request) {
   const { env } = await getCloudflareContext();
@@ -51,6 +52,9 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
 
 // Mark all as read
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 
@@ -68,6 +72,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
 // Clear all notifications (soft delete)
 export const DELETE = withApiMonitoring(async function DELETE(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   const { env } = await getCloudflareContext();
   const db = env.my_user_db as D1Database;
 

@@ -4,6 +4,7 @@ import { readJsonBody } from "../../_utils/body";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { formatFrom, getSmtpConfigWithPrefix, sendEmail } from "../../_utils/mailer";
 import { isValidEmail, sha256 } from "../../_utils/auth";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type AuthErrorStage =
@@ -35,6 +36,9 @@ function safeTrimAndLimit(input: unknown, limit: number) {
 }
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   // NOTE: This endpoint is intentionally unauthenticated (for login-stage failures).
   // Abuse protection is enforced via rate limits (IP + email hash).
   try {

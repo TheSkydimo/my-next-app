@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
 import { requireAdminFromRequest } from "../_utils/adminSession";
 import { deleteUserCascade } from "../_utils/deleteUserCascade";
+import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
@@ -115,6 +116,9 @@ type AdminActionBody = {
 
 // 管理员操作用户：删除用户 / 设置为管理员
 export const POST = withApiMonitoring(async function POST(request: Request) {
+  const originGuard = assertSameOriginOrNoOrigin(request);
+  if (originGuard) return originGuard;
+
   let body: AdminActionBody;
   try {
     body = (await request.json()) as AdminActionBody;
