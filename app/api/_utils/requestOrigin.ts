@@ -46,16 +46,48 @@ export function getRequestOrigin(request: Request): string {
   return `${scheme}://${preferred}`;
 }
 
+function normalizeHostLoose(host: string): string {
+  const h = host.trim().toLowerCase();
+  // Strip default ports to avoid false mismatches like "example.com" vs "example.com:443".
+  if (h.endsWith(":443")) return h.slice(0, -4);
+  if (h.endsWith(":80")) return h.slice(0, -3);
+  // Some systems may append a trailing dot to FQDNs.
+  if (h.endsWith(".")) return h.slice(0, -1);
+  return h;
+}
+
 /**
  * Lightweight CSRF hardening for cookie-authenticated write endpoints.
  *
  * Policy:
- * - If the request includes an `Origin` header, it must match the request's host.
+ * - Prefer Fetch Metadata when available:
+ *   - `Sec-Fetch-Site: cross-site` => block
+ *   - otherwise allow
+ * - Fallback: If the request includes an `Origin` header, it must match one of the request hosts
+ *   (Host / X-Forwarded-Host / request.url host), after normalizing default ports.
  * - If `Origin` is missing (some non-browser clients), we allow it (compat).
  *
  * Note: This is defense-in-depth; SameSite cookies already reduce CSRF risk.
  */
 export function assertSameOriginOrNoOrigin(request: Request): Response | null {
+  // Fetch Metadata is more robust under reverse proxies because it reflects the browser's view
+  // (origin vs destination) even if the proxy rewrites Host headers upstream.
+  const fetchSite = String(
+    request.headers.get("sec-fetch-site") ?? request.headers.get("Sec-Fetch-Site") ?? ""
+  )
+    .trim()
+    .toLowerCase();
+  if (fetchSite) {
+    if (fetchSite === "cross-site") {
+      return new Response("Forbidden", {
+        status: 403,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+    // same-origin / same-site / none / other => allow
+    return null;
+  }
+
   const originHeader = request.headers.get("Origin");
   if (!originHeader) return null;
 
@@ -66,8 +98,38 @@ export function assertSameOriginOrNoOrigin(request: Request): Response | null {
     return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "no-store" } });
   }
 
-  const expectedHost = new URL(getRequestOrigin(request)).host;
-  if (!originHost || originHost !== expectedHost) {
+  const originNorm = normalizeHostLoose(originHost);
+  if (!originNorm) {
+    return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "no-store" } });
+  }
+
+  const hostHeader = firstHeaderValue(request.headers.get("Host"));
+  const xForwardedHost = firstHeaderValue(request.headers.get("X-Forwarded-Host"));
+  const urlHost = (() => {
+    try {
+      return new URL(request.url).host;
+    } catch {
+      return "";
+    }
+  })();
+
+  // In some OpenNext + Cloudflare deployments, request.url may point to *.workers.dev even for custom domains.
+  // That host is not reliable for origin validation; ignore it to avoid false blocks.
+  const urlHostTrusted = isWorkersDevHost(urlHost) ? "" : urlHost;
+
+  const allowedHosts = new Set(
+    [hostHeader, xForwardedHost, urlHostTrusted]
+      .filter(isProbablyValidHost)
+      .map(normalizeHostLoose)
+      .filter(Boolean)
+  );
+
+  // If we cannot determine any trustworthy request host, do not block.
+  // (SameSite cookies already reduce CSRF; this guard is defense-in-depth.)
+  if (allowedHosts.size === 0) return null;
+
+  if (!allowedHosts.has(originNorm)) {
+    // Keep response generic; do not leak host/origin values.
     return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "no-store" } });
   }
 
