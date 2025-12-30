@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Modal, Upload, Input, Button, Form, Alert, notification, theme } from "antd";
+import { Modal, Upload, Input, Button, Alert, notification, theme } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
 import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 import type { AppLanguage } from "../client-prefs";
@@ -198,14 +198,13 @@ export default function OrderUploadModal({
           </p>
         </Dragger>
 
-        <Form.Item label={language === "zh-CN" ? "备注" : "Note"}>
-          <TextArea
-            rows={3}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={language === "zh-CN" ? "请输入备注信息（可选）" : "Enter note (optional)"}
-          />
-        </Form.Item>
+        <TextArea
+          aria-label={language === "zh-CN" ? "说明（可选）" : "Note (optional)"}
+          rows={3}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={language === "zh-CN" ? "请输入说明（可选）" : "Enter note (optional)"}
+        />
       </div>
     </Modal>
   );
