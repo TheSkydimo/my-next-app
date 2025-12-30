@@ -56,7 +56,8 @@ export function applyTheme(theme: AppTheme) {
 }
 
 export function getInitialLanguage(): AppLanguage {
-  if (typeof window === "undefined") return "zh-CN";
+  // Server-side fallback: prefer English unless the client later overrides.
+  if (typeof window === "undefined") return "en-US";
 
   const stored = window.localStorage.getItem(LANG_KEY) as AppLanguage | null;
   if (stored === "zh-CN" || stored === "en-US") {
@@ -75,10 +76,10 @@ export function getInitialLanguage(): AppLanguage {
     return cookieLang;
   }
 
+  // No explicit preference found: default to English unless browser is Chinese.
   const navLang = window.navigator.language.toLowerCase();
-  if (navLang.startsWith("en")) return "en-US";
-
-  return "zh-CN";
+  if (navLang.startsWith("zh")) return "zh-CN";
+  return "en-US";
 }
 
 export function applyLanguage(lang: AppLanguage) {
