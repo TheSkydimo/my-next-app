@@ -630,7 +630,7 @@ export default function AdminProfilePage() {
           </Typography.Paragraph>
 
           <Space align="center" size={12}>
-            <Avatar size={48} src={avatarPreviewUrl || undefined}>
+            <Avatar size={48} src={avatarPreviewUrl || undefined} className="app-avatar">
               {(adminProfile?.username || adminEmail).trim().charAt(0).toUpperCase()}
             </Avatar>
             <Upload

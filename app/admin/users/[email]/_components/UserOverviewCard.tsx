@@ -48,6 +48,7 @@ export function UserOverviewCard({
           size={56}
           src={user.avatarUrl || undefined}
           alt={user.username || user.email}
+          className="app-avatar"
         >
           {(user.username || user.email || "U").trim().charAt(0).toUpperCase()}
         </Avatar>
