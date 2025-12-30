@@ -13,17 +13,17 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const key = searchParams.get("key");
 
   if (!key) {
-    return new Response("Missing key parameter", { status: 400 });
+    return new Response("Missing key parameter", { status: 400, headers: { "Cache-Control": "no-store" } });
   }
 
   // Basic hardening: cap key length.
   if (key.length > 512) {
-    return new Response("Invalid key", { status: 400 });
+    return new Response("Invalid key", { status: 400, headers: { "Cache-Control": "no-store" } });
   }
 
   // 安全检查：确保 key 以 avatars/ 开头，防止访问其他文件
   if (!key.startsWith("avatars/")) {
-    return new Response("Invalid key", { status: 400 });
+    return new Response("Invalid key", { status: 400, headers: { "Cache-Control": "no-store" } });
   }
 
   const { env } = await getCloudflareContext();
@@ -41,7 +41,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     const n = Number.parseInt(idStr, 10);
     return Number.isFinite(n) && n > 0 ? n : null;
   })();
-  if (ownerId == null) return new Response("Invalid key", { status: 400 });
+  if (ownerId == null) return new Response("Invalid key", { status: 400, headers: { "Cache-Control": "no-store" } });
 
   // Non-admin users can only access their own avatars. Return 404 to avoid user enumeration.
   if (!authed.user.isAdmin && authed.user.id !== ownerId) {
@@ -50,15 +50,29 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
 
   const object = await r2.get(key);
   if (!object) {
-    return new Response("Image not found", { status: 404 });
+    return new Response("Image not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 
   const headers = new Headers();
   const contentType = object.httpMetadata?.contentType || "image/png";
   headers.set("Content-Type", contentType);
   headers.set("ETag", object.httpEtag);
-  // Privacy: do not store user avatars in caches by default.
-  headers.set("Cache-Control", "no-store");
+  headers.set("X-Content-Type-Options", "nosniff");
+
+  /**
+   * Performance + Security:
+   * - Allow browser to cache privately (avoid re-downloading on navigation)
+   * - Prevent CDN/edge caches from storing user-private avatars
+   */
+  headers.set("Cache-Control", "private, max-age=604800, stale-while-revalidate=86400");
+  headers.set("CDN-Cache-Control", "no-store");
+  headers.set("Surrogate-Control", "no-store");
+  headers.set("Vary", "Cookie");
+
+  const ifNoneMatch = request.headers.get("if-none-match");
+  if (ifNoneMatch && ifNoneMatch === object.httpEtag) {
+    return new Response(null, { status: 304, headers });
+  }
 
   return new Response(object.body, { headers });
 }, { name: "GET /api/avatar/image" });

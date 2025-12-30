@@ -43,8 +43,9 @@ import { getUserMessages, type UserMessages } from "../user-i18n";
 import FeedbackBubble from "../components/FeedbackBubble";
 import UserNotificationBell from "../components/UserNotificationBell";
 import { UserProvider, useOptionalUser } from "../contexts/UserContext";
-import { ApiCacheProvider } from "../contexts/ApiCacheContext";
+import { ApiCacheProvider, useApiCache } from "../contexts/ApiCacheContext";
 import { getPreferredDisplayName } from "../_utils/userDisplay";
+import { useUserMediaPreload } from "../hooks/useUserMediaPreload";
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -108,6 +109,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const userContext = useOptionalUser();
+  const cache = useApiCache();
 
   // 响应式断点
   const screens = useBreakpoint();
@@ -241,6 +243,8 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     } finally {
+      // Security: clear in-memory API cache so a shared device won't show previous user's data.
+      cache.clear();
       userContext?.clearUser();
       if (typeof window !== "undefined") {
         window.location.href = "/login";
@@ -332,11 +336,17 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     locale: language === "zh-CN" ? antdZhCN : antdEnUS,
   };
 
+  // Background preload to avoid repeated loading when switching between profile/orders.
+  // Hooks must be called unconditionally (Rules of Hooks), so we only gate the behavior via `enabled`.
+  const isAuthPage = pathname === "/login" || pathname === "/register";
+  useUserMediaPreload({
+    enabled: hasUser && !isAuthPage,
+    avatarUrl,
+    maxOrderImagesToWarm: 8,
+  });
+
   // 登录页面等特殊处理
-  if (
-    pathname === "/login" ||
-    pathname === "/register"
-  ) {
+  if (isAuthPage) {
     return (
       <ConfigProvider {...commonConfigProviderProps}>
         {notificationContextHolder}

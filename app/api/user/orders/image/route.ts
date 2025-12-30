@@ -18,17 +18,17 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   const key = searchParams.get("key");
 
   if (!key) {
-    return new Response("Missing key parameter", { status: 400 });
+    return new Response("Missing key parameter", { status: 400, headers: { "Cache-Control": "no-store" } });
   }
 
   // Basic hardening: cap key length.
   if (key.length > 512) {
-    return new Response("Invalid key", { status: 400 });
+    return new Response("Invalid key", { status: 400, headers: { "Cache-Control": "no-store" } });
   }
 
   // 安全检查：确保 key 以 orders/ 开头，防止访问其他文件
   if (!key.startsWith("orders/")) {
-    return new Response("Invalid key", { status: 400 });
+    return new Response("Invalid key", { status: 400, headers: { "Cache-Control": "no-store" } });
   }
 
   const { env } = await getCloudflareContext();
@@ -51,18 +51,18 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
 
   if (owner == null) {
     // 不暴露对象是否存在于 R2（避免枚举），统一当作不存在
-    return new Response("Image not found", { status: 404 });
+    return new Response("Image not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 
   if (!authed.user.isAdmin && owner !== authed.user.id) {
     // Privacy: avoid leaking ownership/existence across users.
-    return new Response("Image not found", { status: 404 });
+    return new Response("Image not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 
   const object = await r2.get(key);
 
   if (!object) {
-    return new Response("Image not found", { status: 404 });
+    return new Response("Image not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 
   // 构建响应头
@@ -74,9 +74,24 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   
   // 设置 ETag 用于缓存验证
   headers.set("ETag", object.httpEtag);
-  
-  // Privacy: do not store order images in caches by default.
-  headers.set("Cache-Control", "no-store");
+
+  // Security: prevent MIME sniffing
+  headers.set("X-Content-Type-Options", "nosniff");
+
+  /**
+   * Performance + Security:
+   * - Allow browser to cache privately (so switching pages won't re-download)
+   * - Prevent CDN/edge caches from storing user-private images
+   */
+  headers.set("Cache-Control", "private, max-age=604800, stale-while-revalidate=86400");
+  headers.set("CDN-Cache-Control", "no-store");
+  headers.set("Surrogate-Control", "no-store");
+  headers.set("Vary", "Cookie");
+
+  const ifNoneMatch = request.headers.get("if-none-match");
+  if (ifNoneMatch && ifNoneMatch === object.httpEtag) {
+    return new Response(null, { status: 304, headers });
+  }
 
   return new Response(object.body, { headers });
 }, { name: "GET /api/user/orders/image" });
