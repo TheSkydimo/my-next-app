@@ -6,7 +6,8 @@ import {
   Popover, 
   Input, 
   Button, 
-  Typography 
+  Typography,
+  Alert
 } from "antd";
 import { 
   MessageOutlined, 
@@ -59,9 +60,12 @@ export default function FeedbackBubble() {
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState<null | { type: "success" | "warning" | "error"; text: string }>(null);
   
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const isSendingRef = useRef(false);
+  const noticeTimerRef = useRef<number | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
 
   const msg = messages[language];
 
@@ -82,11 +86,40 @@ export default function FeedbackBubble() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (noticeTimerRef.current) {
+        window.clearTimeout(noticeTimerRef.current);
+        noticeTimerRef.current = null;
+      }
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const scheduleAutoDismissAndClose = () => {
+    if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+
+    noticeTimerRef.current = window.setTimeout(() => {
+      setNotice(null);
+      noticeTimerRef.current = null;
+    }, 2000);
+
+    closeTimerRef.current = window.setTimeout(() => {
+      setIsOpen(false);
+      closeTimerRef.current = null;
+    }, 2000);
+  };
+
   const handleSend = async () => {
     if (!content.trim() || isSendingRef.current) return;
 
     isSendingRef.current = true;
     setSending(true);
+    setNotice(null);
 
     const userEmail = userContext?.profile?.email ?? null;
 
@@ -101,12 +134,12 @@ export default function FeedbackBubble() {
       });
 
       if (!res.ok) {
-        throw new Error(await res.text() || msg.errorMessage);
+        throw new Error((await res.text()) || msg.errorMessage);
       }
 
       type FeedbackQuickResponse = {
         ok: boolean;
-        emailError?: string;
+        delivered?: boolean;
       };
 
       let data: FeedbackQuickResponse | null = null;
@@ -116,18 +149,24 @@ export default function FeedbackBubble() {
         // ignore
       }
 
-      // 这里可以使用 Ant Design 的 message 或 notification 组件提示，但为了简单保持在 Popover 内或使用 alert
-      // 由于这是客户端组件，最好使用 App 包裹后的 message，或者简单的状态切换
-      // 为了用户体验，我们清空并关闭
       setContent("");
-      setIsOpen(false);
-      
-      if (data?.emailError) {
-        console.warn(data.emailError);
-      }
+      setIsOpen(true);
+
+      const isDelivered = data?.delivered !== false;
+      setNotice({
+        type: isDelivered ? "success" : "warning",
+        text: isDelivered ? msg.successMessage : msg.warningMessage,
+      });
+
+      // Auto-dismiss notice and close the popover together.
+      scheduleAutoDismissAndClose();
 
     } catch (err) {
-      console.error(err);
+      const text = err instanceof Error ? (err.message || msg.errorMessage) : msg.errorMessage;
+      setIsOpen(true);
+      setNotice({ type: "error", text });
+      // Keep the user's input so they can retry after reopening.
+      scheduleAutoDismissAndClose();
     } finally {
       isSendingRef.current = false;
       setSending(false);
@@ -149,6 +188,7 @@ export default function FeedbackBubble() {
           onClick={() => setIsOpen(false)} 
         />
       </div>
+
       <TextArea
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -157,6 +197,17 @@ export default function FeedbackBubble() {
         style={{ marginBottom: 12, resize: 'none' }}
         disabled={sending}
       />
+
+      {notice && (
+        <Alert
+          type={notice.type}
+          message={notice.text}
+          showIcon
+          closable
+          onClose={() => setNotice(null)}
+          style={{ marginBottom: 12 }}
+        />
+      )}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button 
           type="primary" 
@@ -175,7 +226,20 @@ export default function FeedbackBubble() {
     <Popover
       content={popoverContent}
       open={isOpen}
-      onOpenChange={setIsOpen}
+      onOpenChange={(next) => {
+        setIsOpen(next);
+        if (!next) {
+          setNotice(null);
+          if (noticeTimerRef.current) {
+            window.clearTimeout(noticeTimerRef.current);
+            noticeTimerRef.current = null;
+          }
+          if (closeTimerRef.current) {
+            window.clearTimeout(closeTimerRef.current);
+            closeTimerRef.current = null;
+          }
+        }
+      }}
       trigger="click"
       placement="topRight"
     >

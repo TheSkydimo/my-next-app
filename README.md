@@ -168,7 +168,7 @@ If these values were ever committed, treat them as **compromised** and rotate th
 
 ## Feedback email notifications
 
-When a logged-in user submits quick feedback, the server will **store it in D1** and (best-effort) **send an email to the support mailbox**.
+When a logged-in user submits quick feedback, the server will (best-effort) **send an email to the support mailbox**.
 
 - **Required**: set `FEEDBACK_NOTIFY_TO` (support inbox recipients, comma-separated)
 - **Required sender**: `SMTP_FROM`

@@ -1,5 +1,4 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { ensureUserFeedbackTables } from "../../_utils/userFeedbackTable";
 import { ensureUsersTable } from "../../_utils/usersTable";
 import { formatFrom, getEmailServiceStatus, getSmtpConfigWithPrefix, sendEmail } from "../../_utils/mailer";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
@@ -28,13 +27,12 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     const db = env.my_user_db as D1Database;
 
     await ensureUsersTable(db);
-    await ensureUserFeedbackTables(db);
 
     const authed = await requireUserFromRequest({ request, env, db });
     if (authed instanceof Response) return authed;
     const { user } = authed;
 
-    // Abuse protection: per-user rate limit (avoid spamming support mailbox & DB).
+    // Abuse protection: per-user rate limit (avoid spamming support mailbox).
     const limit = await consumeRateLimit({
       db,
       key: `feedback_quick:user:${user.id}`,
@@ -45,23 +43,14 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       return new Response("发送太频繁，请稍后再试", { status: 429 });
     }
 
-    await db
-      .prepare(
-        `INSERT INTO user_feedback (user_id, type, content, status)
-         VALUES (?, 'quick', ?, 'unread')`
-      )
-      .bind(user.id, content.trim())
-      .run();
-
     // Email notification (best-effort): notify support mailbox (required via FEEDBACK_NOTIFY_TO).
     const notifyTo = (getRuntimeEnvVar(env, "FEEDBACK_NOTIFY_TO") || "").trim();
 
     const userEmailSent = false;
-    let adminEmailSent = false;
-    let emailError: string | undefined;
+    let delivered = false;
 
     if (!notifyTo) {
-      emailError = "未配置反馈收件箱（FEEDBACK_NOTIFY_TO）";
+      delivered = false;
     } else {
       const appName = getRuntimeEnvVar(env, "APP_NAME") || "应用";
       const cleanContent = content.trim();
@@ -125,19 +114,17 @@ ${cleanContent}
 此邮件由 ${appName} 自动发送。`.trim();
 
       try {
-        // Prefer Resend if configured; fall back to SMTP only when available & supported.
-        const status = getEmailServiceStatus(env, "FEEDBACK_SMTP_");
-        if (!status.ok) {
-          throw new Error(
-            "邮件服务未配置"
-          );
-        }
-
-        // If using SMTP, we need a concrete from email; keep existing prefix override behavior.
+        // Prefer Resend if configured; otherwise use FEEDBACK_SMTP_* if present, else fall back to SMTP_*.
         const feedbackCfg = getSmtpConfigWithPrefix(env, "FEEDBACK_SMTP_");
         const fallbackCfg = getSmtpConfigWithPrefix(env, "SMTP_");
         const smtpCfg = feedbackCfg || fallbackCfg;
         const prefix = feedbackCfg ? "FEEDBACK_SMTP_" : "SMTP_";
+
+        const status = getEmailServiceStatus(env, prefix);
+        if (!status.ok || !smtpCfg) {
+          throw new Error("邮件服务未配置");
+        }
+
         const fromEmail = smtpCfg?.from || "noreply@example.com";
 
         await sendEmail(
@@ -152,22 +139,22 @@ ${cleanContent}
           },
           prefix
         );
-        adminEmailSent = true;
+        delivered = true;
       } catch {
         // Avoid leaking SMTP/provider details into logs.
         console.error("发送反馈通知邮件失败");
-        emailError = "反馈已提交";
+        delivered = false;
       }
     }
 
-    return Response.json({
-      ok: true,
-      stored: true,
-      userEmailSent,
-      adminEmailSent,
-      // Avoid returning internal config details; keep response minimal.
-      emailError: emailError ? "反馈已提交" : undefined,
-    });
+    return Response.json(
+      {
+        ok: true,
+        delivered,
+        userEmailSent,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch {
     console.error("提交反馈失败");
     return new Response("发送失败，请稍后再试", { status: 500 });
