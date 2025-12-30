@@ -438,9 +438,7 @@ export default function AdminProfilePage() {
                 {adminEmail}
               </Typography.Paragraph>
             </div>
-            <Button href="/admin">{language === "zh-CN" ? "返回首页" : "Back"}</Button>
           </Space>
-
           <Tabs
             items={[
               {

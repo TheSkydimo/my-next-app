@@ -64,8 +64,8 @@ export default function AdminLogsPage() {
             <h1 className="vben-page__title">{messages.logs.title}</h1>
             <p className="vben-page__subtitle">{messages.logs.desc}</p>
           </div>
-          <Link href="/admin" className="btn btn-secondary btn-sm">
-            {messages.orders.backToHome}
+          <Link href="/admin/profile" className="btn btn-secondary btn-sm">
+            {messages.users.backToHome}
           </Link>
         </div>
       </div>

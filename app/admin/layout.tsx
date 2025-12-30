@@ -8,7 +8,6 @@ import {
   SearchOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  HomeOutlined,
   UserOutlined,
   BellOutlined,
   SendOutlined,
@@ -156,7 +155,6 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     if (!keyword) return;
 
     const routes: { href: string; keywords: string[] }[] = [
-      { href: "/admin", keywords: ["首页", "home", "dashboard"] },
       {
         href: "/admin/users",
         keywords: ["用户", "users", "user"],
@@ -175,7 +173,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
       },
       {
         href: "/admin/profile",
-        keywords: ["信息", "资料", "profile", "account"],
+        keywords: ["个人信息", "信息", "资料", "profile", "account"],
       },
       {
         href: "/admin/logs",
@@ -202,7 +200,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   useEffect(() => {
     const key =
       pathname === "/admin"
-        ? "home"
+        ? "profile"
         : pathname === "/admin/profile"
         ? "profile"
         : pathname === "/admin/admins"
@@ -385,15 +383,6 @@ function AdminAntdShell({
   ];
 
   const menuItems: MenuProps["items"] = [
-    {
-      key: "home",
-      icon: <HomeOutlined />,
-      label: messages.layout.navHome,
-      onClick: () => {
-        router.push("/admin");
-        setMobileDrawerOpen(false);
-      },
-    },
     {
       key: "profile",
       icon: <UserOutlined />,

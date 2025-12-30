@@ -364,7 +364,7 @@ export default function AdminUsersPage() {
                 {adminEmail}
               </Typography.Paragraph>
             </div>
-            <Button href="/admin">{messages.users.backToHome}</Button>
+            <Button href="/admin/profile">{messages.users.backToHome}</Button>
           </Space>
 
           <Card>

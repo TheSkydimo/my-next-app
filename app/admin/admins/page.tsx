@@ -345,7 +345,9 @@ export default function AdminAdminsPage() {
                 {messages.admins.limitTip}
               </Typography.Paragraph>
             </div>
-            <Button href="/admin">{language === "zh-CN" ? "返回" : "Back"}</Button>
+            <Button href="/admin/profile">
+              {language === "zh-CN" ? "返回个人信息" : "Back to profile"}
+            </Button>
           </Space>
 
           <Card>

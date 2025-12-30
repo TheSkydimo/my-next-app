@@ -246,7 +246,7 @@ const zhCN: AdminMessages = {
   layout: {
     brand: "Skydimo Admin",
     navHome: "首页",
-    navProfile: "信息管理",
+    navProfile: "个人信息",
     navUserManagement: "成员管理",
     navAdmins: "管理员管理",
     navUsers: "用户管理",
@@ -262,9 +262,9 @@ const zhCN: AdminMessages = {
     unauthLoginLink: "去登录",
     searchPlaceholder: "搜索功能 / Ctrl + K",
     searchNotFound: "未找到相关功能，请尝试：",
-    searchNotFoundHint: "用户 / 管理员 / 通知 / 信息 / 日志 / 首页",
+    searchNotFoundHint: "用户 / 管理员 / 通知 / 个人信息 / 日志",
     userMenuNameFallback: "管理员",
-    userMenuProfile: "个人中心",
+    userMenuProfile: "个人信息",
     userMenuLogout: "退出登录",
   },
   home: {
@@ -316,7 +316,7 @@ const zhCN: AdminMessages = {
   users: {
     title: "普通用户管理",
     adminLabelPrefix: "当前管理员：",
-    backToHome: "返回管理员首页",
+    backToHome: "返回个人信息",
     searchPlaceholder: "按用户名或邮箱搜索",
     searchButton: "搜索",
     resetButton: "重置",
@@ -368,7 +368,7 @@ const zhCN: AdminMessages = {
   orders: {
     title: "用户订单截图",
     adminLabelPrefix: "当前管理员：",
-    backToHome: "返回管理员首页",
+    backToHome: "返回个人信息",
     emptyText: "暂无订单截图。",
     fetchFailed: "获取订单截图失败",
     tableIndex: "序号",
@@ -502,7 +502,7 @@ const enUS: AdminMessages = {
     unauthLoginLink: "Sign in",
     searchPlaceholder: "Search features / Ctrl + K",
     searchNotFound: "No matching feature found. Try: ",
-    searchNotFoundHint: "Users / Admins / Notifications / Profile / Logs / Home",
+    searchNotFoundHint: "Users / Admins / Notifications / Profile / Logs",
     userMenuNameFallback: "Admin",
     userMenuProfile: "Profile",
     userMenuLogout: "Sign out",
@@ -558,7 +558,7 @@ const enUS: AdminMessages = {
   users: {
     title: "User Management",
     adminLabelPrefix: "Current admin: ",
-    backToHome: "Back to admin home",
+    backToHome: "Back to profile",
     searchPlaceholder: "Search by username or email",
     searchButton: "Search",
     resetButton: "Reset",
@@ -611,7 +611,7 @@ const enUS: AdminMessages = {
   orders: {
     title: "User Order Screenshots",
     adminLabelPrefix: "Current admin: ",
-    backToHome: "Back to admin home",
+    backToHome: "Back to profile",
     emptyText: "No order screenshots yet.",
     fetchFailed: "Failed to load order screenshots",
     tableIndex: "#",

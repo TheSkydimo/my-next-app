@@ -474,8 +474,8 @@ export default function AdminScriptSharesPage() {
                 : "Admins can upload and manage scripts (admin uploads are public by default)."}
             </p>
           </div>
-          <Link href="/admin" className="btn btn-secondary btn-sm">
-            {language === "zh-CN" ? "返回首页" : "Back"}
+          <Link href="/admin/profile" className="btn btn-secondary btn-sm">
+            {language === "zh-CN" ? "返回个人信息" : "Back to profile"}
           </Link>
         </div>
       </div>

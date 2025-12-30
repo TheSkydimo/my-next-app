@@ -119,7 +119,7 @@ export default function AdminOrdersPage() {
               {adminEmail}
             </p>
           </div>
-          <Link href="/admin" className="btn btn-secondary btn-sm">{messages.orders.backToHome}</Link>
+          <Link href="/admin/profile" className="btn btn-secondary btn-sm">{messages.orders.backToHome}</Link>
         </div>
       </div>
 
