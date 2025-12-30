@@ -1,7 +1,6 @@
-"use client";
-
-import UserHomePage from "./_pages/UserHomePage";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <UserHomePage />;
+  // No standalone homepage: go straight to order management.
+  redirect("/orders");
 }

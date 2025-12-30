@@ -10,6 +10,7 @@ import { AuthEmailCodePage } from "../../components/AuthEmailCodePage";
 import UserOrdersReadOnlyPanel from "../../components/UserOrdersReadOnlyPanel";
 import OrderUploadCtaCard from "../../components/OrderUploadCtaCard";
 import { useUserOrdersPreview } from "../../hooks/useUserOrdersPreview";
+import { getPreferredDisplayName } from "../../_utils/userDisplay";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -19,8 +20,7 @@ export default function UserHomePage() {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
 
-  const displayName =
-    userContext?.profile?.username ?? userContext?.profile?.email ?? null;
+  const displayName = getPreferredDisplayName(userContext?.profile ?? null);
   const userEmail = userContext?.profile?.email ?? null;
 
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());

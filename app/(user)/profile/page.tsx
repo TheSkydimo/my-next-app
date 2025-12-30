@@ -29,6 +29,7 @@ import { getInitialLanguage } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
 import { apiFetch } from "../../lib/apiFetch";
+import { getPreferredDisplayName, getUsernameForDisplay, getUsernameForEdit } from "../../_utils/userDisplay";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -97,20 +98,21 @@ export default function UserProfilePage() {
   }, []);
 
   const messages = getUserMessages(language);
+  const headerName = getPreferredDisplayName(userContext.profile ?? null);
 
   // Initialize profile from context
   useEffect(() => {
     if (userContext.profile && !profile) {
       const { username, email, avatarUrl } = userContext.profile;
       setProfile({ username, email, avatarUrl });
-      usernameForm.setFieldValue("username", username);
+      usernameForm.setFieldValue("username", getUsernameForEdit(userContext.profile));
       avatarForm.setFieldValue("avatarUrl", avatarUrl ?? "");
     }
   }, [userContext.profile, profile, usernameForm, avatarForm]);
 
   // Handlers
   const openUsernameModal = () => {
-    usernameForm.setFieldsValue({ username: profile?.username ?? "" });
+    usernameForm.setFieldsValue({ username: getUsernameForEdit(profile) });
     setIsUsernameModalOpen(true);
   };
 
@@ -369,7 +371,9 @@ export default function UserProfilePage() {
                           />
                           <div>
                              <Space size={8} wrap>
-                                <Text strong style={{ fontSize: 16 }}>{profile.username}</Text>
+                                <Text strong style={{ fontSize: 16 }}>
+                                  {headerName ?? profile.email}
+                                </Text>
                              </Space>
                              <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <Text type="secondary">{profile.email}</Text>
@@ -399,7 +403,7 @@ export default function UserProfilePage() {
                           {
                             key: 'username',
                             label: messages.profile.username,
-                            children: profile.username,
+                            children: getUsernameForDisplay(profile) ?? "-",
                           }
                         ]}
                       />
@@ -444,7 +448,12 @@ export default function UserProfilePage() {
           <Form.Item
             name="username"
             label={messages.profile.username}
-            rules={[{ required: true, message: messages.profile.username + " is required" }]}
+            rules={[
+              {
+                required: true,
+                message: language === "zh-CN" ? "请输入用户名" : "Username is required",
+              },
+            ]}
           >
             <Input placeholder={messages.profile.username} maxLength={50} />
           </Form.Item>

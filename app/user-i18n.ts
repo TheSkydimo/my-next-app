@@ -151,7 +151,7 @@ const zhCN: UserMessages = {
     registerButton: "去注册",
     
     orderUploadCtaTitle: "专属提醒：上传订单截图，开启设备保障旅程",
-    orderUploadCtaDesc: "截图上传成功后，我们将为你的设备完成身份确认，并正式激活质保和用户专属权益。",
+    orderUploadCtaDesc: "截图上传成功后，我们将为你识别并记录订单信息，方便后续管理与查询。",
     orderUploadCtaButton: "去上传订单",
     orderPreviewTitle: "我的订单信息",
     orderPreviewSubtitle: (total: number) =>
@@ -165,13 +165,13 @@ const zhCN: UserMessages = {
   },
   layout: {
     navHome: "首页",
-    navProfile: "信息管理",
+    navProfile: "个人信息",
     navFavorites: "收藏",
     navOrders: "订单管理",
     logout: "退出",
     searchPlaceholder: "搜索功能 / Ctrl + K",
     searchNotFound: "未找到相关功能，请尝试：",
-    searchNotFoundHint: "首页 / 信息 / 订单",
+    searchNotFoundHint: "个人信息 / 订单管理",
     brand: "Skydimo",
   },
   orders: {
@@ -179,7 +179,7 @@ const zhCN: UserMessages = {
     subtitle: "管理并查看与你账号绑定的订单信息。",
     addSectionTitle: "添加订单",
     addSectionDesc:
-      "输入订单 ID 并点击“添加订单”，系统会自动为你记录并计算质保到期时间。",
+      "输入订单 ID 并点击“添加订单”，系统会为你记录订单信息。",
     idLabel: "订单号：",
     inputPlaceholder: "请输入订单 ID",
     addButton: "添加订单",
@@ -187,9 +187,9 @@ const zhCN: UserMessages = {
     addFailed: "添加订单失败",
     addSuccess: "订单已添加",
     listTitle: "我的订单列表",
-    listSubtitle: "查看当前账号下已登记的全部订单及对应的质保到期时间。",
+    listSubtitle: "查看当前账号下已登记的全部订单信息。",
     emptyText: "当前没有已登记的订单。",
-    warrantyLabel: "质保到期时间：",
+    warrantyLabel: "",
     deleteButton: "删除订单",
     deleteConfirm: (deviceId: string) =>
       `确定要删除订单 ${deviceId} 吗？删除后将无法恢复。`,
@@ -282,8 +282,8 @@ const enUS: UserMessages = {
       "You are not signed in yet. Please sign in or create an account.",
     loginButton: "Sign in",
     registerButton: "Sign up",
-    orderUploadCtaTitle: "Special reminder: upload order screenshot, start device warranty journey",
-    orderUploadCtaDesc: "After uploading, we will confirm the identity of your device and activate your warranty and user exclusive benefits.",
+    orderUploadCtaTitle: "Special reminder: upload your order screenshot to get started",
+    orderUploadCtaDesc: "After uploading, we will extract and store your order details for easier management.",
     orderUploadCtaButton: "Upload order",
     orderPreviewTitle: "My order info",
     orderPreviewSubtitle: (total: number) =>
@@ -305,7 +305,7 @@ const enUS: UserMessages = {
     logout: "Sign out",
     searchPlaceholder: "Search features / Ctrl + K",
     searchNotFound: "No matching feature found. Try:",
-    searchNotFoundHint: "Home / Profile / Orders",
+    searchNotFoundHint: "Profile / Orders",
     brand: "Skydimo",
   },
   orders: {
@@ -313,7 +313,7 @@ const enUS: UserMessages = {
     subtitle: "Manage and view orders (treated as devices) that are bound to your account.",
     addSectionTitle: "Add Order",
     addSectionDesc:
-      "Enter the order ID and click “Add Order”. The system will record it and calculate the warranty expiration time.",
+      "Enter the order ID and click “Add Order”. The system will record your order information.",
     idLabel: "Order ID: ",
     inputPlaceholder: "Enter order ID",
     addButton: "Add Order",
@@ -321,10 +321,9 @@ const enUS: UserMessages = {
     addFailed: "Failed to add order",
     addSuccess: "Order added",
     listTitle: "My Orders",
-    listSubtitle:
-      "View all registered orders under the current account and their warranty expiration times.",
+    listSubtitle: "View all registered orders under the current account.",
     emptyText: "No registered orders.",
-    warrantyLabel: "Warranty expires at: ",
+    warrantyLabel: "",
     deleteButton: "Remove Order",
     deleteConfirm: (deviceId: string) =>
       `Remove order ${deviceId}? This action cannot be undone.`,

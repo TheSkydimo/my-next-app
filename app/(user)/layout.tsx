@@ -21,11 +21,8 @@ import type { MenuProps } from "antd";
 import antdEnUS from "antd/locale/en_US";
 import antdZhCN from "antd/locale/zh_CN";
 import {
-  HomeOutlined,
   UserOutlined,
-  LaptopOutlined,
   FileTextOutlined,
-  SafetyCertificateOutlined,
   LogoutOutlined,
   TranslationOutlined,
   MenuFoldOutlined,
@@ -47,6 +44,7 @@ import FeedbackBubble from "../components/FeedbackBubble";
 import UserNotificationBell from "../components/UserNotificationBell";
 import { UserProvider, useOptionalUser } from "../contexts/UserContext";
 import { ApiCacheProvider } from "../contexts/ApiCacheContext";
+import { getPreferredDisplayName } from "../_utils/userDisplay";
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -119,8 +117,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
   // 用户信息
   const hasUser = !!userContext?.profile;
   const avatarUrl = userContext?.profile?.avatarUrl ?? null;
-  const displayName =
-    userContext?.profile?.username ?? userContext?.profile?.email ?? null;
+  const displayName = getPreferredDisplayName(userContext?.profile ?? null);
 
   // 主题与语言
   const [theme, setTheme] = useState<AppTheme>(() => getInitialTheme());
@@ -199,20 +196,14 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
 
     const syncMenuState = () => {
       let keys: string[] = [];
-      let opens: string[] = [];
+      const opens: string[] = [];
 
       if (pathname === "/") {
-        keys = ["home"];
+        keys = ["orders"];
       } else if (pathname === "/profile") {
         keys = ["profile"];
       } else if (pathname === "/orders") {
-        const hash = window.location.hash;
-        opens = ["orders"]; // 展开订单管理菜单
-        if (hash === "#warranty-section") {
-          keys = ["warranty"];
-        } else {
-          keys = ["order"];
-        }
+        keys = ["orders"];
       }
 
       setSelectedKeys(keys);
@@ -263,9 +254,8 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     if (!keyword) return;
 
     const routes: { href: string; keywords: string[] }[] = [
-      { href: "/", keywords: ["首页", "home", "index"] },
-      { href: "/profile", keywords: ["信息", "资料", "profile", "account"] },
-      { href: "/orders", keywords: ["订单", "order", "orders", "信息管理", "质保", "warranty"] },
+      { href: "/profile", keywords: ["个人信息", "信息", "资料", "profile", "account"] },
+      { href: "/orders", keywords: ["订单", "order", "orders"] },
     ];
 
     const matched = routes.find((r) =>
@@ -284,15 +274,6 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
   // 菜单项配置
   const menuItems: MenuProps["items"] = [
     {
-      key: "home",
-      icon: <HomeOutlined />,
-      label: messages.layout.navHome,
-      onClick: () => {
-        router.push("/");
-        setMobileDrawerOpen(false);
-      },
-    },
-    {
       key: "profile",
       icon: <UserOutlined />,
       label: messages.layout.navProfile,
@@ -303,39 +284,12 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     },
     {
       key: "orders",
-      icon: <LaptopOutlined />,
+      icon: <FileTextOutlined />,
       label: messages.layout.navOrders,
-      children: [
-        {
-          key: "order",
-          icon: <FileTextOutlined />,
-          label: language === "zh-CN" ? "订单信息" : "Order info",
-          onClick: () => {
-            router.push("/orders#order-section");
-            setMobileDrawerOpen(false);
-            // 触发自定义事件通知页面切换Tab (兼容旧代码逻辑)
-            window.dispatchEvent(
-              new CustomEvent("user-orders-section-changed", {
-                detail: { section: "order" },
-              })
-            );
-          },
-        },
-        {
-          key: "warranty",
-          icon: <SafetyCertificateOutlined />,
-          label: language === "zh-CN" ? "质保信息" : "Warranty info",
-          onClick: () => {
-            router.push("/orders#warranty-section");
-            setMobileDrawerOpen(false);
-            window.dispatchEvent(
-              new CustomEvent("user-orders-section-changed", {
-                detail: { section: "warranty" },
-              })
-            );
-          },
-        },
-      ],
+      onClick: () => {
+        router.push("/orders");
+        setMobileDrawerOpen(false);
+      },
     },
   ];
 
