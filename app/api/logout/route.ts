@@ -15,19 +15,41 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const secure = isSecureRequest(request);
   const domain = getSessionCookieDomain(env);
 
-  const cookie = serializeCookie(getSessionCookieName(), "", {
-    path: "/",
-    httpOnly: true,
-    secure,
-    sameSite: "Lax",
-    ...(domain ? { domain } : {}),
-    maxAge: 0,
-  });
+  // IMPORTANT:
+  // Some browsers can keep multiple cookies with the same name if historical versions used different
+  // Domain attributes (host-only vs ".example.com"). To make logout robust, clear BOTH variants.
+  const cookiesToClear: string[] = [];
+  // 1) Clear cookie with configured Domain (subdomain-wide), if any.
+  if (domain) {
+    cookiesToClear.push(
+      serializeCookie(getSessionCookieName(), "", {
+        path: "/",
+        httpOnly: true,
+        secure,
+        sameSite: "Lax",
+        domain,
+        maxAge: 0,
+      })
+    );
+  }
+  // 2) Clear host-only cookie (no Domain attribute).
+  cookiesToClear.push(
+    serializeCookie(getSessionCookieName(), "", {
+      path: "/",
+      httpOnly: true,
+      secure,
+      sameSite: "Lax",
+      maxAge: 0,
+    })
+  );
 
   // 如果没有配置 SESSION_SECRET 也没关系：清空 cookie 仍然有效
   void env;
 
-  return Response.json({ ok: true }, { headers: { "Set-Cookie": cookie } });
+  const headers = new Headers();
+  for (const c of cookiesToClear) headers.append("Set-Cookie", c);
+  headers.set("Cache-Control", "no-store");
+  return Response.json({ ok: true }, { headers });
 }, { name: "POST /api/logout" });
 
 

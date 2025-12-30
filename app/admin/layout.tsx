@@ -45,6 +45,7 @@ import { AdminProvider, useOptionalAdmin } from "../contexts/AdminContext";
 import {
   ADMIN_BOOTSTRAP_SESSION_STORAGE_KEY,
   ApiCacheProvider,
+  useApiCache,
 } from "../contexts/ApiCacheContext";
 
 const { Header, Sider, Content } = Layout;
@@ -73,6 +74,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const adminContext = useOptionalAdmin();
+  const cache = useApiCache();
 
   // 从 AdminContext 获取管理员信息，避免重复请求
   const isAuthed = adminContext?.isAuthed ?? false;
@@ -116,15 +118,27 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const logout = () => {
-    // 使用 AdminContext 清除管理员状态
+  const logout = async () => {
+    // 先清理前端状态与一次性缓存（避免共享设备/同一 Tab 残留）
     adminContext?.clearAdmin();
-    if (typeof window !== "undefined") {
-      // 最佳努力清理服务端 Session Cookie
-      void fetch("/api/logout", { method: "POST" }).catch(() => {
-        // ignore
+    if (typeof window === "undefined") return;
+
+    // 关键：等待服务端 Set-Cookie 生效后再跳转。
+    // 否则页面跳转会取消请求，导致 cookie 未清理 => 登录页又会立即识别为已登录。
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        keepalive: true,
       });
-      window.location.href = "/admin/login";
+    } catch {
+      // ignore
+    } finally {
+      // Security: clear in-memory API cache so a shared device won't show previous admin's data.
+      cache.clear();
+      // replace：避免用户点“后退”又回到受保护页面触发自动登录/重定向
+      window.location.replace("/admin/login");
     }
   };
 

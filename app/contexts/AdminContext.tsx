@@ -178,6 +178,23 @@ export function AdminProvider({ children }: AdminProviderProps) {
     setProfile(null);
     setError(null);
     setIsAuthed(false);
+
+    // 安全：不清空主题/语言偏好（localStorage）；仅清理一次性缓存与遗留管理员信息 key
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.clear();
+      } catch {
+        // ignore
+      }
+      try {
+        // 兼容旧实现可能遗留的管理员身份信息（避免共享设备泄露）
+        window.localStorage.removeItem("loggedInAdminEmail");
+        window.localStorage.removeItem("loggedInAdminName");
+        window.localStorage.removeItem("loggedInAdminAvatar");
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   const value: AdminContextState = {

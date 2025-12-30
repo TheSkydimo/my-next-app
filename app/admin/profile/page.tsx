@@ -374,15 +374,20 @@ export default function AdminProfilePage() {
       setEmailCodeChallengeId("");
 
       if (typeof window !== "undefined") {
-        // 最佳努力清理服务端 Session Cookie
-        void fetch("/api/logout", { method: "POST", credentials: "include" }).catch(() => {
-          // ignore
-        });
         // 修改邮箱后强制退出管理员登录，要求使用新邮箱重新登录
         adminContext.clearAdmin();
-        setTimeout(() => {
-          window.location.href = "/admin/login";
-        }, 1200);
+        try {
+          await fetch("/api/logout", {
+            method: "POST",
+            credentials: "include",
+            cache: "no-store",
+            keepalive: true,
+          });
+        } catch {
+          // ignore
+        } finally {
+          window.location.replace("/admin/login");
+        }
       }
     } catch (e) {
       api.error({

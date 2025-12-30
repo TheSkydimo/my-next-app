@@ -284,13 +284,19 @@ export default function UserProfilePage() {
       // Logout logic
       if (typeof window !== "undefined") {
         try {
-          await fetch("/api/logout", { method: "POST" });
+          await fetch("/api/logout", {
+            method: "POST",
+            credentials: "include",
+            cache: "no-store",
+            keepalive: true,
+          });
         } catch {
           // ignore
+        } finally {
+          // Ensure local state is cleared before redirecting.
+          userContext.clearUser();
         }
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1200);
+        window.location.replace("/login");
       }
     } catch (e) {
       messageApi.error(

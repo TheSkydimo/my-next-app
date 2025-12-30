@@ -239,7 +239,12 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
   // 退出登录
   const logout = async () => {
     try {
-      await fetch("/api/logout", { method: "POST" });
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        keepalive: true,
+      });
     } catch {
       // ignore
     } finally {
@@ -247,7 +252,8 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
       cache.clear();
       userContext?.clearUser();
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        // replace：避免用户点“后退”又回到受保护页面触发自动登录/重定向
+        window.location.replace("/login");
       }
     }
   };
