@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   Avatar,
   Button,
@@ -30,6 +29,7 @@ import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
 import { apiFetch } from "../../lib/apiFetch";
 import { getPreferredDisplayName, getUsernameForDisplay, getUsernameForEdit } from "../../_utils/userDisplay";
+import { AuthEmailCodePage } from "../../components/AuthEmailCodePage";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -316,16 +316,7 @@ export default function UserProfilePage() {
   }
 
   if (!userEmail) {
-    return (
-      <div className="vben-page">
-        <Card style={{ maxWidth: 820, margin: "0 auto" }}>
-           <Typography.Title level={4}>{messages.common.loginRequired}</Typography.Title>
-           <Link href="/login">
-             <Button type="primary">{messages.common.goLogin}</Button>
-           </Link>
-        </Card>
-      </div>
-    );
+    return <AuthEmailCodePage variant="user" />;
   }
 
   return (

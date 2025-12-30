@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { Typography, Button, Alert, Card } from "antd";
 import { CloudUploadOutlined } from "@ant-design/icons";
 import type { AppLanguage } from "../../client-prefs";
@@ -10,6 +9,7 @@ import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
 import { useApiCache } from "../../contexts/ApiCacheContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
+import { AuthEmailCodePage } from "../../components/AuthEmailCodePage";
 import UserOrdersList, { OrderSnapshot } from "../../components/UserOrdersList";
 import OrderUploadModal from "../../components/OrderUploadModal";
 import { apiFetch } from "../../lib/apiFetch";
@@ -206,12 +206,8 @@ export default function UserDevicesPage() {
   }
 
   if (!userEmail) {
-    return (
-      <div className="vben-page">
-        <p>{messages.common.loginRequired}</p>
-        <Link href="/login">{messages.common.goLogin}</Link>
-      </div>
-    );
+    // Consistent UX: render the same inline sign-in UI as the homepage.
+    return <AuthEmailCodePage variant="user" />;
   }
 
   return (

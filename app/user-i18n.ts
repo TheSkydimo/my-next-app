@@ -136,9 +136,9 @@ export type UserMessages = {
 
 const zhCN: UserMessages = {
   common: {
-    loginRequired: " ",
-    goLogin: " ",
-    loading: " ",
+    loginRequired: "未检测到用户登录，请先登录。",
+    goLogin: "去登录",
+    loading: "加载中...",
     edit: "编辑",
     unknownError: "发生未知错误",
   },
@@ -270,7 +270,7 @@ const enUS: UserMessages = {
   common: {
     loginRequired: "No logged-in user detected. Please sign in first.",
     goLogin: "Go to Login",
-    loading: " ",
+    loading: "Loading...",
     edit: "Edit",
     unknownError: "Unknown error occurred",
   },

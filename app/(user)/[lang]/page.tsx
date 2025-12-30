@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { AppLanguage } from "../../api/_utils/appLanguage";
 import { resolveAppLanguageFromLocaleSegment } from "../../_utils/routeLang";
 import LangRouteClient from "./LangRouteClient";
-import LangRedirectToOrdersClient from "./LangRedirectToOrdersClient";
+import UserHomePage from "../_pages/UserHomePage";
 
 export default async function LangHomePage({
   params,
@@ -21,7 +21,7 @@ export default async function LangHomePage({
 
   return (
     <LangRouteClient lang={store}>
-      <LangRedirectToOrdersClient />
+      <UserHomePage />
     </LangRouteClient>
   );
 }

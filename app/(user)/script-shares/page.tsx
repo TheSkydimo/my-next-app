@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import type { AppLanguage } from "../../client-prefs";
 import { getInitialLanguage } from "../../client-prefs";
 import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 import { apiFetch } from "../../lib/apiFetch";
+import { AuthEmailCodePage } from "../../components/AuthEmailCodePage";
 
 type ShareItem = {
   id: string;
@@ -547,12 +547,7 @@ export default function ScriptSharesPage() {
   }
 
   if (!hasUser) {
-    return (
-      <div className="vben-page">
-        <p>{messages.common.loginRequired}</p>
-        <Link href="/login">{messages.common.goLogin}</Link>
-      </div>
-    );
+    return <AuthEmailCodePage variant="user" />;
   }
 
   const getPageTitle = () => {

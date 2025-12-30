@@ -238,9 +238,9 @@ export type AdminMessages = {
 
 const zhCN: AdminMessages = {
   common: {
-    adminLoginRequired: " ",
+    adminLoginRequired: "未检测到管理员登录，请先登录管理员后台。",
     goAdminLogin: "去管理员登录",
-    loading: " ",
+    loading: "加载中...",
     unknownError: "发生未知错误",
   },
   layout: {
@@ -480,7 +480,7 @@ const enUS: AdminMessages = {
   common: {
     adminLoginRequired: "No admin session detected. Please sign in to the admin console.",
     goAdminLogin: "Go to admin login",
-    loading: " ",
+    loading: "Loading...",
     unknownError: "Unknown error occurred",
   },
   layout: {

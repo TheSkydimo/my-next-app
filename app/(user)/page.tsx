@@ -1,6 +1,8 @@
-import { redirect } from "next/navigation";
+import UserHomePage from "./_pages/UserHomePage";
 
 export default function Home() {
-  // No standalone homepage: go straight to order management.
-  redirect("/orders");
+  // Homepage handles both states:
+  // - Logged in: welcome + quick actions
+  // - Not logged in: inline sign-in UI (AuthEmailCodePage)
+  return <UserHomePage />;
 }
