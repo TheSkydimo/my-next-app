@@ -44,12 +44,12 @@ export default function UserOrdersReadOnlyPanel({
       }
       extra={
         <Space wrap>
-          <Link href="/devices#order-section">
+          <Link href="/orders#order-section">
             <Button icon={<CloudUploadOutlined />} size={isMobile ? "small" : "middle"}>
               {!isMobile && messages.home.orderPreviewGoUpload}
             </Button>
           </Link>
-          <Link href="/devices#order-section">
+          <Link href="/orders#order-section">
             <Button type="primary" icon={<UnorderedListOutlined />} size={isMobile ? "small" : "middle"}>
               {!isMobile && messages.home.orderPreviewViewAll}
             </Button>

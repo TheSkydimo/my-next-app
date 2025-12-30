@@ -77,7 +77,7 @@ export default function UserHomePage() {
               title={messages.home.orderUploadCtaTitle}
               description={messages.home.orderUploadCtaDesc}
               buttonText={messages.home.orderUploadCtaButton}
-              href="/devices#order-section"
+              href="/orders#order-section"
             />
           )}
 

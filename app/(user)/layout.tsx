@@ -205,9 +205,9 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
         keys = ["home"];
       } else if (pathname === "/profile") {
         keys = ["profile"];
-      } else if (pathname === "/devices") {
+      } else if (pathname === "/orders") {
         const hash = window.location.hash;
-        opens = ["devices"]; // 展开设备菜单
+        opens = ["orders"]; // 展开订单管理菜单
         if (hash === "#warranty-section") {
           keys = ["warranty"];
         } else {
@@ -265,7 +265,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     const routes: { href: string; keywords: string[] }[] = [
       { href: "/", keywords: ["首页", "home", "index"] },
       { href: "/profile", keywords: ["信息", "资料", "profile", "account"] },
-      { href: "/devices", keywords: ["设备", "device", "devices"] },
+      { href: "/orders", keywords: ["订单", "order", "orders", "信息管理", "质保", "warranty"] },
     ];
 
     const matched = routes.find((r) =>
@@ -302,20 +302,20 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
       },
     },
     {
-      key: "devices",
+      key: "orders",
       icon: <LaptopOutlined />,
-      label: messages.layout.navDevices,
+      label: messages.layout.navOrders,
       children: [
         {
           key: "order",
           icon: <FileTextOutlined />,
           label: language === "zh-CN" ? "订单信息" : "Order info",
           onClick: () => {
-            router.push("/devices#order-section");
+            router.push("/orders#order-section");
             setMobileDrawerOpen(false);
             // 触发自定义事件通知页面切换Tab (兼容旧代码逻辑)
             window.dispatchEvent(
-              new CustomEvent("user-devices-section-changed", {
+              new CustomEvent("user-orders-section-changed", {
                 detail: { section: "order" },
               })
             );
@@ -326,10 +326,10 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
           icon: <SafetyCertificateOutlined />,
           label: language === "zh-CN" ? "质保信息" : "Warranty info",
           onClick: () => {
-            router.push("/devices#warranty-section");
+            router.push("/orders#warranty-section");
             setMobileDrawerOpen(false);
             window.dispatchEvent(
-              new CustomEvent("user-devices-section-changed", {
+              new CustomEvent("user-orders-section-changed", {
                 detail: { section: "warranty" },
               })
             );

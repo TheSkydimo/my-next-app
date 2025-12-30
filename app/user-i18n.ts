@@ -33,14 +33,14 @@ export type UserMessages = {
     navHome: string;
     navProfile: string;
     navFavorites: string;
-    navDevices: string;
+    navOrders: string;
     logout: string;
     searchPlaceholder: string;
     searchNotFound: string;
     searchNotFoundHint: string;
     brand: string;
   };
-  devices: {
+  orders: {
     title: string;
     subtitle: string;
     addSectionTitle: string;
@@ -167,14 +167,14 @@ const zhCN: UserMessages = {
     navHome: "首页",
     navProfile: "信息管理",
     navFavorites: "收藏",
-    navDevices: "订单管理",
+    navOrders: "订单管理",
     logout: "退出",
     searchPlaceholder: "搜索功能 / Ctrl + K",
     searchNotFound: "未找到相关功能，请尝试：",
-    searchNotFoundHint: "首页 / 信息 / 设备",
+    searchNotFoundHint: "首页 / 信息 / 订单",
     brand: "Skydimo",
   },
-  devices: {
+  orders: {
     title: "订单管理",
     subtitle: "管理并查看与你账号绑定的订单信息。",
     addSectionTitle: "添加订单",
@@ -190,11 +190,11 @@ const zhCN: UserMessages = {
     listSubtitle: "查看当前账号下已登记的全部订单及对应的质保到期时间。",
     emptyText: "当前没有已登记的订单。",
     warrantyLabel: "质保到期时间：",
-    deleteButton: "删除设备",
+    deleteButton: "删除订单",
     deleteConfirm: (deviceId: string) =>
-      `确定要删除设备 ${deviceId} 吗？删除后将无法恢复。`,
-    deleteFailed: "删除设备失败",
-    deleteSuccess: "设备已删除",
+      `确定要删除订单 ${deviceId} 吗？删除后将无法恢复。`,
+    deleteFailed: "删除订单失败",
+    deleteSuccess: "订单已删除",
     pagerText: (totalDevices, totalOrders, page, maxPage) =>
       `共 ${totalDevices} 台设备（${totalOrders} 个订单），当前第 ${page} / ${maxPage} 页`,
     fetchFailed: "获取设备信息失败",
@@ -301,14 +301,14 @@ const enUS: UserMessages = {
     navHome: "Home",
     navProfile: "Profile",
     navFavorites: "Favorites",
-    navDevices: "Orders",
+    navOrders: "Orders",
     logout: "Sign out",
     searchPlaceholder: "Search features / Ctrl + K",
     searchNotFound: "No matching feature found. Try:",
     searchNotFoundHint: "Home / Profile / Orders",
     brand: "Skydimo",
   },
-  devices: {
+  orders: {
     title: "Order Management",
     subtitle: "Manage and view orders (treated as devices) that are bound to your account.",
     addSectionTitle: "Add Order",

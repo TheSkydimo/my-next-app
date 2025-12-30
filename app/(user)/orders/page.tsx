@@ -93,11 +93,11 @@ export default function UserDevicesPage() {
       }
     };
 
-    window.addEventListener("user-devices-section-changed", handler as EventListener);
+    window.addEventListener("user-orders-section-changed", handler as EventListener);
 
     return () => {
       window.removeEventListener("hashchange", syncFromHash);
-      window.removeEventListener("user-devices-section-changed", handler as EventListener);
+      window.removeEventListener("user-orders-section-changed", handler as EventListener);
     };
   }, []);
 
@@ -198,7 +198,7 @@ export default function UserDevicesPage() {
              return;
            }
            const text = await res.text();
-           throw new Error(text || messages.devices.fetchFailed);
+           throw new Error(text || messages.orders.fetchFailed);
         }
         const data: unknown = await res.json();
         cache.set(url, data);
@@ -213,16 +213,14 @@ export default function UserDevicesPage() {
           setDeviceTotal(typeof parsed.total === "number" ? parsed.total : items.length);
         }
       } catch (e: unknown) {
-        setError(
-          e instanceof Error ? e.message : messages.devices.fetchFailed
-        );
+        setError(e instanceof Error ? e.message : messages.orders.fetchFailed);
       } finally {
         setLoading(false);
       }
     };
 
     if (userEmail) loadDevices(page);
-  }, [cache, messages.devices.fetchFailed, page, setError, userEmail]);
+  }, [cache, messages.orders.fetchFailed, page, setError, userEmail]);
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -421,7 +419,7 @@ export default function UserDevicesPage() {
         </span>
       );
     }
-    return messages.devices.title;
+    return messages.orders.title;
   };
 
   const getPageSubtitle = () => {
@@ -435,7 +433,7 @@ export default function UserDevicesPage() {
         ? "查看已绑定订单的质保到期时间。"
         : "View warranty expiration dates for bound orders.";
     }
-    return messages.devices.subtitle;
+    return messages.orders.subtitle;
   };
 
   return (
@@ -522,7 +520,7 @@ export default function UserDevicesPage() {
       >
         {isWarrantySectionOpen && (
           <>
-            <p className="user-page-section__subtext">{messages.devices.listSubtitle}</p>
+            <p className="user-page-section__subtext">{messages.orders.listSubtitle}</p>
             <Card style={{ width: "100%" }} styles={{ body: { paddingTop: 12 } }}>
               <Table
                 dataSource={getWarrantyDataSource()}
@@ -530,7 +528,7 @@ export default function UserDevicesPage() {
                 pagination={false}
                 tableLayout="fixed"
                 locale={{
-                  emptyText: <Empty description={messages.devices.emptyText} />,
+                  emptyText: <Empty description={messages.orders.emptyText} />,
                 }}
               />
               <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>

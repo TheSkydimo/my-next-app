@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Modal, Upload, Input, Button, message, Form, Alert } from "antd";
+import { Modal, Upload, Input, Button, Form, Alert, notification, theme } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
 import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 import type { AppLanguage } from "../client-prefs";
 import type { OrderSnapshot } from "./UserOrdersList";
 import { apiFetch } from "../lib/apiFetch";
+import OrderUploadTipsCard from "./OrderUploadTipsCard";
 
 const { Dragger } = Upload;
 const { TextArea } = Input;
@@ -31,6 +32,14 @@ export default function OrderUploadModal({
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const maxBytes = 8 * 1024 * 1024; // keep consistent with server-side cap
+  const { token } = theme.useToken();
+
+  const [notificationApi, notificationContextHolder] = notification.useNotification({
+    placement: "topRight",
+    showProgress: true,
+    pauseOnHover: true,
+    maxCount: 2,
+  });
 
   const isImageFile = (file: File) => {
     const type = String(file.type || "");
@@ -89,7 +98,10 @@ export default function OrderUploadModal({
       }
 
       const data = (await res.json()) as OrderSnapshot;
-      message.success(language === "zh-CN" ? "上传成功" : "Upload successful");
+      notificationApi.success({
+        message: language === "zh-CN" ? "上传成功" : "Upload successful",
+        duration: 2.2,
+      });
       onSuccess(data);
       handleClose();
     } catch (e: unknown) {
@@ -109,11 +121,19 @@ export default function OrderUploadModal({
   const uploadProps: UploadProps = {
     beforeUpload: (file) => {
       if (!isImageFile(file)) {
-        message.error(language === "zh-CN" ? "只能上传图片文件!" : "You can only upload image files!");
+        notificationApi.error({
+          message: language === "zh-CN" ? "只能上传图片文件" : "Images only",
+          description: language === "zh-CN" ? "请上传 PNG/JPG/WEBP 等图片格式。" : "Please upload an image file (PNG/JPG/WEBP, etc).",
+          duration: 2.8,
+        });
         return Upload.LIST_IGNORE;
       }
       if (typeof file.size === "number" && file.size > maxBytes) {
-        message.error(language === "zh-CN" ? "图片过大（最大 8MB）" : "Image is too large (max 8MB)");
+        notificationApi.error({
+          message: language === "zh-CN" ? "图片过大" : "Image is too large",
+          description: language === "zh-CN" ? "最大支持 8MB。" : "Max size is 8MB.",
+          duration: 2.8,
+        });
         return Upload.LIST_IGNORE;
       }
       // Use onChange to populate UploadFile (with originFileObj).
@@ -160,61 +180,20 @@ export default function OrderUploadModal({
         </Button>,
       ]}
     >
+      {notificationContextHolder}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <Alert
-          type="info"
-          showIcon
-          message={
-            language === "zh-CN"
-              ? "上传前请确认截图包含“订单号/订单编号”，否则会识别失败"
-              : "Before uploading, make sure the screenshot includes an Order Number/Order ID, otherwise recognition will fail"
-          }
-          description={
-            <div>
-              <div style={{ marginBottom: 8 }}>
-                {language === "zh-CN"
-                  ? "建议上传电商订单详情页/发票截图，需清晰可读："
-                  : "Recommended: upload an e-commerce order details or invoice screenshot. The following should be clearly readable:"}
-              </div>
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                <li>
-                  {language === "zh-CN" ? "订单号/订单编号（必须）" : "Order number / Order ID (required)"}
-                </li>
-                <li>
-                  {language === "zh-CN"
-                    ? "平台/店铺信息（推荐）"
-                    : "Platform / shop information (recommended)"}
-                </li>
-                <li>
-                  {language === "zh-CN"
-                    ? "下单时间、付款时间（推荐）"
-                    : "Order created time & paid time (recommended)"}
-                </li>
-                <li>
-                  {language === "zh-CN"
-                    ? "购买数量（推荐）"
-                    : "Purchased quantity (recommended)"}
-                </li>
-              </ul>
-              <div style={{ marginTop: 8 }}>
-                {language === "zh-CN"
-                  ? `仅支持图片，且大小不超过 8MB；同一订单号只能提交一次。`
-                  : "Images only, up to 8MB; the same order number can only be submitted once."}
-              </div>
-            </div>
-          }
-        />
+        <OrderUploadTipsCard language={language} maxBytes={maxBytes} />
 
         {error && <Alert type="error" message={error} showIcon />}
         
         <Dragger {...uploadProps} style={{ padding: 20 }}>
           <p className="ant-upload-drag-icon">
-            <InboxOutlined />
+            <InboxOutlined style={{ color: token.colorTextSecondary }} />
           </p>
-          <p className="ant-upload-text">
+          <p className="ant-upload-text" style={{ color: token.colorTextSecondary }}>
             {language === "zh-CN" ? "点击或拖拽文件到此区域上传" : "Click or drag file to this area to upload"}
           </p>
-          <p className="ant-upload-hint">
+          <p className="ant-upload-hint" style={{ color: token.colorTextTertiary }}>
             {language === "zh-CN" ? "支持单次上传一张图片" : "Support for a single upload."}
           </p>
         </Dragger>

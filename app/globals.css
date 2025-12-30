@@ -6305,3 +6305,25 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	border-color: rgba(37, 99, 235, 0.7);
 	color: #0f172a;
 }
+
+/* =========================================================
+   Ant Design Tabs（深色主题）：避免“可点击文字/下划线”使用亮蓝主色
+   - 目标：在 dark mode 下保持系统整体的灰度层级一致
+   - 范围：仅在 vben-page（用户端主要页面容器）内生效
+   ========================================================= */
+
+:root[data-theme="dark"] .vben-page .ant-tabs .ant-tabs-tab .ant-tabs-tab-btn {
+  color: rgba(229, 231, 235, 0.72) !important; /* text secondary */
+}
+
+:root[data-theme="dark"] .vben-page .ant-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn {
+  color: rgba(229, 231, 235, 0.9) !important; /* hover */
+}
+
+:root[data-theme="dark"] .vben-page .ant-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: rgba(249, 250, 251, 0.95) !important; /* selected */
+}
+
+:root[data-theme="dark"] .vben-page .ant-tabs .ant-tabs-ink-bar {
+  background: rgba(229, 231, 235, 0.55) !important; /* neutral ink bar */
+}
