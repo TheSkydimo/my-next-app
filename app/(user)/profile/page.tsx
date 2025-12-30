@@ -421,6 +421,7 @@ export default function UserProfilePage() {
                     <Alert
                       type="info"
                       showIcon
+                      className="user-profile-alert"
                       message={language === "zh-CN" ? "安全提示" : "Security tip"}
                       description={messages.profile.emailDialogDesc}
                     />

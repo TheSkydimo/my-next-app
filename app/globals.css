@@ -1711,6 +1711,65 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		transform 120ms ease-out;
 }
 
+/* 用户资料页：安全提示（覆盖 AntD Alert 默认蓝底，保持与暗色卡片一致） */
+.user-profile-alert {
+	/* No background / no border: inline tip style */
+	background: transparent !important;
+	background-color: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
+	border-radius: 0;
+	padding: 0 !important;
+}
+
+/* AntD Alert: some variants apply background/padding on `.ant-alert-info` / `.ant-alert-with-description`
+   (and in dark mode can look like a blue-ish card). Force remove them here. */
+.user-profile-alert.ant-alert,
+.user-profile-alert.ant-alert-info,
+.user-profile-alert.ant-alert-with-description {
+	background: transparent !important;
+	background-color: transparent !important;
+	border: none !important;
+	padding: 0 !important;
+}
+
+.user-profile-alert.ant-alert-with-description .ant-alert-content {
+	padding: 0 !important;
+}
+
+.user-profile-alert .ant-alert-icon {
+	/* AntD may inject `.ant-alert-info .ant-alert-icon { color: #1677ff }` after globals.css.
+	   Use !important to guarantee neutral gray. */
+	color: rgba(203, 213, 225, 0.9) !important;
+}
+
+.user-profile-alert .ant-alert-icon svg,
+.user-profile-alert .ant-alert-icon svg * {
+	/* Override internal fills (e.g. the blue circle in info icon) */
+	fill: currentColor !important;
+}
+
+.user-profile-alert .ant-alert-message {
+	color: rgba(226, 232, 240, 0.92);
+	font-weight: 600;
+}
+
+.user-profile-alert .ant-alert-description {
+	color: rgba(226, 232, 240, 0.78);
+}
+
+:root[data-theme="light"] .user-profile-alert .ant-alert-icon {
+	color: rgba(55, 65, 81, 0.92) !important; /* Neutral gray */
+}
+
+:root[data-theme="light"] .user-profile-alert .ant-alert-message {
+	color: rgba(17, 24, 39, 0.92);
+}
+
+:root[data-theme="light"] .user-profile-alert .ant-alert-description {
+	color: rgba(55, 65, 81, 0.82);
+}
+
 /* 浅色主题下：资料页按钮需要更深的文字颜色，否则会“消失” */
 :root[data-theme="light"] .user-profile-button {
 	border-color: rgba(209, 213, 219, 0.95);
