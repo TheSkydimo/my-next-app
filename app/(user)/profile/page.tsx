@@ -349,9 +349,6 @@ export default function UserProfilePage() {
               {userEmail}
             </Text>
           </div>
-          <Link href="/">
-             <Button>{language === "zh-CN" ? "返回首页" : "Back Home"}</Button>
-          </Link>
         </Space>
 
         <Tabs
