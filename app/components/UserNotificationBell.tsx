@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Badge, 
   Button, 
@@ -25,6 +25,7 @@ import type { AppLanguage } from "../client-prefs";
 import { getInitialLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import { apiFetch } from "../lib/apiFetch";
+import { dispatchUserOrdersInvalidated } from "../lib/events/userOrdersEvents";
 
 const { Text, Paragraph } = Typography;
 const { useToken } = theme;
@@ -70,6 +71,13 @@ export default function UserNotificationBell() {
   const messages = useMemo(() => getUserMessages(language), [language]);
   const { token } = useToken();
 
+  // Track notifications we've seen to avoid firing on initial load.
+  // Note: lastSeen may be 0 when there are no notifications yet; that's still "initialized".
+  const notifSeenRef = useRef<{ initialized: boolean; lastSeenId: number }>({
+    initialized: false,
+    lastSeenId: 0,
+  });
+
   const fetchList = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -85,14 +93,87 @@ export default function UserNotificationBell() {
         items?: NotificationItem[];
         unreadCount?: number;
       };
-      setItems(data.items ?? []);
+      const list = data.items ?? [];
+      setItems(list);
       setUnreadCount(Number(data.unreadCount ?? 0));
+
+      // Initialize seen-id on first successful fetch (avoid triggering refresh on historical items).
+      if (!notifSeenRef.current.initialized) {
+        const maxId = list.reduce((m, x) => Math.max(m, x.id), 0);
+        notifSeenRef.current = { initialized: true, lastSeenId: maxId };
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : messages.notifications.loadFailed);
     } finally {
       setLoading(false);
     }
   }, [language, messages.notifications.loadFailed]);
+
+  const probeUnreadAndDispatchEvents = useCallback(async () => {
+    // Lightweight poll: only unread notifications.
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        pageSize: "20",
+        unreadOnly: "1",
+        lang: language,
+      });
+      const res = await apiFetch(`/api/user/notifications?${params.toString()}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        items?: NotificationItem[];
+        unreadCount?: number;
+      };
+
+      const list = data.items ?? [];
+      setUnreadCount(Number(data.unreadCount ?? 0));
+
+      // If we haven't initialized yet (e.g. initial fetchList not completed), initialize and don't dispatch.
+      if (!notifSeenRef.current.initialized) {
+        const maxId = list.reduce((m, x) => Math.max(m, x.id), 0);
+        notifSeenRef.current = { initialized: true, lastSeenId: maxId };
+        return;
+      }
+
+      const lastSeen = notifSeenRef.current.lastSeenId;
+      const newItems = list.filter((x) => x.id > lastSeen);
+      const newOrderRelated = newItems.filter((x) => x.type === "order_removed");
+      if (newOrderRelated.length > 0) {
+        dispatchUserOrdersInvalidated({
+          source: "notification",
+          notificationIds: newOrderRelated.map((x) => x.id),
+          notificationTypes: Array.from(new Set(newOrderRelated.map((x) => x.type))),
+        });
+      }
+
+      // Merge new unread items into the current list (so user doesn't need to hit refresh).
+      if (newItems.length > 0) {
+        setItems((prev) => {
+          const map = new Map<number, NotificationItem>();
+          for (const it of prev) map.set(it.id, it);
+          for (const it of newItems) map.set(it.id, it);
+          // Sort newest first by id (consistent with API ordering).
+          return Array.from(map.values()).sort((a, b) => b.id - a.id).slice(0, 20);
+        });
+
+        // If the panel is closed, show a small toast to hint the user.
+        if (!open) {
+          const newest = newItems.reduce((acc, it) => (it.id > acc.id ? it : acc), newItems[0]);
+          message.info({
+            content: newest.title || (language === "zh-CN" ? "收到新通知" : "New notification"),
+            duration: 2,
+          });
+        }
+      }
+
+      const maxId = list.reduce((m, x) => Math.max(m, x.id), 0);
+      if (maxId > notifSeenRef.current.lastSeenId) {
+        notifSeenRef.current = { initialized: true, lastSeenId: maxId };
+      }
+    } catch {
+      // silent (best-effort)
+    }
+  }, [language, open]);
 
   const markRead = async (id: number) => {
     try {
@@ -173,6 +254,26 @@ export default function UserNotificationBell() {
     if (typeof window === "undefined") return;
     void fetchList();
   }, [fetchList]);
+
+  // Background polling to keep unread count fresh and to auto-refresh order data when admin removes an order.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      // Avoid duplicate requests while the panel is open; open state already triggers fetchList.
+      if (open) return;
+      void probeUnreadAndDispatchEvents();
+    };
+
+    const intervalId = window.setInterval(tick, 15_000);
+    const onVis = () => tick();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [open, probeUnreadAndDispatchEvents]);
 
   // 当面板打开时，重新拉取一次
   useEffect(() => {

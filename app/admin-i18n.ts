@@ -244,7 +244,7 @@ const zhCN: AdminMessages = {
     unknownError: "发生未知错误",
   },
   layout: {
-    brand: "Skydimo Admin",
+    brand: "Skydimo",
     navHome: "首页",
     navProfile: "个人信息",
     navUserManagement: "成员管理",
@@ -484,7 +484,7 @@ const enUS: AdminMessages = {
     unknownError: "Unknown error occurred",
   },
   layout: {
-    brand: "Skydimo Admin",
+    brand: "Skydimo",
     navHome: "Dashboard",
     navProfile: "Profile",
     navUserManagement: "Users & Admins",

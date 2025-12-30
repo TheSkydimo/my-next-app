@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Typography, Button, Alert, Card } from "antd";
 import { CloudUploadOutlined } from "@ant-design/icons";
@@ -13,6 +13,10 @@ import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 import UserOrdersList, { OrderSnapshot } from "../../components/UserOrdersList";
 import OrderUploadModal from "../../components/OrderUploadModal";
 import { apiFetch } from "../../lib/apiFetch";
+import {
+  USER_ORDERS_INVALIDATED_EVENT,
+  type UserOrdersInvalidatedDetail,
+} from "../../lib/events/userOrdersEvents";
 
 // 与后端 `app/api/user/orders/route.ts` 中的 DEFAULT_DEVICE_ID 保持一致
 const NO_DEVICE_ID = "__NO_DEVICE__";
@@ -47,22 +51,23 @@ export default function UserDevicesPage() {
     return () => window.removeEventListener("app-language-changed", handler as EventListener);
   }, []);
 
-  useEffect(() => {
-    const loadOrders = async () => {
+  const applyOrders = useCallback((list: OrderSnapshot[]) => {
+    const grouped: Record<string, OrderSnapshot[]> = {};
+    for (const item of list) {
+      const key = item.deviceId || NO_DEVICE_ID;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(item);
+    }
+    setOrders(grouped);
+  }, []);
+
+  const loadOrders = useCallback(
+    async (opts?: { bypassCache?: boolean }) => {
       const url = `/api/user/orders`;
 
-      const applyOrders = (list: OrderSnapshot[]) => {
-        const grouped: Record<string, OrderSnapshot[]> = {};
-        for (const item of list) {
-          const key = item.deviceId || NO_DEVICE_ID;
-          if (!grouped[key]) grouped[key] = [];
-          grouped[key].push(item);
-        }
-        setOrders(grouped);
-      };
-
       try {
-        const cached = cache.get<{ items?: OrderSnapshot[] }>(url);
+        const bypassCache = !!opts?.bypassCache;
+        const cached = bypassCache ? undefined : cache.get<{ items?: OrderSnapshot[] }>(url);
         if (cached && Array.isArray(cached.items)) {
           applyOrders(cached.items);
           return;
@@ -79,13 +84,48 @@ export default function UserDevicesPage() {
         cache.set(url, { items: list });
         applyOrders(list);
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : (language === "zh-CN" ? "获取订单失败" : "Failed to load orders"));
+        setError(
+          e instanceof Error
+            ? e.message
+            : language === "zh-CN"
+              ? "获取订单失败"
+              : "Failed to load orders"
+        );
       } finally {
         setLoading(false);
       }
+    },
+    [applyOrders, cache, language, setError]
+  );
+
+  useEffect(() => {
+    if (userEmail) void loadOrders();
+  }, [loadOrders, userEmail]);
+
+  // When admin removes an order screenshot, user gets a notification.
+  // We listen to a lightweight front-end event (dispatched by UserNotificationBell polling)
+  // and refresh orders automatically (cache-first, but invalidate on signal).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = (event: Event) => {
+      if (!userEmail) return;
+      const custom = event as CustomEvent<UserOrdersInvalidatedDetail>;
+      const source = custom.detail?.source ?? "unknown";
+
+      // Invalidate cache and force a refresh.
+      cache.remove("/api/user/orders");
+      void loadOrders({ bypassCache: true });
+
+      // Optional UX: a small hint that data has changed.
+      if (source === "notification") {
+        setOkMsg(language === "zh-CN" ? "订单已更新" : "Orders updated");
+      }
     };
-    if (userEmail) loadOrders();
-  }, [cache, language, setError, userEmail]);
+
+    window.addEventListener(USER_ORDERS_INVALIDATED_EVENT, handler as EventListener);
+    return () => window.removeEventListener(USER_ORDERS_INVALIDATED_EVENT, handler as EventListener);
+  }, [cache, language, loadOrders, setOkMsg, userEmail]);
 
   const allOrders = useMemo(() => {
     const flat = Object.values(orders).flat();

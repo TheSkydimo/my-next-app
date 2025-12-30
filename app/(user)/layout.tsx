@@ -152,10 +152,19 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const handler = () => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ status?: number }>;
+      const status = Number(custom.detail?.status ?? 401);
       userContext?.clearUser();
       notificationApi.warning({
-        message: language === "zh-CN" ? "登录已失效" : "Signed out",
+        message:
+          language === "zh-CN"
+            ? status === 403
+              ? "权限不足"
+              : "登录已失效"
+            : status === 403
+              ? "Access denied"
+              : "Signed out",
         description:
           language === "zh-CN"
             ? "你的账号已退出登录或已不可用，请重新登录。"

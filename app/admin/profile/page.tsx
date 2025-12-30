@@ -518,6 +518,7 @@ export default function AdminProfilePage() {
                       <Alert
                         type="info"
                         showIcon
+                        className="user-profile-alert"
                         message={language === "zh-CN" ? "安全提示" : "Security tip"}
                         description={
                           language === "zh-CN"

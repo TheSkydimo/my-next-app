@@ -5,6 +5,7 @@ import type { AppLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import { useApiCache } from "../contexts/ApiCacheContext";
 import { apiFetch } from "../lib/apiFetch";
+import { USER_ORDERS_INVALIDATED_EVENT } from "../lib/events/userOrdersEvents";
 
 export type OrderSnapshot = {
   id: number;
@@ -28,6 +29,18 @@ export function useUserOrdersPreview(email: string | null, language: AppLanguage
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string>("");
   const [items, setItems] = useState<OrderSnapshot[]>([]);
+  const [reloadNonce, setReloadNonce] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => {
+      if (!email) return;
+      cache.remove("/api/user/orders");
+      setReloadNonce((x) => x + 1);
+    };
+    window.addEventListener(USER_ORDERS_INVALIDATED_EVENT, handler as EventListener);
+    return () => window.removeEventListener(USER_ORDERS_INVALIDATED_EVENT, handler as EventListener);
+  }, [cache, email]);
 
   useEffect(() => {
     let ignore = false;
@@ -83,7 +96,7 @@ export function useUserOrdersPreview(email: string | null, language: AppLanguage
     return () => {
       ignore = true;
     };
-  }, [cache, email, messages.home.orderPreviewFetchFailed]);
+  }, [cache, email, messages.home.orderPreviewFetchFailed, reloadNonce]);
 
   return { loading, loaded, error, items };
 }
