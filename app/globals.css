@@ -1711,6 +1711,23 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		transform 120ms ease-out;
 }
 
+/* 用户资料页：头像背景去除（AntD Avatar 默认会给 image/avatar fallback 加背景色） */
+.app-avatar.ant-avatar,
+.app-avatar.ant-avatar.ant-avatar-image,
+.app-avatar.ant-avatar.ant-avatar-circle,
+.user-profile-avatar.ant-avatar,
+.user-profile-avatar.ant-avatar.ant-avatar-image,
+.user-profile-avatar.ant-avatar.ant-avatar-circle {
+	background: transparent !important;
+	background-color: transparent !important;
+}
+
+.app-avatar.ant-avatar > img,
+.user-profile-avatar.ant-avatar > img {
+	background: transparent !important;
+	background-color: transparent !important;
+}
+
 /* 用户资料页：安全提示（覆盖 AntD Alert 默认蓝底，保持与暗色卡片一致） */
 .user-profile-alert {
 	/* No background / no border: inline tip style */

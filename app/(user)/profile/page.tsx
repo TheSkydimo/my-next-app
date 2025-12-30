@@ -367,7 +367,7 @@ export default function UserProfilePage() {
                             size={56}
                             src={profile.avatarUrl}
                             icon={<UserOutlined />}
-                            style={{ backgroundColor: '#1677ff' }}
+                            className="app-avatar"
                           />
                           <div>
                              <Space size={8} wrap>
@@ -481,7 +481,7 @@ export default function UserProfilePage() {
               {messages.profile.avatarDialogDesc}
            </Typography.Paragraph>
            <Space align="center" size={12}>
-              <Avatar size={48} src={avatarPreviewUrl} icon={<UserOutlined />} />
+              <Avatar size={48} src={avatarPreviewUrl} icon={<UserOutlined />} className="app-avatar" />
               <Upload
                 accept="image/*"
                 showUploadList={false}

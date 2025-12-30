@@ -457,7 +457,7 @@ export default function AdminProfilePage() {
                         <Avatar
                           size={56}
                           src={adminProfile?.avatarUrl || undefined}
-                          style={{ background: "#1677ff" }}
+                          className="app-avatar"
                         >
                           {(adminProfile?.username || adminEmail).trim().charAt(0).toUpperCase()}
                         </Avatar>

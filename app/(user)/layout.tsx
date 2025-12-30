@@ -608,9 +608,7 @@ function AppLayout({
                 <Avatar
                   src={avatarUrl}
                   icon={<UserOutlined />}
-                  style={{
-                    backgroundColor: avatarUrl ? "transparent" : "#1890ff",
-                  }}
+                  className="app-avatar"
                 />
                 {!isMobile && displayName && (
                   <span style={{ marginLeft: 8, maxWidth: 100 }} className="truncate">
