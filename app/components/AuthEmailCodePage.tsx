@@ -268,6 +268,12 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [loggingIn, setLoggingIn] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileLoadFailed, setTurnstileLoadFailed] = useState(false);
+  const [turnstileClientErrorCode, setTurnstileClientErrorCode] = useState<
+    string | null
+  >(null);
+  const [turnstileVerifyFailedMessage, setTurnstileVerifyFailedMessage] =
+    useState<string | null>(null);
+  const [authDebugEnabled, setAuthDebugEnabled] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
   const [turnstileRequired, setTurnstileRequired] = useState(true);
   const [turnstilePassed, setTurnstilePassed] = useState(false);
@@ -289,6 +295,19 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const [layoutAlign, setLayoutAlign] = useState<AuthLayoutAlign>("center");
+
+  // During login flow, suppress global "Signed out" popups triggered by background
+  // requests (e.g. user logs in elsewhere and the old session expires).
+  // UX-only: server auth still applies.
+  const setAuthInProgress = (value: boolean) => {
+    if (typeof window === "undefined") return;
+    try {
+      if (value) window.sessionStorage.setItem("authInProgress", "1");
+      else window.sessionStorage.removeItem("authInProgress");
+    } catch {
+      // ignore
+    }
+  };
 
   const normalizeEmailCode = (raw: string) => raw.replace(/\s+/g, "");
 
@@ -344,6 +363,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   // 如果已经有有效 session（cookie），直接跳过邮箱验证
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // entering auth page means user intends to sign in; clear any stale flag first
+    setAuthInProgress(false);
     void (async () => {
       try {
         const res = await fetch(meEndpoint, {
@@ -357,6 +378,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         // ignore
       }
     })();
+    return () => setAuthInProgress(false);
   }, [meEndpoint, postLoginRedirect]);
 
   useEffect(() => {
@@ -395,30 +417,52 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       // 登录页默认居中布局
       window.localStorage.setItem("authAlign", "center");
     }
+
+    // Debug helper:
+    // - In dev builds, always show (for local debugging)
+    // - In production, only show when explicitly enabled by developer:
+    //   `localStorage.setItem("authDebug", "1")`
+    const debugFlag = window.localStorage.getItem("authDebug");
+    setAuthDebugEnabled(process.env.NODE_ENV !== "production" || debugFlag === "1");
   }, []);
 
   // Turnstile site key: 通过运行时 API 获取，避免依赖构建期 NEXT_PUBLIC 注入
   useEffect(() => {
-    void (async () => {
+    let cancelled = false;
+    const run = async (attempt: number) => {
       try {
-        const res = await fetch("/api/public-config", { method: "GET" });
-        if (!res.ok) return;
+        const res = await fetch("/api/public-config", {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error("public-config-not-ok");
         const data = (await res.json()) as {
           turnstileSiteKey?: string;
           turnstileRequired?: boolean;
         };
-        if (typeof data.turnstileSiteKey === "string") {
-          setTurnstileSiteKey(data.turnstileSiteKey);
-          setTurnstileRequired(
-            typeof data.turnstileRequired === "boolean"
-              ? data.turnstileRequired
-              : !!data.turnstileSiteKey
-          );
+        if (cancelled) return;
+        if (typeof data.turnstileSiteKey !== "string") {
+          throw new Error("public-config-invalid-json");
         }
+        setTurnstileSiteKey(data.turnstileSiteKey);
+        setTurnstileRequired(
+          typeof data.turnstileRequired === "boolean"
+            ? data.turnstileRequired
+            : !!data.turnstileSiteKey
+        );
       } catch {
-        // ignore
+        if (cancelled) return;
+        // Occasional network/edge hiccups happen. Retry a couple times so users
+        // don't need to refresh manually.
+        if (attempt < 2) {
+          window.setTimeout(() => void run(attempt + 1), 400 * (attempt + 1));
+        }
       }
-    })();
+    };
+    void run(0);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Initial step: Turnstile (if required) -> Email -> Code
@@ -488,6 +532,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         return;
       }
 
+      setAuthInProgress(true);
       setSendingCode(true);
       try {
         const res = await fetch("/api/email/send-code", {
@@ -622,6 +667,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const verifyTurnstileAndContinue = useCallback(async (token: string) => {
     setError("");
     setErrorKind("none");
+    setTurnstileVerifyFailedMessage(null);
+    setAuthInProgress(true);
 
     if (!turnstileRequired) {
       setTurnstilePassed(true);
@@ -650,7 +697,11 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       if (!res.ok) {
         // 用户侧表现：提示稍后再试，并自动回到人机验证页面重新开始
         // （避免在 Turnstile “一键验证/交互”或网络抖动时卡死在当前状态）
-        await res.text().catch(() => "");
+        const msg = (await res.text().catch(() => "")) || "";
+        const debugMsg =
+          msg.length > 180 ? `${msg.slice(0, 180)}…` : msg || t.turnstileOneClickRetry;
+        setTurnstileVerifyFailedMessage(debugMsg);
+        // Do not show internal messages to end users in production.
         restartTurnstileFlow(t.turnstileOneClickRetry);
         return;
       }
@@ -751,6 +802,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
     // leading to a confusing flash of error even though the user is logged in.
     if (loggingIn) return;
     setLoggingIn(true);
+    setAuthInProgress(true);
 
     const normalizedCode = normalizeEmailCode(emailCode);
     if (!normalizedCode) {
@@ -843,6 +895,8 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
         }
       }
 
+      // Successful login: re-enable global auth popups for future requests.
+      setAuthInProgress(false);
       window.location.href = postLoginRedirect;
     } finally {
       // If navigation happens, this doesn't matter; if it doesn't, make sure UI can retry.
@@ -1061,12 +1115,19 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                           onToken={(token) => {
                             setTurnstileToken(token);
                             setTurnstileLoadFailed(false);
+                            setTurnstileClientErrorCode(null);
+                            if (token) setTurnstileVerifyFailedMessage(null);
                             if (errorKind === "turnstile") {
                               setError("");
                               setErrorKind("none");
                             }
                           }}
-                          onError={() => setTurnstileLoadFailed(true)}
+                          onError={(code) => {
+                            setTurnstileLoadFailed(true);
+                            setTurnstileClientErrorCode(
+                              typeof code === "string" && code ? code : "unknown"
+                            );
+                          }}
                           onTimeout={() => restartTurnstileFlow(t.turnstileOneClickRetry)}
                           // IMPORTANT: Allow interactive challenges (checkbox / extra steps).
                           // Previously we force-restarted here, which trapped users in a loop.
@@ -1082,6 +1143,20 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
                   {error && (
                     <div className="auth-card__error" role="alert" aria-live="polite">
                       <div className="auth-card__error-title">{error}</div>
+                      {authDebugEnabled &&
+                        (turnstileClientErrorCode || turnstileVerifyFailedMessage) && (
+                        <div className="auth-card__error-hint">
+                          {turnstileClientErrorCode
+                            ? `Turnstile: ${turnstileClientErrorCode}`
+                            : null}
+                          {turnstileClientErrorCode && turnstileVerifyFailedMessage
+                            ? " · "
+                            : null}
+                          {turnstileVerifyFailedMessage
+                            ? `Verify: ${turnstileVerifyFailedMessage}`
+                            : null}
+                        </div>
+                      )}
                     </div>
                   )}
                   {verifyingTurnstile && (

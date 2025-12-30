@@ -11,7 +11,12 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   if (originGuard) return originGuard;
 
   const parsed = await readJsonBody<{ token?: string }>(request);
-  if (!parsed.ok) return new Response("Invalid JSON", { status: 400 });
+  if (!parsed.ok) {
+    return new Response("Invalid JSON", {
+      status: 400,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
 
   const { token } = parsed.value;
 
@@ -22,18 +27,34 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     const secret = getTurnstileSecretFromEnv(env);
     if (!secret) {
       // Do not leak config details beyond what's necessary.
-      return new Response("Turnstile 未配置", { status: 500 });
+      return new Response("验证服务暂不可用，请稍后再试", {
+        status: 500,
+        headers: { "Cache-Control": "no-store" },
+      });
     }
-    if (!token) return new Response("请完成人机验证", { status: 400 });
+    if (!token) {
+      return new Response("请完成人机验证", {
+        status: 400,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
 
     const remoteip = request.headers.get("CF-Connecting-IP");
     const ok = await verifyTurnstileToken({ secret, token, remoteip });
-    if (!ok) return new Response("人机验证失败，请重试", { status: 400 });
+    if (!ok) {
+      return new Response("人机验证失败，请重试", {
+        status: 400,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
   }
 
   const setCookie = await issueTurnstilePassCookie({ request, env, maxAgeSeconds: 60 * 10 });
   if (!setCookie) {
-    return new Response("服务器内部错误", { status: 500 });
+    return new Response("服务器内部错误", {
+      status: 500,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
   return Response.json(

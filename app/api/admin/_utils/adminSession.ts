@@ -6,6 +6,7 @@ import {
   ensureUsersAvatarUrlColumn,
   ensureUsersIsAdminColumn,
   ensureUsersIsSuperAdminColumn,
+  ensureUsersSessionJtiColumn,
 } from "../../_utils/usersTable";
 import { unauthorizedWithClearedSession } from "../../_utils/unauthorized";
 
@@ -25,6 +26,7 @@ type AdminRow = {
   avatar_url: string | null;
   is_admin: number;
   is_super_admin: number;
+  session_jti?: string | null;
 };
 
 export async function requireAdminFromRequest(options: {
@@ -54,6 +56,7 @@ export async function requireAdminFromRequest(options: {
     await ensureUsersIsAdminColumn(db);
     await ensureUsersIsSuperAdminColumn(db);
     await ensureUsersAvatarUrlColumn(db);
+    await ensureUsersSessionJtiColumn(db);
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     console.error(
@@ -76,7 +79,7 @@ export async function requireAdminFromRequest(options: {
 
   const { results } = await db
     .prepare(
-      "SELECT id, username, email, avatar_url, is_admin, is_super_admin FROM users WHERE id = ? LIMIT 1"
+      "SELECT id, username, email, avatar_url, is_admin, is_super_admin, session_jti FROM users WHERE id = ? LIMIT 1"
     )
     .bind(payload.uid)
     .all<AdminRow>();
@@ -84,6 +87,11 @@ export async function requireAdminFromRequest(options: {
   const row = results?.[0];
   if (!row) {
     return unauthorizedWithClearedSession(request);
+  }
+
+  // Single-session: if we have a stored session_jti, only accept the latest one.
+  if (typeof row.session_jti === "string" && row.session_jti && row.session_jti !== payload.jti) {
+    return unauthorizedWithClearedSession(request, { reason: "session_replaced" });
   }
 
   if (!row.is_admin) {

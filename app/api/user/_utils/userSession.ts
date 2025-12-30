@@ -2,7 +2,11 @@ import { getRequestCookie } from "../../_utils/cookies";
 import { getSessionSecret } from "../../_utils/sessionSecret";
 import { getSessionCookieName, verifySessionToken } from "../../_utils/session";
 import { convertDbAvatarUrlToPublicUrl } from "../../_utils/r2ObjectUrls";
-import { ensureUsersAvatarUrlColumn, ensureUsersIsAdminColumn } from "../../_utils/usersTable";
+import {
+  ensureUsersAvatarUrlColumn,
+  ensureUsersIsAdminColumn,
+  ensureUsersSessionJtiColumn,
+} from "../../_utils/usersTable";
 import { unauthorizedWithClearedSession } from "../../_utils/unauthorized";
 
 export type UserAuthed = {
@@ -20,6 +24,7 @@ type UserRow = {
   email: string;
   avatar_url: string | null;
   is_admin: number;
+  session_jti?: string | null;
   created_at: string;
 };
 
@@ -49,6 +54,7 @@ export async function requireUserFromRequest(options: {
   try {
     await ensureUsersIsAdminColumn(db);
     await ensureUsersAvatarUrlColumn(db);
+    await ensureUsersSessionJtiColumn(db);
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     console.error(
@@ -70,13 +76,20 @@ export async function requireUserFromRequest(options: {
   }
 
   const { results } = await db
-    .prepare("SELECT id, username, email, avatar_url, is_admin, created_at FROM users WHERE id = ? LIMIT 1")
+    .prepare(
+      "SELECT id, username, email, avatar_url, is_admin, session_jti, created_at FROM users WHERE id = ? LIMIT 1"
+    )
     .bind(payload.uid)
     .all<UserRow>();
 
   const row = results?.[0];
   if (!row) {
     return unauthorizedWithClearedSession(request);
+  }
+
+  // Single-session: if we have a stored session_jti, only accept the latest one.
+  if (typeof row.session_jti === "string" && row.session_jti && row.session_jti !== payload.jti) {
+    return unauthorizedWithClearedSession(request, { reason: "session_replaced" });
   }
 
   return {

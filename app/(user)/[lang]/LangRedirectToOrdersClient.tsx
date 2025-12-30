@@ -13,7 +13,7 @@ export default function LangRedirectToOrdersClient() {
 
   return (
     <div style={{ padding: 48, textAlign: "center" }}>
-      <Typography.Text type="secondary">Redirecting...</Typography.Text>
+      <Typography.Text type="secondary"> </Typography.Text>
     </div>
   );
 }

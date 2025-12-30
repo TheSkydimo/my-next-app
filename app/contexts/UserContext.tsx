@@ -84,7 +84,12 @@ export function UserProvider({ children }: UserProviderProps) {
    */
   const loadMe = useCallback(async (): Promise<UserProfile | null> => {
     try {
-      const res = await apiFetch("/api/user/me", { method: "GET" });
+      // This is an auth probe: 401 is a normal "not logged in" state,
+      // so it should NOT trigger the global signed-out popup.
+      const res = await apiFetch("/api/user/me", {
+        method: "GET",
+        appAuth: { suppressUnauthorizedEvent: true },
+      });
       if (!res.ok) return null;
       const data = (await res.json()) as UserProfile;
       if (!data?.email) return null;

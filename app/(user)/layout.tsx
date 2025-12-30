@@ -153,22 +153,63 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return;
 
     const handler = (event: Event) => {
-      const custom = event as CustomEvent<{ status?: number }>;
+      // If user is actively signing in, do not show global "signed out" popups.
+      // This avoids confusing UX when the old session expires while user is logging in.
+      try {
+        if (window.sessionStorage.getItem("authInProgress") === "1") {
+          userContext?.clearUser();
+          return;
+        }
+      } catch {
+        // ignore
+      }
+
+      // If user is already on the auth pages, don't show a confusing "Signed out" popup.
+      // Auth pages will handle their own UX.
+      const p = pathname || "";
+      if (
+        p === "/login" ||
+        p === "/register" ||
+        p.startsWith("/admin/login")
+      ) {
+        userContext?.clearUser();
+        return;
+      }
+
+      const custom = event as CustomEvent<{ status?: number; reason?: string }>;
       const status = Number(custom.detail?.status ?? 401);
+      const reason = String(custom.detail?.reason ?? "");
       userContext?.clearUser();
+
+      // Only show a popup when the user was already signed in.
+      // For "not logged in" normal flows, silently redirect to login.
+      const hadUser = !!userContext?.profile;
+      if (!hadUser) {
+        window.location.href = "/login";
+        return;
+      }
+
       notificationApi.warning({
         message:
           language === "zh-CN"
             ? status === 403
               ? "权限不足"
-              : "登录已失效"
+              : reason === "session_replaced"
+                ? "已在别处登录"
+                : "登录已失效"
             : status === 403
               ? "Access denied"
-              : "Signed out",
+              : reason === "session_replaced"
+                ? "Signed in elsewhere"
+                : "Signed out",
         description:
           language === "zh-CN"
-            ? "你的账号已退出登录或已不可用，请重新登录。"
-            : "Your session is no longer valid. Please sign in again.",
+            ? reason === "session_replaced"
+              ? "你的账号已在其他设备登录，本设备已被挤下线，请重新登录。"
+              : "你的账号已退出登录或已不可用，请重新登录。"
+            : reason === "session_replaced"
+              ? "You signed in on another device. Please sign in again."
+              : "Your session is no longer valid. Please sign in again.",
         duration: 3.5,
       });
       window.setTimeout(() => {
@@ -178,7 +219,7 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
 
     window.addEventListener("app-auth-unauthorized", handler as EventListener);
     return () => window.removeEventListener("app-auth-unauthorized", handler as EventListener);
-  }, [language, notificationApi, userContext]);
+  }, [language, notificationApi, userContext, pathname]);
 
   // 监听全局语言变更事件（例如 /en、/zh 路由在进入时会触发 applyLanguage）
   useEffect(() => {

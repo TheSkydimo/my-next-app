@@ -16,6 +16,7 @@ async function maybeMigrateUsersTableRemoveLegacyAuthColumn(db: D1Database) {
   const selectAvatarUrl = cols.has("avatar_url") ? "avatar_url" : "NULL";
   const selectIsAdmin = cols.has("is_admin") ? "is_admin" : "0";
   const selectIsSuperAdmin = cols.has("is_super_admin") ? "is_super_admin" : "0";
+  const selectSessionJti = cols.has("session_jti") ? "session_jti" : "NULL";
   const selectVipExpiresAt = cols.has("vip_expires_at") ? "vip_expires_at" : "NULL";
   const selectCreatedAt = cols.has("created_at") ? "created_at" : "CURRENT_TIMESTAMP";
 
@@ -45,13 +46,14 @@ async function maybeMigrateUsersTableRemoveLegacyAuthColumn(db: D1Database) {
           avatar_url TEXT,
           is_admin INTEGER NOT NULL DEFAULT 0,
           is_super_admin INTEGER NOT NULL DEFAULT 0,
+          session_jti TEXT,
           vip_expires_at TIMESTAMP,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`
       ),
       db.prepare(
-        `INSERT INTO users__new (id, username, email, avatar_url, is_admin, is_super_admin, vip_expires_at, created_at)
-         SELECT id, username, email, ${selectAvatarUrl}, ${selectIsAdmin}, ${selectIsSuperAdmin}, ${selectVipExpiresAt}, ${selectCreatedAt}
+        `INSERT INTO users__new (id, username, email, avatar_url, is_admin, is_super_admin, session_jti, vip_expires_at, created_at)
+         SELECT id, username, email, ${selectAvatarUrl}, ${selectIsAdmin}, ${selectIsSuperAdmin}, ${selectSessionJti}, ${selectVipExpiresAt}, ${selectCreatedAt}
          FROM users`
       ),
       db.prepare("DROP TABLE users"),
@@ -77,6 +79,7 @@ export async function ensureUsersTable(db: D1Database) {
         avatar_url TEXT,
         is_admin INTEGER NOT NULL DEFAULT 0,
         is_super_admin INTEGER NOT NULL DEFAULT 0,
+        session_jti TEXT,
         vip_expires_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`
@@ -124,6 +127,18 @@ export async function ensureUsersIsSuperAdminColumn(db: D1Database) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (!msg.includes("duplicate column name: is_super_admin")) {
+      throw e;
+    }
+  }
+}
+
+export async function ensureUsersSessionJtiColumn(db: D1Database) {
+  await ensureUsersTable(db);
+  try {
+    await db.prepare("ALTER TABLE users ADD COLUMN session_jti TEXT").run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("duplicate column name: session_jti")) {
       throw e;
     }
   }

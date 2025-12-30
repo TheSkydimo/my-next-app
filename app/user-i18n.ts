@@ -136,9 +136,9 @@ export type UserMessages = {
 
 const zhCN: UserMessages = {
   common: {
-    loginRequired: "未检测到用户登录，请先登录。",
-    goLogin: "去登录",
-    loading: "加载中...",
+    loginRequired: " ",
+    goLogin: " ",
+    loading: " ",
     edit: "编辑",
     unknownError: "发生未知错误",
   },
@@ -260,7 +260,7 @@ const zhCN: UserMessages = {
     deleteOneCancel: "取消",
     deleteOneSuccess: "已删除",
     deleteOneFailed: "删除失败",
-    loadingText: "加载中...",
+    loadingText: " ",
     emptyText: "暂无通知",
     loadFailed: "加载失败",
   },
@@ -270,7 +270,7 @@ const enUS: UserMessages = {
   common: {
     loginRequired: "No logged-in user detected. Please sign in first.",
     goLogin: "Go to Login",
-    loading: "Loading...",
+    loading: " ",
     edit: "Edit",
     unknownError: "Unknown error occurred",
   },
@@ -396,7 +396,7 @@ const enUS: UserMessages = {
     deleteOneCancel: "Cancel",
     deleteOneSuccess: "Deleted",
     deleteOneFailed: "Failed to delete",
-    loadingText: "Loading...",
+    loadingText: " ",
     emptyText: "No notifications",
     loadFailed: "Failed to load",
   },

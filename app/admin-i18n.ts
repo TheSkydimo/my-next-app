@@ -238,9 +238,9 @@ export type AdminMessages = {
 
 const zhCN: AdminMessages = {
   common: {
-    adminLoginRequired: "未检测到管理员登录，请先登录管理员后台。",
+    adminLoginRequired: " ",
     goAdminLogin: "去管理员登录",
-    loading: "加载中...",
+    loading: " ",
     unknownError: "发生未知错误",
   },
   layout: {
@@ -258,7 +258,7 @@ const zhCN: AdminMessages = {
     roleSuperAdmin: "超级管理员",
     roleAdmin: "管理员",
     unauthTitle: "管理后台",
-    unauthDesc: "未检测到管理员登录，请先登录。",
+    unauthDesc: " ",
     unauthLoginLink: "去登录",
     searchPlaceholder: "搜索功能 / Ctrl + K",
     searchNotFound: "未找到相关功能，请尝试：",
@@ -480,7 +480,7 @@ const enUS: AdminMessages = {
   common: {
     adminLoginRequired: "No admin session detected. Please sign in to the admin console.",
     goAdminLogin: "Go to admin login",
-    loading: "Loading...",
+    loading: " ",
     unknownError: "Unknown error occurred",
   },
   layout: {

@@ -3,7 +3,10 @@ import { getSessionCookieName } from "./session";
 import { isSecureRequest } from "./request";
 import { getSessionCookieDomain } from "./sessionCookieDomain";
 
-export function unauthorizedWithClearedSession(request: Request): Response {
+export function unauthorizedWithClearedSession(
+  request: Request,
+  opts?: { reason?: "session_replaced" | "invalid" }
+): Response {
   const secure = isSecureRequest(request);
   // Note: request doesn't carry env, so we fall back to process.env in getRuntimeEnvVar.
   const domain = getSessionCookieDomain(undefined);
@@ -34,6 +37,7 @@ export function unauthorizedWithClearedSession(request: Request): Response {
   const headers = new Headers();
   for (const c of cookiesToClear) headers.append("Set-Cookie", c);
   headers.set("Cache-Control", "no-store");
+  if (opts?.reason) headers.set("X-Auth-Reason", opts.reason);
 
   return new Response("Unauthorized", {
     status: 401,

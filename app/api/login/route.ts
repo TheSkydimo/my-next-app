@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isValidEmail } from "../_utils/auth";
 import { convertDbAvatarUrlToPublicUrl } from "../_utils/r2ObjectUrls";
+import { ensureUsersSessionJtiColumn } from "../_utils/usersTable";
 import { verifyAndUseEmailCode } from "../_utils/emailCode";
 import { generateNumericUsername } from "../_utils/user";
 import { createSessionToken, getSessionCookieName } from "../_utils/session";
@@ -156,15 +157,23 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   const headers: HeadersInit = {};
   if (sessionSecret) {
+    // Ensure column exists for single-session enforcement.
+    await ensureUsersSessionJtiColumn(db);
     const rememberMe = remember !== false; // default: true
     // Security: even for session cookies (no Max-Age), keep a bounded server-side token TTL.
     const cookieMaxAgeSeconds = 60 * 60 * 24 * 30; // 30 days
     const tokenMaxAgeSeconds = rememberMe ? cookieMaxAgeSeconds : 60 * 60 * 12; // 12 hours (session cookie)
-    const { token } = await createSessionToken({
+    const { token, payload } = await createSessionToken({
       secret: sessionSecret,
       userId: row.id,
       maxAgeSeconds: tokenMaxAgeSeconds,
     });
+
+    // Single-session: invalidate previous sessions by rotating the stored session_jti.
+    await db
+      .prepare("UPDATE users SET session_jti = ? WHERE id = ?")
+      .bind(payload.jti, row.id)
+      .run();
 
     const secure = isSecureRequest(request);
     const domain = getSessionCookieDomain(env);
