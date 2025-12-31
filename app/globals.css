@@ -1,14 +1,15 @@
 @import "tailwindcss";
 
 :root {
-	--background: #ffffff;
-	--foreground: #171717;
+	/* Default to DARK to avoid first-paint white flash before theme/CSS fully applies */
+	--background: #000000;
+	--foreground: #e5e7eb;
 	/* 顶部工具栏的预留高度（用于左侧头像区与右侧主内容的上内边距） */
 	--shell-header-height: 88px;
 	/* App surface tokens（对齐用户端 Ant Design 的基础容器/分割线/filled 输入框观感） */
-	--app-surface: #ffffff;
-	--app-split: rgba(5, 5, 5, 0.06);
-	--app-input-filled-bg: rgba(0, 0, 0, 0.04);
+	--app-surface: #141414;
+	--app-split: rgba(255, 255, 255, 0.12);
+	--app-input-filled-bg: rgba(255, 255, 255, 0.08);
 }
 
 /* Admin 布局在浅色主题下的文字和侧边栏对比度优化（与 User 一致风格） */
@@ -120,8 +121,12 @@
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--background: #0a0a0a;
-		--foreground: #ededed;
+		/* Keep consistent with our dark defaults to avoid subtle flicker */
+		--background: #000000;
+		--foreground: #e5e7eb;
+		--app-surface: #141414;
+		--app-split: rgba(255, 255, 255, 0.12);
+		--app-input-filled-bg: rgba(255, 255, 255, 0.08);
 	}
 }
 
@@ -146,6 +151,19 @@ body {
 	background: var(--background);
 	color: var(--foreground);
 	font-family: Arial, Helvetica, sans-serif;
+}
+
+html {
+	background: var(--background);
+	color: var(--foreground);
+}
+
+html[data-theme="dark"] {
+	color-scheme: dark;
+}
+
+html[data-theme="light"] {
+	color-scheme: light;
 }
 
 html,

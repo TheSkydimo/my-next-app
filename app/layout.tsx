@@ -25,11 +25,27 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" data-theme="dark">
+		<html
+			lang="en"
+			data-theme="dark"
+			// Inline fallback to prevent a white first-paint before CSS/theme scripts apply.
+			// Theme script will update dataset + CSS will take over.
+			style={{ backgroundColor: "#000", color: "#e5e7eb" }}
+		>
 			<head>
 				<link rel="icon" href="/favicon.png" type="image/png" />
+				<meta name="color-scheme" content="dark light" />
+				<meta name="theme-color" content="#000000" />
+				<style id="critical-bg">{`
+html{background:#000;color:#e5e7eb}
+html[data-theme="light"]{background:#f9fafb;color:#111827}
+body{background:transparent;color:inherit}
+`}</style>
 			</head>
-			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+			<body
+				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+				style={{ backgroundColor: "transparent", color: "inherit" }}
+			>
 				<AntdRegistry>
 					<Script id="init-app-theme" strategy="beforeInteractive">
 						{`(() => {
@@ -37,8 +53,18 @@ export default function RootLayout({
     var t = localStorage.getItem('appTheme');
     if (t !== 'light' && t !== 'dark') t = 'dark';
     document.documentElement.dataset.theme = t;
+    // Also set inline background immediately to avoid any white flash window.
+    if (t === 'light') {
+      document.documentElement.style.backgroundColor = '#f9fafb';
+      document.documentElement.style.color = '#111827';
+    } else {
+      document.documentElement.style.backgroundColor = '#000000';
+      document.documentElement.style.color = '#e5e7eb';
+    }
   } catch (e) {
     document.documentElement.dataset.theme = 'dark';
+    document.documentElement.style.backgroundColor = '#000000';
+    document.documentElement.style.color = '#e5e7eb';
   }
 })();`}
 					</Script>

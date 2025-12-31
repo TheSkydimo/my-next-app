@@ -73,9 +73,10 @@ const TEXTS: Record<
 > = {
   user: {
     "zh-CN": {
-      heroTitlePrefix: "欢迎回来，",
-      heroTitleHighlight: "开始你的控制台之旅",
-      heroSubtitle: "工程化 · 高性能 · 深色主题，为大型中后台系统而生。",
+      heroTitlePrefix: "欢迎来到 Skydimo",
+      heroTitleHighlight: "很高兴你在这里",
+      heroSubtitle: "请继续你的使用",
+
       stepEmailTitle: "登录 / 注册",
       stepTurnstileTitle: "验证",
       stepCodeTitle: "输入验证码",
@@ -109,10 +110,10 @@ const TEXTS: Record<
       alignRight: "居右",
     },
     en: {
-      heroTitlePrefix: "Welcome back,",
-      heroTitleHighlight: "start your dashboard journey",
-      heroSubtitle:
-        "Engineered, high‑performance dark theme for large admin systems.",
+      heroTitlePrefix: "Welcome to Skydimo",
+      heroTitleHighlight: "Glad to have you here",
+      heroSubtitle: "Feel free to continue",
+
       stepEmailTitle: "Sign in / Sign up",
       stepTurnstileTitle: "Verification",
       stepCodeTitle: "Enter code",
