@@ -30,6 +30,12 @@ import {
   notification,
   theme as antdTheme,
 } from "antd";
+import {
+  estimateImageDataUrlBytes,
+  isImageDataUrl,
+  MAX_AVATAR_BYTES,
+  uploadAvatarDataUrl,
+} from "../../_utils/avatarDataUrl";
 
 type OrderThumb = {
   id: number;
@@ -78,6 +84,8 @@ export default function AdminProfilePage() {
   const [usernameModalOpen, setUsernameModalOpen] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarClipboardUploading, setAvatarClipboardUploading] = useState(false);
 
   const [sendingCode, setSendingCode] = useState(false);
   const [emailCodeChallengeId, setEmailCodeChallengeId] = useState("");
@@ -234,6 +242,8 @@ export default function AdminProfilePage() {
   const doUpdateAvatar = async (avatarUrl: string | null) => {
     if (!adminEmail) return;
     const key = "admin-profile-avatar";
+    if (avatarSaving) return;
+    setAvatarSaving(true);
     api.open({
       key,
       message: language === "zh-CN" ? "正在保存…" : "Saving…",
@@ -241,11 +251,27 @@ export default function AdminProfilePage() {
       duration: 0,
     });
     try {
+      let toSave: string | null = avatarUrl;
+
+      // If admin pasted base64 data URL, upload it first and then save short dbUrl.
+      if (typeof toSave === "string" && isImageDataUrl(toSave)) {
+        const bytes = estimateImageDataUrlBytes(toSave);
+        if (bytes != null && bytes > MAX_AVATAR_BYTES) {
+          throw new Error(messages.profile.errorAvatarTooLarge);
+        }
+        const uploaded = await uploadAvatarDataUrl(toSave);
+        toSave = uploaded.dbUrl;
+        avatarForm.setFieldsValue({ avatarUrl: uploaded.dbUrl });
+        setAvatarPreviewUrl(typeof uploaded.publicUrl === "string" ? uploaded.publicUrl : null);
+      } else if (typeof toSave === "string" && toSave.length > 2048) {
+        throw new Error(language === "zh-CN" ? "头像地址过长" : "Avatar URL is too long");
+      }
+
       const res = await fetch("/api/user/profile", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatarUrl }),
+        body: JSON.stringify({ avatarUrl: toSave }),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -253,7 +279,7 @@ export default function AdminProfilePage() {
       }
       const data = (await res.json().catch(() => null)) as { avatarUrl?: string | null } | null;
       const newAvatarUrl = typeof data?.avatarUrl === "string" ? data.avatarUrl : null;
-      if (avatarUrl && !newAvatarUrl) {
+      if (toSave && !newAvatarUrl) {
         throw new Error(messages.profile.errorAvatarUpdateFailed);
       }
       adminContext.updateProfile({ avatarUrl: newAvatarUrl });
@@ -271,6 +297,8 @@ export default function AdminProfilePage() {
         description: e instanceof Error ? e.message : messages.common.unknownError,
         duration: 4,
       });
+    } finally {
+      setAvatarSaving(false);
     }
   };
 
@@ -626,7 +654,8 @@ export default function AdminProfilePage() {
         }}
         okText={messages.profile.avatarDialogSave}
         cancelText={messages.profile.avatarDialogCancel}
-        okButtonProps={{ disabled: avatarUploading }}
+        confirmLoading={avatarSaving || avatarClipboardUploading}
+        okButtonProps={{ disabled: avatarUploading || avatarSaving || avatarClipboardUploading }}
       >
         <Space direction="vertical" size={12} style={{ width: "100%" }}>
           <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
@@ -723,9 +752,69 @@ export default function AdminProfilePage() {
               label={language === "zh-CN" ? "头像地址（可选）" : "Avatar URL (optional)"}
               name="avatarUrl"
               tooltip={language === "zh-CN" ? "留空保存将清除头像" : "Leave empty to clear"}
-              rules={[{ max: 500, message: language === "zh-CN" ? "最长 500 字符" : "Max 500 chars" }]}
+              rules={[
+                {
+                  validator: async (_rule, value) => {
+                    const v = String(value || "").trim();
+                    if (!v) return;
+                    // Allow image data URLs (will be uploaded on save).
+                    if (isImageDataUrl(v)) return;
+                    if (v.length > 2048) {
+                      throw new Error(language === "zh-CN" ? "头像地址过长" : "Avatar URL is too long");
+                    }
+                  },
+                },
+              ]}
             >
-              <Input placeholder="https://example.com/avatar.png" maxLength={500} />
+              <Input
+                placeholder="https://example.com/avatar.png"
+                maxLength={2048}
+                onPaste={(e) => {
+                  const text = e.clipboardData?.getData("text") || "";
+                  if (!isImageDataUrl(text)) return;
+                  // Prevent huge base64 string from being inserted (it would be truncated by maxLength).
+                  e.preventDefault();
+
+                  const key = "admin-profile-avatar-clipboard-upload";
+                  setAvatarClipboardUploading(true);
+                  api.open({
+                    key,
+                    message: language === "zh-CN" ? "正在上传…" : "Uploading…",
+                    description: language === "zh-CN" ? "正在上传粘贴的头像" : "Uploading pasted avatar",
+                    duration: 0,
+                  });
+
+                  void (async () => {
+                    try {
+                      const bytes = estimateImageDataUrlBytes(text);
+                      if (bytes != null && bytes > MAX_AVATAR_BYTES) {
+                        throw new Error(messages.profile.errorAvatarTooLarge);
+                      }
+                      const uploaded = await uploadAvatarDataUrl(text);
+                      avatarForm.setFieldsValue({ avatarUrl: uploaded.dbUrl });
+                      setAvatarPreviewUrl(typeof uploaded.publicUrl === "string" ? uploaded.publicUrl : null);
+                      api.success({
+                        key,
+                        message: language === "zh-CN" ? "上传成功" : "Uploaded",
+                        description:
+                          language === "zh-CN"
+                            ? "已替换为短链接，请点击“保存”完成更新"
+                            : "Replaced with short URL. Click “Save” to apply.",
+                        duration: 2.6,
+                      });
+                    } catch (err) {
+                      api.error({
+                        key,
+                        message: messages.common.unknownError,
+                        description: err instanceof Error ? err.message : messages.common.unknownError,
+                        duration: 4,
+                      });
+                    } finally {
+                      setAvatarClipboardUploading(false);
+                    }
+                  })();
+                }}
+              />
             </Form.Item>
           </Form>
         </Space>

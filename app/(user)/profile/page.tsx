@@ -30,6 +30,12 @@ import { useUser } from "../../contexts/UserContext";
 import { apiFetch } from "../../lib/apiFetch";
 import { getPreferredDisplayName, getUsernameForDisplay, getUsernameForEdit } from "../../_utils/userDisplay";
 import { AuthEmailCodePage } from "../../components/AuthEmailCodePage";
+import {
+  estimateImageDataUrlBytes,
+  isImageDataUrl,
+  MAX_AVATAR_BYTES,
+  uploadAvatarDataUrl,
+} from "../../_utils/avatarDataUrl";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -66,6 +72,7 @@ export default function UserProfilePage() {
   // Loading states
   const [usernameLoading, setUsernameLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarClipboardUploading, setAvatarClipboardUploading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
 
@@ -171,10 +178,28 @@ export default function UserProfilePage() {
     if (!userEmail) return;
     setAvatarLoading(true);
     try {
+      let toSave: string | null = avatarUrl;
+
+      // If user pasted a base64 data URL, upload it first and then save short dbUrl.
+      if (typeof toSave === "string" && isImageDataUrl(toSave)) {
+        const bytes = estimateImageDataUrlBytes(toSave);
+        if (bytes != null && bytes > MAX_AVATAR_BYTES) {
+          throw new Error(messages.profile.errorAvatarTooLarge);
+        }
+
+        const uploaded = await uploadAvatarDataUrl(toSave);
+        toSave = uploaded.dbUrl;
+        avatarForm.setFieldValue("avatarUrl", uploaded.dbUrl);
+        setAvatarPreviewUrl(uploaded.publicUrl || uploaded.dbUrl);
+      } else if (typeof toSave === "string" && toSave.length > 2048) {
+        // Keep consistent with server-side hardening and avoid a pointless request.
+        throw new Error(language === "zh-CN" ? "头像地址过长" : "Avatar URL is too long");
+      }
+
       const res = await apiFetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatarUrl }),
+        body: JSON.stringify({ avatarUrl: toSave }),
       });
 
       if (!res.ok) {
@@ -185,7 +210,7 @@ export default function UserProfilePage() {
       const data = (await res.json().catch(() => null)) as { avatarUrl?: string | null } | null;
       const newAvatarUrl = typeof data?.avatarUrl === "string" ? data.avatarUrl : null;
 
-      if (avatarUrl && !newAvatarUrl) {
+      if (toSave && !newAvatarUrl) {
         throw new Error(messages.profile.errorAvatarUpdateFailed);
       }
 
@@ -466,7 +491,8 @@ export default function UserProfilePage() {
              void doUpdateAvatar(url || null);
            }).catch(() => {});
         }}
-        confirmLoading={avatarLoading}
+        confirmLoading={avatarLoading || avatarClipboardUploading}
+        okButtonProps={{ disabled: avatarLoading || avatarClipboardUploading }}
         okText={messages.profile.avatarDialogSave}
         cancelText={messages.profile.avatarDialogCancel}
       >
@@ -528,8 +554,74 @@ export default function UserProfilePage() {
               <Form.Item
                 label={language === "zh-CN" ? "头像地址（可选）" : "Avatar URL (optional)"}
                 name="avatarUrl"
+                rules={[
+                  {
+                    validator: async (_rule, value) => {
+                      const v = String(value || "").trim();
+                      if (!v) return;
+                      // Allow base64 image data URL (will be uploaded on save).
+                      if (isImageDataUrl(v)) return;
+                      if (v.length > 2048) {
+                        throw new Error(language === "zh-CN" ? "头像地址过长" : "Avatar URL is too long");
+                      }
+                    },
+                  },
+                ]}
               >
-                 <Input placeholder="https://example.com/avatar.png" onChange={(e) => setAvatarPreviewUrl(e.target.value)} />
+                 <Input
+                   placeholder="https://example.com/avatar.png"
+                   maxLength={2048}
+                   onPaste={(e) => {
+                     const text = e.clipboardData?.getData("text") || "";
+                     if (!isImageDataUrl(text)) return;
+                     // Prevent huge base64 string from being inserted (it would be truncated by maxLength).
+                     e.preventDefault();
+
+                     const key = "avatar-clipboard-upload";
+                     setAvatarClipboardUploading(true);
+                     messageApi.open({
+                       key,
+                       type: "loading",
+                       content: language === "zh-CN" ? "正在上传头像…" : "Uploading avatar…",
+                       duration: 0,
+                     });
+
+                     void (async () => {
+                       try {
+                         const bytes = estimateImageDataUrlBytes(text);
+                         if (bytes != null && bytes > MAX_AVATAR_BYTES) {
+                           throw new Error(messages.profile.errorAvatarTooLarge);
+                         }
+                         const uploaded = await uploadAvatarDataUrl(text);
+                         avatarForm.setFieldValue("avatarUrl", uploaded.dbUrl);
+                         setAvatarPreviewUrl(uploaded.publicUrl || uploaded.dbUrl);
+                         messageApi.open({
+                           key,
+                           type: "success",
+                           content:
+                             language === "zh-CN"
+                               ? "上传成功，已替换为短链接（点击保存生效）"
+                               : "Uploaded. Replaced with short URL (click Save to apply).",
+                           duration: 2.6,
+                         });
+                       } catch (err) {
+                         messageApi.open({
+                           key,
+                           type: "error",
+                           content: err instanceof Error ? err.message : messages.profile.errorAvatarUpdateFailed,
+                           duration: 3.5,
+                         });
+                       } finally {
+                         setAvatarClipboardUploading(false);
+                       }
+                     })();
+                   }}
+                   onChange={(e) => {
+                     const v = e.target.value || "";
+                     // Avoid putting huge base64 string into <img src> while user is typing/pasting.
+                     setAvatarPreviewUrl(isImageDataUrl(v) ? null : v);
+                   }}
+                 />
               </Form.Item>
            </Form>
         </Space>

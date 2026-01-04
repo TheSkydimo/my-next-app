@@ -4,11 +4,13 @@ import { requireUserFromRequest } from "../_utils/userSession";
 import { unauthorizedWithClearedSession } from "../../_utils/unauthorized";
 import { isValidEmail } from "../../_utils/auth";
 import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
+
 import {
   convertDbAvatarUrlToPublicUrl,
   makeR2SchemeUrl,
   r2KeyFromSchemeUrl,
 } from "../../_utils/r2ObjectUrls";
+import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
@@ -24,6 +26,27 @@ function withNoStore(res: Response) {
   const next = new Response(res.body, res);
   next.headers.set("Cache-Control", "no-store");
   return next;
+}
+
+function resolveRequestLanguage(options: {
+  request: Request;
+  bodyLanguage?: unknown;
+}): AppLanguage {
+  const { request, bodyLanguage } = options;
+  // 1) client explicit language
+  if (bodyLanguage === "en-US" || bodyLanguage === "zh-CN") {
+    return normalizeAppLanguage(bodyLanguage);
+  }
+
+  // 2) Accept-Language fallback (simple heuristic)
+  const accept = String(request.headers.get("accept-language") ?? "")
+    .trim()
+    .toLowerCase();
+  if (accept.startsWith("en") || accept.includes(",en") || accept.includes("-en")) {
+    return "en-US";
+  }
+
+  return "zh-CN";
 }
 
 async function ensureAvatarUrlColumn(db: D1Database) {
@@ -122,7 +145,10 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     emailCode?: string;
     emailCodeChallengeId?: string;
     avatarUrl?: string | null;
+    language?: unknown;
   };
+
+  const language = resolveRequestLanguage({ request, bodyLanguage: body.language });
 
   const {
     username,
@@ -138,17 +164,29 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   );
 
   if (!username && !newEmail && !hasAvatarField) {
-    return withNoStore(new Response("没有需要更新的字段", { status: 400 }));
+    if(language === "zh-CN") {
+      return withNoStore(new Response("没有需要更新的字段", { status: 400 }));
+    } else {
+      return withNoStore(new Response("No fields to update", { status: 400 }));
+    }
   }
 
   // ---- input hardening (length + basic format) ----
   const usernameTrimmed = typeof username === "string" ? username.trim() : null;
   if (usernameTrimmed != null) {
     if (!usernameTrimmed) {
-      return withNoStore(new Response("用户名不能为空", { status: 400 }));
+      if(language === "zh-CN") {
+        return withNoStore(new Response("用户名不能为空", { status: 400 }));
+      } else {
+        return withNoStore(new Response("Username cannot be empty", { status: 400 }));
+      }
     }
     if (usernameTrimmed.length > 50) {
-      return withNoStore(new Response("用户名过长", { status: 400 }));
+      if(language === "zh-CN") {
+        return withNoStore(new Response("用户名过长", { status: 400 }));
+      } else {
+        return withNoStore(new Response("Username is too long", { status: 400 }));
+      }
     }
   }
 
@@ -170,7 +208,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   }
 
   if (typeof avatarUrl === "string" && avatarUrl.length > 2048) {
-    return withNoStore(new Response("头像地址过长", { status: 400 }));
+    if(language === "zh-CN") {
+      return withNoStore(new Response("头像地址过长", { status: 400 }));
+    } else {
+      return withNoStore(new Response("Avatar URL is too long", { status: 400 }));
+    }
   }
 
   const { env } = await getCloudflareContext();
@@ -206,11 +248,19 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   // 如需修改邮箱，必须经过邮箱验证码验证（验证码发到新邮箱）
   if (newEmailTrimmed) {
     if (!emailCode) {
-      return withNoStore(new Response("修改邮箱需要提供邮箱验证码", { status: 400 }));
+      if(language === "zh-CN") {
+        return withNoStore(new Response("修改邮箱需要提供邮箱验证码", { status: 400 }));
+      } else {
+        return withNoStore(new Response("Email verification code is required", { status: 400 }));
+      }
     }
 
     if (!emailCodeChallengeId) {
-      return withNoStore(new Response("邮箱验证码错误或已过期", { status: 400 }));
+      if(language === "zh-CN") {
+        return withNoStore(new Response("邮箱验证码错误或已过期", { status: 400 }));
+      } else {
+        return withNoStore(new Response("Email verification code is incorrect or expired", { status: 400 }));
+      }
     }
 
     const okCode = await verifyAndUseEmailCode({
@@ -222,7 +272,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     });
 
     if (!okCode) {
-      return withNoStore(new Response("邮箱验证码错误或已过期", { status: 400 }));
+      if(language === "zh-CN") {
+        return withNoStore(new Response("邮箱验证码错误或已过期", { status: 400 }));
+      } else {
+        return withNoStore(new Response("Email verification code is incorrect or expired", { status: 400 }));
+      }
     }
   }
 
@@ -247,9 +301,15 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   if (hasAvatarField) {
     // 禁止 data: base64（体积大、不可缓存、会导致返回 avatarUrl 为 null 进而“更新成功但不显示”）
     if (typeof avatarUrl === "string" && avatarUrl.trim().startsWith("data:")) {
-      return withNoStore(new Response("不支持 base64(data:) 头像，请使用“上传头像”功能", {
+      if(language === "zh-CN") {
+        return withNoStore(new Response("不支持 base64(data:) 头像，请使用“上传头像”功能", {
+          status: 400,
+        }));
+      } else {
+        return withNoStore(new Response("Unsupported base64(data:) avatar, please use the “Upload avatar” function", {
         status: 400,
       }));
+      }
     }
 
     // 先读用户 id 与旧头像，方便后续校验“头像 key 归属”，以及（最佳努力）删除旧 R2 对象
@@ -260,7 +320,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
     const prevRow = prev.results?.[0];
     if (!prevRow) {
-      return withNoStore(new Response("用户不存在", { status: 404 }));
+      if(language === "zh-CN") {
+        return withNoStore(new Response("用户不存在", { status: 404 }));
+      } else {
+        return withNoStore(new Response("User not found", { status: 404 }));
+      }
     }
 
     prevAvatarUrl = prevRow.avatar_url ?? null;
@@ -275,9 +339,15 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       const key = r2KeyFromSchemeUrl(normalizedAvatarDbUrl);
       if (key && key.startsWith("avatars/")) {
         if (!isOwnedAvatarR2KeyForUser(authed.user.id, key)) {
-          return withNoStore(new Response("非法头像地址：只能使用自己上传的头像", {
-            status: 400,
-          }));
+          if(language === "zh-CN") {
+            return withNoStore(new Response("非法头像地址：只能使用自己上传的头像", {
+              status: 400,
+            }));
+          } else {
+            return withNoStore(new Response("Invalid avatar URL: only own uploaded avatars can be used", {
+              status: 400,
+            }));
+          }
         }
       }
     }
@@ -318,7 +388,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
         )
       );
     }
-    return withNoStore(new Response("更新用户信息失败", { status: 500 }));
+    if(language === "zh-CN") {
+      return withNoStore(new Response("更新用户信息失败", { status: 500 }));
+    } else {
+      return withNoStore(new Response("Failed to update user information", { status: 500 }));
+    }
   }
 
   // 最佳努力删除旧头像（仅当：旧头像为 r2://avatars/..., 新头像不同/被清空）
