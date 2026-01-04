@@ -317,7 +317,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
   const meEndpoint = variant === "admin" ? "/api/admin/me" : "/api/user/me";
   const loginEndpoint = variant === "admin" ? "/api/admin/login" : "/api/login";
   const emailPurpose = variant === "admin" ? "admin-login" : "user-login";
-  const postLoginRedirect = variant === "admin" ? "/admin/profile" : "/";
+  const postLoginRedirect = variant === "admin" ? "/admin/profile" : "/orders";
   const userBootstrapEndpoint =
     variant === "user" ? "/api/user/dashboard-bootstrap" : null;
   const adminBootstrapEndpoint =
