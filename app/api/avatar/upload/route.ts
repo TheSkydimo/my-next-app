@@ -6,6 +6,13 @@ import {
 import { requireUserFromRequest } from "../../user/_utils/userSession";
 import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { consumeRateLimit } from "../../_utils/rateLimit";
+
+function withNoStore(res: Response) {
+  const next = new Response(res.body, res);
+  next.headers.set("Cache-Control", "no-store");
+  return next;
+}
 
 /**
  * 上传头像到 R2（对象存储），并返回：
@@ -14,7 +21,7 @@ import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
  */
 export const POST = withApiMonitoring(async function POST(request: Request) {
   const originGuard = assertSameOriginOrNoOrigin(request);
-  if (originGuard) return originGuard;
+  if (originGuard) return withNoStore(originGuard);
 
   const contentType = request.headers.get("content-type") || "";
 
@@ -47,7 +54,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     if (dataUrl) {
       const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
       if (!match) {
-        return new Response("Invalid dataUrl format", { status: 400 });
+        return withNoStore(new Response("Invalid dataUrl format", { status: 400 }));
       }
       mimeType = match[1] || "image/png";
       base64 = match[2] || "";
@@ -55,28 +62,28 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       mimeType = (body?.mimeType || "image/png").trim();
       base64 = rawBase64;
     } else {
-      return new Response("file or dataUrl is required", { status: 400 });
+      return withNoStore(new Response("file or dataUrl is required", { status: 400 }));
     }
 
     if (!mimeType.startsWith("image/") || !ALLOWED_MIME.has(mimeType)) {
-      return new Response("Only common image types are allowed", { status: 400 });
+      return withNoStore(new Response("Only common image types are allowed", { status: 400 }));
     }
 
     // Base64 体积预估（避免先解码造成内存压力）
     const approxBytes = Math.floor((base64.length * 3) / 4);
     if (approxBytes > MAX_BYTES) {
-      return new Response("Avatar is too large (max 2MB)", { status: 400 });
+      return withNoStore(new Response("Avatar is too large (max 2MB)", { status: 400 }));
     }
 
     const anyGlobal = globalThis as unknown as { Buffer?: typeof Buffer };
     if (!anyGlobal.Buffer) {
-      return new Response("Buffer is not available in this runtime", { status: 500 });
+      return withNoStore(new Response("Buffer is not available in this runtime", { status: 500 }));
     }
 
     // 注意：Buffer#buffer 可能包含偏移，需要 slice 出精确范围
     const buf = anyGlobal.Buffer.from(base64, "base64");
     if (buf.byteLength > MAX_BYTES) {
-      return new Response("Avatar is too large (max 2MB)", { status: 400 });
+      return withNoStore(new Response("Avatar is too large (max 2MB)", { status: 400 }));
     }
     buffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
   } else {
@@ -84,14 +91,14 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     const file = form.get("file");
 
     if (!(file instanceof File)) {
-      return new Response("File is required", { status: 400 });
+      return withNoStore(new Response("File is required", { status: 400 }));
     }
     if (!file.type?.startsWith("image/") || !ALLOWED_MIME.has(file.type)) {
-      return new Response("Only common image types are allowed", { status: 400 });
+      return withNoStore(new Response("Only common image types are allowed", { status: 400 }));
     }
 
     if (file.size > MAX_BYTES) {
-      return new Response("Avatar is too large (max 2MB)", { status: 400 });
+      return withNoStore(new Response("Avatar is too large (max 2MB)", { status: 400 }));
     }
 
     mimeType = file.type || "image/png";
@@ -99,7 +106,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   }
 
   if (!buffer) {
-    return new Response("Upload payload is empty", { status: 400 });
+    return withNoStore(new Response("Upload payload is empty", { status: 400 }));
   }
 
   const { env } = await getCloudflareContext();
@@ -108,12 +115,23 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const r2 = env.ORDER_IMAGES as R2Bucket;
 
   const authed = await requireUserFromRequest({ request, env, db });
-  if (authed instanceof Response) return authed;
+  if (authed instanceof Response) return withNoStore(authed);
+
+  // Abuse protection: resource-heavy endpoint (R2 write). Limit per-user.
+  const limit = await consumeRateLimit({
+    db,
+    key: `avatar_upload:user:${authed.user.id}`,
+    windowSeconds: 60,
+    limit: 10,
+  });
+  if (!limit.allowed) {
+    return withNoStore(new Response("Too many requests. Please try again later.", { status: 429 }));
+  }
 
   const ext = mimeType.split("/")[1] || "png";
   const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
-  const r2Key = `avatars/${authed.user.id}/${timestamp}-${random}.${ext}`;
+  const uuid = crypto.randomUUID();
+  const r2Key = `avatars/${authed.user.id}/${timestamp}-${uuid}.${ext}`;
 
   await r2.put(r2Key, buffer, {
     httpMetadata: {
@@ -121,11 +139,11 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     },
   });
 
-  return Response.json({
+  return withNoStore(Response.json({
     key: r2Key,
     dbUrl: makeR2SchemeUrl(r2Key),
     publicUrl: makeAvatarImageApiUrlFromR2Key(r2Key),
-  });
+  }));
 }, { name: "POST /api/avatar/upload" });
 
 
