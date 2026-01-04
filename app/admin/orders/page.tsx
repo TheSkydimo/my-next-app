@@ -8,6 +8,7 @@ import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
 import { useApiCache } from "../../contexts/ApiCacheContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
+import { formatDateTime, getClientTimeZone } from "../../_utils/dateTime";
 
 type AdminOrderItem = {
   id: number;
@@ -32,6 +33,7 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useAutoDismissMessage(2000);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const viewerTz = getClientTimeZone();
 
   const messages = getAdminMessages(language);
 
@@ -240,19 +242,21 @@ export default function AdminOrdersPage() {
                     lineHeight: 1.5,
                   }}
                 >
-                  <div>{new Date(o.createdAt).toLocaleString()}</div>
+                  <div>
+                    {formatDateTime(o.createdAt, { locale: language, timeZone: viewerTz ?? undefined })}
+                  </div>
                   {o.orderCreatedTime && (
                     <div>
                       {language === "zh-CN"
-                        ? `创建时间：${o.orderCreatedTime}`
-                        : `Created: ${o.orderCreatedTime}`}
+                        ? `创建时间：${formatDateTime(o.orderCreatedTime, { locale: language, timeZone: viewerTz ?? undefined })}`
+                        : `Created: ${formatDateTime(o.orderCreatedTime, { locale: language, timeZone: viewerTz ?? undefined })}`}
                     </div>
                   )}
                   {o.orderPaidTime && (
                     <div>
                       {language === "zh-CN"
-                        ? `付款时间：${o.orderPaidTime}`
-                        : `Paid: ${o.orderPaidTime}`}
+                        ? `付款时间：${formatDateTime(o.orderPaidTime, { locale: language, timeZone: viewerTz ?? undefined })}`
+                        : `Paid: ${formatDateTime(o.orderPaidTime, { locale: language, timeZone: viewerTz ?? undefined })}`}
                     </div>
                   )}
                   {o.orderNo && (

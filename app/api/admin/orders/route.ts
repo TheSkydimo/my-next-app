@@ -4,6 +4,7 @@ import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 import { ensureUserOrdersTable } from "../../_utils/userOrdersTable";
 import { createUserNotification } from "../../_utils/userNotifications";
 import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
+import { normalizeDbUtcDateTimeToIso } from "../../_utils/dbTime";
 
 type OrderRowWithUser = {
   id: number;
@@ -109,7 +110,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
       deviceId: row.device_id,
       imageUrl: convertImageUrl(row.image_url),
       note: row.note,
-      createdAt: row.created_at,
+      createdAt: normalizeDbUtcDateTimeToIso(row.created_at) ?? row.created_at,
       orderNo: row.order_no ?? null,
       orderCreatedTime: row.order_created_time ?? null,
       orderPaidTime: row.order_paid_time ?? null,

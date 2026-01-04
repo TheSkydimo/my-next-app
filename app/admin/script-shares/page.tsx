@@ -9,6 +9,7 @@ import { useAdmin } from "../../contexts/AdminContext";
 import { useApiCache } from "../../contexts/ApiCacheContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 import { getOfficialPublicNickname } from "../../_utils/officialPublicNickname";
+import { formatDateTime, getClientTimeZone } from "../../_utils/dateTime";
 
 type AdminShareItem = {
   id: string;
@@ -74,6 +75,7 @@ function ShareCard({
   const reason = (auditReason ?? "").trim();
   const reasonQuery = reason ? `?reason=${encodeURIComponent(reason)}` : "";
   const downloadUrl = `/api/script-shares/${encodeURIComponent(item.id)}/download${reasonQuery}`;
+  const viewerTz = getClientTimeZone();
   return (
     <div className="script-share-card">
       <div className="script-share-card__top">
@@ -105,7 +107,10 @@ function ShareCard({
           <span className="script-share-card__pill">{formatBytes(item.sizeBytes)}</span>
           <span className="script-share-card__time">
             {language === "zh-CN" ? "更新：" : "Updated: "}
-            {new Date(item.updatedAt || item.createdAt).toLocaleString()}
+            {formatDateTime(item.updatedAt || item.createdAt, {
+              locale: language,
+              timeZone: viewerTz ?? undefined,
+            })}
           </span>
         </div>
       </div>

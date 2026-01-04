@@ -7,6 +7,7 @@ import { getUserMessages } from "../../user-i18n";
 import { useUser } from "../../contexts/UserContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 import { AuthEmailCodePage } from "../../components/AuthEmailCodePage";
+import { formatDateTime, getClientTimeZone } from "../../_utils/dateTime";
 
 type FavoriteItem = {
   id: string;
@@ -58,6 +59,7 @@ function FavoriteCard({
   onToggleFavorite?: (id: string) => void;
 }) {
   const downloadUrl = `/api/script-shares/${encodeURIComponent(item.id)}/download`;
+  const viewerTz = getClientTimeZone();
   const likeCount = Number.isFinite(item.likeCount) ? item.likeCount : 0;
   const favoriteCount = Number.isFinite(item.favoriteCount) ? item.favoriteCount : 0;
 
@@ -88,7 +90,7 @@ function FavoriteCard({
           <span className="script-share-card__pill">{formatBytes(item.sizeBytes)}</span>
           <span className="script-share-card__time">
             {language === "zh-CN" ? "收藏：" : "Favorited: "}
-            {new Date(item.favoritedAt).toLocaleString()}
+            {formatDateTime(item.favoritedAt, { locale: language, timeZone: viewerTz ?? undefined })}
           </span>
         </div>
       </div>

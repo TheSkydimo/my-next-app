@@ -24,6 +24,7 @@ export async function ensureUserOrdersTable(db: D1Database) {
         shop_name TEXT,
         device_count INTEGER,
         upload_lang TEXT,
+        upload_tz TEXT,
         review_status TEXT DEFAULT 'pending',
         reviewed_at TEXT,
         reviewed_by INTEGER,
@@ -55,6 +56,7 @@ export async function ensureUserOrdersTable(db: D1Database) {
   await alter("ALTER TABLE user_orders ADD COLUMN shop_name TEXT");
   await alter("ALTER TABLE user_orders ADD COLUMN device_count INTEGER");
   await alter("ALTER TABLE user_orders ADD COLUMN upload_lang TEXT");
+  await alter("ALTER TABLE user_orders ADD COLUMN upload_tz TEXT");
   await alter("ALTER TABLE user_orders ADD COLUMN review_status TEXT");
   await alter("ALTER TABLE user_orders ADD COLUMN reviewed_at TEXT");
   await alter("ALTER TABLE user_orders ADD COLUMN reviewed_by INTEGER");

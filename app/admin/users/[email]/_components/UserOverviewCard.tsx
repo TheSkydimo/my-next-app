@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar, Card, Descriptions, Space, Tag, Typography } from "antd";
+import { formatDateTime, getClientTimeZone } from "../../../../_utils/dateTime";
 
 export type UserDetail = {
   id?: number;
@@ -13,12 +14,6 @@ export type UserDetail = {
   createdAt: string;
 };
 
-function formatDateTime(input: string) {
-  const t = new Date(input);
-  if (Number.isNaN(t.getTime())) return input;
-  return t.toLocaleString();
-}
-
 export function UserOverviewCard({
   user,
   language,
@@ -26,6 +21,7 @@ export function UserOverviewCard({
   user: UserDetail;
   language: "zh-CN" | "en-US";
 }) {
+  const viewerTz = getClientTimeZone();
   const roleTag = user.isAdmin ? (
     <Tag color="blue">{language === "zh-CN" ? "管理员" : "Admin"}</Tag>
   ) : (
@@ -64,7 +60,10 @@ export function UserOverviewCard({
               {user.vipExpiresAt ? (
                 <Typography.Text type="secondary">
                   {language === "zh-CN" ? "到期：" : "Expires:"}{" "}
-                  {formatDateTime(user.vipExpiresAt)}
+                  {formatDateTime(user.vipExpiresAt, {
+                    locale: language,
+                    timeZone: viewerTz ?? undefined,
+                  })}
                 </Typography.Text>
               ) : null}
             </Space>
@@ -91,7 +90,10 @@ export function UserOverviewCard({
               {
                 key: "createdAt",
                 label: language === "zh-CN" ? "注册时间" : "Created",
-                children: formatDateTime(user.createdAt),
+                children: formatDateTime(user.createdAt, {
+                  locale: language,
+                  timeZone: viewerTz ?? undefined,
+                }),
               },
             ]}
           />

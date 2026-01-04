@@ -24,6 +24,7 @@ import {
   notification,
   theme as antdTheme,
 } from "antd";
+import { formatDateTime, getClientTimeZone } from "../../_utils/dateTime";
 
 type UserItem = {
   id: number;
@@ -41,12 +42,6 @@ type Pagination = {
   pageSize: number;
   totalPages: number;
 };
-
-function formatDateTime(input: string) {
-  const t = new Date(input);
-  if (Number.isNaN(t.getTime())) return input;
-  return t.toLocaleString();
-}
 
 function safeErrorFromResponse(res: Response, text: string, fallback: string) {
   if (res.status >= 500) return fallback;
@@ -70,6 +65,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const viewerTz = useMemo(() => getClientTimeZone(), []);
 
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
@@ -269,7 +265,9 @@ export default function AdminUsersPage() {
         width: 180,
         responsive: ["md"],
         render: (v: string | null) => (
-          <Typography.Text type="secondary">{v ? formatDateTime(v) : "-"}</Typography.Text>
+          <Typography.Text type="secondary">
+            {v ? formatDateTime(v, { locale: language, timeZone: viewerTz ?? undefined }) : "-"}
+          </Typography.Text>
         ),
       },
       {
@@ -279,7 +277,9 @@ export default function AdminUsersPage() {
         width: 180,
         responsive: ["md"],
         render: (v: string) => (
-          <Typography.Text type="secondary">{formatDateTime(v)}</Typography.Text>
+          <Typography.Text type="secondary">
+            {formatDateTime(v, { locale: language, timeZone: viewerTz ?? undefined })}
+          </Typography.Text>
         ),
       },
       {

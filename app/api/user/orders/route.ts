@@ -3,6 +3,8 @@ import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 import { requireUserFromRequest } from "../_utils/userSession";
 import { ensureUserOrdersTable } from "../../_utils/userOrdersTable";
 import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
+import { normalizeDbUtcDateTimeToIso } from "../../_utils/dbTime";
+import { isValidIanaTimeZone, tryConvertLocalYmdHmsToUtcIso } from "../../_utils/timeZone";
 
 type OrderRow = {
   id: number;
@@ -335,7 +337,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
       deviceId: row.device_id,
       imageUrl: convertImageUrl(row.image_url),
       note: row.note,
-      createdAt: row.created_at,
+      createdAt: normalizeDbUtcDateTimeToIso(row.created_at) ?? row.created_at,
       orderNo: row.order_no ?? null,
       orderCreatedTime: row.order_created_time ?? null,
       orderPaidTime: row.order_paid_time ?? null,
@@ -382,6 +384,12 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   const rawDeviceId = form.get("deviceId");
   const file = form.get("file");
   const note = form.get("note");
+  const rawTz = form.get("tz");
+  const uploadTz =
+    typeof rawTz === "string" && rawTz.trim() ? rawTz.trim() : null;
+  if (uploadTz && (uploadTz.length > 64 || !isValidIanaTimeZone(uploadTz))) {
+    return new Response("Invalid tz", { status: 400 });
+  }
 
   if (!(file instanceof File)) {
     return new Response(t.missingDeviceImage, { status: 400 });
@@ -439,6 +447,18 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     return new Response(t.missingOrderNo, { status: 400 });
   }
 
+  // Best-effort: convert OCR local time ("YYYY-MM-DD HH:MM:SS") into UTC ISO with uploader tz.
+  const orderCreatedTimeIso = tryConvertLocalYmdHmsToUtcIso(
+    parsed?.orderCreatedTime ?? null,
+    uploadTz
+  );
+  const orderPaidTimeIso = tryConvertLocalYmdHmsToUtcIso(
+    parsed?.orderPaidTime ?? null,
+    uploadTz
+  );
+  const orderCreatedToStore = orderCreatedTimeIso ?? parsed?.orderCreatedTime ?? null;
+  const orderPaidToStore = orderPaidTimeIso ?? parsed?.orderPaidTime ?? null;
+
   // 先做一次快速检查（提升 UX）；并发安全由后续“条件上传 + 条件插入”兜底
   const dupAnyUser = await db
     .prepare("SELECT id FROM user_orders WHERE order_no = ? LIMIT 1")
@@ -478,8 +498,8 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   // 并发安全：只在“订单号不存在”时插入（避免两个请求同时通过前置 SELECT）
   // 若插入失败（0 changes），需要回滚删除刚才上传的对象，避免占用 key
   const insertSql =
-    "INSERT INTO user_orders (user_id, device_id, image_url, note, order_no, order_created_time, order_paid_time, platform, shop_name, device_count, upload_lang) " +
-    "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? " +
+    "INSERT INTO user_orders (user_id, device_id, image_url, note, order_no, order_created_time, order_paid_time, platform, shop_name, device_count, upload_lang, upload_tz) " +
+    "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? " +
     "WHERE NOT EXISTS (SELECT 1 FROM user_orders WHERE order_no = ?)";
 
   const insert = await db
@@ -490,12 +510,13 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       imageUrl,
       typeof note === "string" ? note : null,
       orderNo,
-      parsed?.orderCreatedTime ?? null,
-      parsed?.orderPaidTime ?? null,
+      orderCreatedToStore,
+      orderPaidToStore,
       parsed?.platform ?? null,
       parsed?.shopName ?? null,
       parsed?.deviceCount ?? null,
       lang === "en-US" ? "en" : "zh",
+      uploadTz,
       orderNo
     )
     .run();
@@ -520,8 +541,8 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     imageUrl: `/api/user/orders/image?key=${encodeURIComponent(r2Key)}`,
     note: typeof note === "string" ? note : null,
     orderNo,
-    orderCreatedTime: parsed?.orderCreatedTime ?? null,
-    orderPaidTime: parsed?.orderPaidTime ?? null,
+    orderCreatedTime: orderCreatedToStore,
+    orderPaidTime: orderPaidToStore,
     platform: parsed?.platform ?? null,
     shopName: parsed?.shopName ?? null,
     deviceCount: parsed?.deviceCount ?? null,

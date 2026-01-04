@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button, Grid, Image, Popconfirm, Space, Table, Typography } from "antd";
+import { formatDateTime, getClientTimeZone } from "../../../../_utils/dateTime";
 
 export type AdminOrderItem = {
   id: number;
@@ -18,12 +19,6 @@ export type AdminOrderItem = {
   deviceCount?: number | null;
 };
 
-function formatDateTime(input: string) {
-  const t = new Date(input);
-  if (Number.isNaN(t.getTime())) return input;
-  return t.toLocaleString();
-}
-
 export function UserOrdersTable({
   items,
   language,
@@ -38,6 +33,7 @@ export function UserOrdersTable({
   actionLoadingId?: number | null;
 }) {
   const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
+  const viewerTz = getClientTimeZone();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
 
@@ -63,7 +59,9 @@ export function UserOrdersTable({
         key: "createdAt",
         width: 180,
         render: (v: string) => (
-          <Typography.Text type="secondary">{formatDateTime(v)}</Typography.Text>
+          <Typography.Text type="secondary">
+            {formatDateTime(v, { locale: language, timeZone: viewerTz ?? undefined })}
+          </Typography.Text>
         ),
       },
       {
@@ -147,7 +145,9 @@ export function UserOrdersTable({
         responsive: ["lg"],
         render: (v: string | null | undefined, row: AdminOrderItem) => (
           <Typography.Text type="secondary">
-            {v || formatDateTime(row.createdAt)}
+            {v
+              ? formatDateTime(v, { locale: language, timeZone: viewerTz ?? undefined })
+              : formatDateTime(row.createdAt, { locale: language, timeZone: viewerTz ?? undefined })}
           </Typography.Text>
         ),
       },
@@ -157,7 +157,9 @@ export function UserOrdersTable({
         key: "orderPaidTime",
         responsive: ["xl"],
         render: (v: string | null | undefined) => (
-          <Typography.Text type="secondary">{v || "-"}</Typography.Text>
+          <Typography.Text type="secondary">
+            {v ? formatDateTime(v, { locale: language, timeZone: viewerTz ?? undefined }) : "-"}
+          </Typography.Text>
         ),
       },
       {
@@ -255,13 +257,27 @@ export function UserOrdersTable({
               <Typography.Text type="secondary">
                 {language === "zh-CN" ? "创建时间：" : "Created:"}
               </Typography.Text>
-              <Typography.Text>{row.orderCreatedTime || "-"}</Typography.Text>
+              <Typography.Text>
+                {row.orderCreatedTime
+                  ? formatDateTime(row.orderCreatedTime, {
+                      locale: language,
+                      timeZone: viewerTz ?? undefined,
+                    })
+                  : "-"}
+              </Typography.Text>
             </Space>
             <Space size={12} wrap>
               <Typography.Text type="secondary">
                 {language === "zh-CN" ? "付款时间：" : "Paid:"}
               </Typography.Text>
-              <Typography.Text>{row.orderPaidTime || "-"}</Typography.Text>
+              <Typography.Text>
+                {row.orderPaidTime
+                  ? formatDateTime(row.orderPaidTime, {
+                      locale: language,
+                      timeZone: viewerTz ?? undefined,
+                    })
+                  : "-"}
+              </Typography.Text>
             </Space>
           </Space>
         ),

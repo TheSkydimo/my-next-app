@@ -8,6 +8,7 @@ import { useUser } from "../../contexts/UserContext";
 import { useAutoDismissMessage } from "../../hooks/useAutoDismissMessage";
 import { apiFetch } from "../../lib/apiFetch";
 import { AuthEmailCodePage } from "../../components/AuthEmailCodePage";
+import { formatDateTime, getClientTimeZone } from "../../_utils/dateTime";
 
 type ShareItem = {
   id: string;
@@ -82,6 +83,7 @@ function ShareCard({
   onToggleFavorite?: (id: string) => void;
 }) {
   const downloadUrl = `/api/script-shares/${encodeURIComponent(item.id)}/download`;
+  const viewerTz = getClientTimeZone();
 
   const likeCount = Number.isFinite(item.likeCount) ? item.likeCount : 0;
   const favoriteCount = Number.isFinite(item.favoriteCount) ? item.favoriteCount : 0;
@@ -115,7 +117,10 @@ function ShareCard({
           </span>
           <span className="script-share-card__time">
             {language === "zh-CN" ? "更新：" : "Updated: "}
-            {new Date(item.updatedAt || item.createdAt).toLocaleString()}
+            {formatDateTime(item.updatedAt || item.createdAt, {
+              locale: language,
+              timeZone: viewerTz ?? undefined,
+            })}
           </span>
         </div>
       </div>

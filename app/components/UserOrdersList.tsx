@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import type { AppLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
+import { formatDateTime, getClientTimeZone } from "../_utils/dateTime";
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -46,6 +47,7 @@ export default function UserOrdersList({
   const messages = useMemo(() => getUserMessages(language), [language]);
   const screens = useBreakpoint();
   const isMobile = !screens.md;
+  const viewerTz = useMemo(() => getClientTimeZone(), []);
 
   const handleDelete = (order: OrderSnapshot) => {
     onDelete?.(order);
@@ -99,14 +101,21 @@ export default function UserOrdersList({
       dataIndex: "orderCreatedTime",
       key: "orderCreatedTime",
       responsive: ["lg"],
-      render: (text, record) => text ?? new Date(record.createdAt).toLocaleString(),
+      render: (text, record) =>
+        formatDateTime(String(text ?? record.createdAt), {
+          locale: language,
+          timeZone: viewerTz ?? undefined,
+        }),
     },
     {
       title: language === "zh-CN" ? "付款时间" : "Paid At",
       dataIndex: "orderPaidTime",
       key: "orderPaidTime",
       responsive: ["xl"],
-      render: (text) => text ?? "-",
+      render: (text) =>
+        text
+          ? formatDateTime(String(text), { locale: language, timeZone: viewerTz ?? undefined })
+          : "-",
     },
     {
       title: language === "zh-CN" ? "数量" : "Qty",
@@ -216,7 +225,11 @@ export default function UserOrdersList({
                 <Space size={4} style={{ color: "rgba(0, 0, 0, 0.45)", fontSize: 12 }}>
                   <CalendarOutlined />
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    {item.orderCreatedTime ?? new Date(item.createdAt).toLocaleDateString()}
+                    {formatDateTime(String(item.orderCreatedTime ?? item.createdAt), {
+                      locale: language,
+                      timeZone: viewerTz ?? undefined,
+                      kind: "date",
+                    })}
                   </Text>
                 </Space>
 

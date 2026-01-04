@@ -4,6 +4,7 @@ import { ensureScriptSharesTable } from "../../_utils/scriptSharesTable";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
 import { requireUserFromRequest } from "../_utils/userSession";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { normalizeDbUtcDateTimeToIso } from "../../_utils/dbTime";
 
 type FavoritesListItem = {
   id: string;
@@ -128,13 +129,13 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     lang: normalizeAppLanguage(r.lang),
     isPublic: !!r.is_public,
     isPinned: !!r.is_pinned,
-    pinnedAt: r.pinned_at ?? null,
+    pinnedAt: normalizeDbUtcDateTimeToIso(r.pinned_at),
     coverUrl: `/api/script-shares/${encodeURIComponent(r.id)}/cover`,
     originalFilename: r.original_filename,
     sizeBytes: r.size_bytes,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-    favoritedAt: r.favorited_at,
+    createdAt: normalizeDbUtcDateTimeToIso(r.created_at) ?? r.created_at,
+    updatedAt: normalizeDbUtcDateTimeToIso(r.updated_at) ?? r.updated_at,
+    favoritedAt: normalizeDbUtcDateTimeToIso(r.favorited_at) ?? r.favorited_at,
     likeCount: r.like_count ?? 0,
     favoriteCount: r.favorite_count ?? 0,
     likedByMe: !!r.liked_by_me,

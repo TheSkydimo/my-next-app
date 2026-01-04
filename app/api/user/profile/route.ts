@@ -12,6 +12,7 @@ import {
 } from "../../_utils/r2ObjectUrls";
 import { normalizeAppLanguage, type AppLanguage } from "../../_utils/appLanguage";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { normalizeDbUtcDateTimeToIso } from "../../_utils/dbTime";
 
 type UserRow = {
   id: number;
@@ -110,7 +111,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
     email: user.email,
     isAdmin: !!user.is_admin,
     avatarUrl: convertDbAvatarUrlToPublicUrl(user.avatar_url),
-    createdAt: user.created_at,
+    createdAt: normalizeDbUtcDateTimeToIso(user.created_at) ?? user.created_at,
   }));
 }, { name: "GET /api/user/profile" });
 

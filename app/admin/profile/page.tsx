@@ -36,6 +36,7 @@ import {
   MAX_AVATAR_BYTES,
   uploadAvatarDataUrl,
 } from "../../_utils/avatarDataUrl";
+import { formatDateTime, getClientTimeZone } from "../../_utils/dateTime";
 
 type OrderThumb = {
   id: number;
@@ -80,6 +81,7 @@ export default function AdminProfilePage() {
 
   const [orders, setOrders] = useState<OrderThumb[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const viewerTz = useMemo(() => getClientTimeZone(), []);
 
   const [usernameModalOpen, setUsernameModalOpen] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
@@ -583,7 +585,11 @@ export default function AdminProfilePage() {
                                 style={{ objectFit: "cover", borderRadius: 8 }}
                               />
                               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                                {new Date(o.createdAt).toLocaleDateString()}
+                                {formatDateTime(o.createdAt, {
+                                  locale: language,
+                                  timeZone: viewerTz ?? undefined,
+                                  kind: "date",
+                                })}
                               </Typography.Text>
                               {o.deviceId ? (
                                 <div title={o.deviceId}>

@@ -5,6 +5,7 @@ import { requireUserFromRequest } from "../../../user/_utils/userSession";
 import { requireAdminFromRequest } from "../../../admin/_utils/adminSession";
 import { writeAdminAuditLog } from "../../../_utils/adminAuditLogs";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { normalizeDbUtcDateTimeToIso } from "../../../_utils/dbTime";
 
 type DbRow = {
   id: string;
@@ -63,7 +64,7 @@ export const GET = withApiMonitoring(async function GET(
         targetType: "script_share",
         targetId: row.id,
         targetOwnerUserId: row.owner_user_id,
-        meta: { updatedAt: row.updated_at },
+        meta: { updatedAt: normalizeDbUtcDateTimeToIso(row.updated_at) ?? row.updated_at },
       });
     }
   }

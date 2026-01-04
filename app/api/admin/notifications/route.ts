@@ -4,6 +4,7 @@ import { createBroadcastUserNotification } from "../../_utils/userNotifications"
 import { writeAdminAuditLog } from "../../_utils/adminAuditLogs";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
+import { normalizeDbUtcDateTimeToIso } from "../../_utils/dbTime";
 import {
   createAdminNotificationEvent,
   listAdminNotificationEvents,
@@ -80,8 +81,8 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
         status: r.status,
         errorMessage: r.error_message,
         isDeleted: !!r.is_deleted,
-        deletedAt: r.deleted_at,
-        createdAt: r.created_at,
+        deletedAt: normalizeDbUtcDateTimeToIso(r.deleted_at),
+        createdAt: normalizeDbUtcDateTimeToIso(r.created_at) ?? r.created_at,
       })),
       pagination: { total, page, pageSize, totalPages },
     },

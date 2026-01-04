@@ -16,6 +16,7 @@ import {
   ensureScriptShareInteractionsTables,
 } from "../../../_utils/scriptShareInteractionsTable";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { normalizeDbUtcDateTimeToIso } from "../../../_utils/dbTime";
 
 type DbRow = {
   id: string;
@@ -257,7 +258,7 @@ export const PATCH = withApiMonitoring(async function PATCH(
     publicUsername: nextPublic,
     isPublic: !!nextIsPublic,
     isPinned: !!nextIsPinned,
-    pinnedAt: updated?.pinned_at ?? null,
+    pinnedAt: normalizeDbUtcDateTimeToIso(updated?.pinned_at ?? null),
     updatedAt: new Date().toISOString(),
   });
 }, { name: "PATCH /api/admin/script-shares/[id]" });

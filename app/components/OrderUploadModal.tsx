@@ -82,6 +82,13 @@ export default function OrderUploadModal({
       if (deviceId) {
         formData.append("deviceId", deviceId);
       }
+      // Capture uploader's IANA timezone for correct server-side normalization (DST-safe).
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) formData.append("tz", tz);
+      } catch {
+        // ignore
+      }
       formData.append("file", file);
       if (note.trim()) {
         formData.append("note", note.trim());

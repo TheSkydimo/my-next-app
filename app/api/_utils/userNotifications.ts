@@ -7,6 +7,7 @@ import {
 import { ensureUsersTable } from "./usersTable";
 import type { AppLanguage } from "./appLanguage";
 import { normalizeAppLanguage } from "./appLanguage";
+import { normalizeDbUtcDateTimeToIso } from "./dbTime";
 
 const USER_NOTIFICATIONS_TTL_DAYS = 30;
 
@@ -338,8 +339,8 @@ export async function listUserNotifications(options: {
     body: lang === "en-US" ? (r.body_en ?? "") : (r.body_zh ?? r.body),
     linkUrl: r.link_url,
     isRead: !!r.is_read,
-    createdAt: r.created_at,
-    readAt: r.read_at,
+    createdAt: normalizeDbUtcDateTimeToIso(r.created_at) ?? r.created_at,
+    readAt: normalizeDbUtcDateTimeToIso(r.read_at),
   }));
 
   return { items, total, page, pageSize };

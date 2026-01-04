@@ -8,6 +8,7 @@ import {
   ensureUsersSessionJtiColumn,
 } from "../../_utils/usersTable";
 import { unauthorizedWithClearedSession } from "../../_utils/unauthorized";
+import { normalizeDbUtcDateTimeToIso } from "../../_utils/dbTime";
 
 export type UserAuthed = {
   id: number;
@@ -99,7 +100,7 @@ export async function requireUserFromRequest(options: {
       email: row.email,
       avatarUrl: convertDbAvatarUrlToPublicUrl(row.avatar_url),
       isAdmin: !!row.is_admin,
-      createdAt: row.created_at,
+      createdAt: normalizeDbUtcDateTimeToIso(row.created_at) ?? row.created_at,
     },
   };
 }

@@ -23,6 +23,7 @@ import {
   Result,
   Popconfirm,
 } from "antd";
+import { formatDateTime, getClientTimeZone } from "../../../_utils/dateTime";
 
 type AdminEvent = {
   id: number;
@@ -43,12 +44,6 @@ type AdminEvent = {
   createdAt: string;
 };
 
-function safeDateTime(s: string) {
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleString();
-}
-
 export default function AdminNotificationsHistoryPage() {
   const router = useRouter();
   const adminContext = useAdmin();
@@ -57,6 +52,7 @@ export default function AdminNotificationsHistoryPage() {
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const [appTheme, setAppTheme] = useState<AppTheme>(() => getInitialTheme());
   const messages = getAdminMessages(language);
+  const viewerTz = useMemo(() => getClientTimeZone(), []);
 
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<AdminEvent[]>([]);
@@ -255,7 +251,8 @@ export default function AdminNotificationsHistoryPage() {
         dataIndex: "createdAt",
         key: "createdAt",
         width: 190,
-        render: (v: string) => safeDateTime(v),
+        render: (v: string) =>
+          formatDateTime(v, { locale: language, timeZone: viewerTz ?? undefined }),
       },
       {
         title: messages.notificationsHistory.tableActions,
@@ -463,7 +460,12 @@ export default function AdminNotificationsHistoryPage() {
 
             <div>
               <Typography.Text type="secondary">{messages.notificationsHistory.modalCreated}</Typography.Text>
-              <div>{safeDateTime(detail.createdAt)}</div>
+              <div>
+                {formatDateTime(detail.createdAt, {
+                  locale: language,
+                  timeZone: viewerTz ?? undefined,
+                })}
+              </div>
             </div>
 
             {detail.errorMessage ? (

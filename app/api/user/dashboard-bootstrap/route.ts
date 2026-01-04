@@ -1,6 +1,8 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireUserFromRequest } from "../_utils/userSession";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { normalizeDbUtcDateTimeToIso } from "../../_utils/dbTime";
+import { ensureUserOrdersTable } from "../../_utils/userOrdersTable";
 
 type DeviceRow = {
   id: number;
@@ -79,51 +81,6 @@ async function ensureUserDevicesTable(db: D1Database) {
     .run();
 }
 
-async function ensureUserOrdersTable(db: D1Database) {
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS user_orders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        device_id TEXT NOT NULL,
-        image_url TEXT NOT NULL,
-        note TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        order_no TEXT,
-        order_created_time TEXT,
-        order_paid_time TEXT,
-        platform TEXT,
-        shop_name TEXT,
-        device_count INTEGER
-      )`
-    )
-    .run();
-
-  await db
-    .prepare("CREATE INDEX IF NOT EXISTS idx_user_orders_user ON user_orders (user_id)")
-    .run();
-
-  // 兼容旧表：补字段（若已存在则忽略）
-  try {
-    await db.prepare("ALTER TABLE user_orders ADD COLUMN order_no TEXT").run();
-  } catch {}
-  try {
-    await db.prepare("ALTER TABLE user_orders ADD COLUMN order_created_time TEXT").run();
-  } catch {}
-  try {
-    await db.prepare("ALTER TABLE user_orders ADD COLUMN order_paid_time TEXT").run();
-  } catch {}
-  try {
-    await db.prepare("ALTER TABLE user_orders ADD COLUMN platform TEXT").run();
-  } catch {}
-  try {
-    await db.prepare("ALTER TABLE user_orders ADD COLUMN shop_name TEXT").run();
-  } catch {}
-  try {
-    await db.prepare("ALTER TABLE user_orders ADD COLUMN device_count INTEGER").run();
-  } catch {}
-}
-
 function convertOrderImageUrl(dbUrl: string): string {
   if (dbUrl.startsWith("r2://")) {
     const r2Key = dbUrl.slice(5);
@@ -191,7 +148,7 @@ async function loadOrders(db: D1Database, userId: number) {
       deviceId: row.device_id,
       imageUrl: convertOrderImageUrl(row.image_url),
       note: row.note,
-      createdAt: row.created_at,
+      createdAt: normalizeDbUtcDateTimeToIso(row.created_at) ?? row.created_at,
       orderNo: row.order_no ?? null,
       orderCreatedTime: row.order_created_time ?? null,
       orderPaidTime: row.order_paid_time ?? null,

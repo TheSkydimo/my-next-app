@@ -26,6 +26,7 @@ import { getInitialLanguage } from "../client-prefs";
 import { getUserMessages } from "../user-i18n";
 import { apiFetch } from "../lib/apiFetch";
 import { dispatchUserOrdersInvalidated } from "../lib/events/userOrdersEvents";
+import { formatDateTime, getClientTimeZone } from "../_utils/dateTime";
 
 const { Text, Paragraph } = Typography;
 const { useToken } = theme;
@@ -53,12 +54,6 @@ type NotificationItem = {
   readAt: string | null;
 };
 
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
-}
-
 export default function UserNotificationBell() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -70,6 +65,7 @@ export default function UserNotificationBell() {
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
   const messages = useMemo(() => getUserMessages(language), [language]);
   const { token } = useToken();
+  const viewerTz = useMemo(() => getClientTimeZone(), []);
 
   // Track notifications we've seen to avoid firing on initial load.
   // Note: lastSeen may be 0 when there are no notifications yet; that's still "initialized".
@@ -369,7 +365,12 @@ export default function UserNotificationBell() {
                       {item.title}
                     </Text>
                     <Space size={4}>
-                      <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(item.createdAt)}</Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {formatDateTime(item.createdAt, {
+                          locale: language,
+                          timeZone: viewerTz ?? undefined,
+                        })}
+                      </Text>
                       <Popconfirm
                         title={messages.notifications.deleteOneConfirmTitle}
                         okText={messages.notifications.deleteOneOk}

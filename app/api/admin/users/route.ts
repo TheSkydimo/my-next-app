@@ -4,6 +4,7 @@ import { requireAdminFromRequest } from "../_utils/adminSession";
 import { deleteUserCascade } from "../_utils/deleteUserCascade";
 import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { normalizeDbUtcDateTimeToIso } from "../../_utils/dbTime";
 
 type UserRow = {
   id: number;
@@ -87,8 +88,8 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
         !!u.vip_expires_at &&
         !Number.isNaN(new Date(u.vip_expires_at).getTime()) &&
         new Date(u.vip_expires_at).getTime() > Date.now(),
-      vipExpiresAt: u.vip_expires_at,
-      createdAt: u.created_at,
+      vipExpiresAt: normalizeDbUtcDateTimeToIso(u.vip_expires_at),
+      createdAt: normalizeDbUtcDateTimeToIso(u.created_at) ?? u.created_at,
     })) ?? [];
 
   const totalPages = Math.max(Math.ceil(total / pageSize), 1);

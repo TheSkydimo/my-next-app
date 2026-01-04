@@ -3,6 +3,7 @@ import { requireAdminFromRequest } from "../../_utils/adminSession";
 import { convertDbAvatarUrlToPublicUrl } from "../../../_utils/r2ObjectUrls";
 import { ensureUsersAvatarUrlColumn } from "../../../_utils/usersTable";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { normalizeDbUtcDateTimeToIso } from "../../../_utils/dbTime";
 
 type UserRow = {
   id: number;
@@ -59,8 +60,8 @@ export const GET = withApiMonitoring(async function GET(
         isAdmin: !!row.is_admin,
         avatarUrl: convertDbAvatarUrlToPublicUrl(row.avatar_url),
         isVip,
-        vipExpiresAt: row.vip_expires_at,
-        createdAt: row.created_at,
+        vipExpiresAt: normalizeDbUtcDateTimeToIso(row.vip_expires_at),
+        createdAt: normalizeDbUtcDateTimeToIso(row.created_at) ?? row.created_at,
       },
     },
     { headers: { "Cache-Control": "no-store" } }
