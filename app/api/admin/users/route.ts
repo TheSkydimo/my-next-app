@@ -198,7 +198,8 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   switch (action) {
     case "remove": {
       try {
-        await deleteUserCascade({ db, userId: target.id, userEmail });
+        const r2 = env.ORDER_IMAGES as R2Bucket | undefined;
+        await deleteUserCascade({ db, userId: target.id, userEmail, r2 });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         // Do not leak internal error details to clients.
@@ -206,6 +207,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
           return new Response("删除失败：该用户存在关联数据，已阻止删除", {
             status: 409,
           });
+        }
+        if (msg.startsWith("R2_DELETE_FAILED:")) {
+          return new Response("删除失败：对象存储清理失败，请稍后重试", { status: 503 });
         }
         console.error("admin remove user failed:", { targetId: target.id });
         return new Response("删除失败：服务器内部错误", { status: 500 });

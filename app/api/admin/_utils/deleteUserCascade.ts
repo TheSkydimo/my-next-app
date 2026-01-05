@@ -1,5 +1,7 @@
 type ExistingTablesRow = { name: string };
 
+import { r2KeyFromSchemeUrl } from "../../_utils/r2ObjectUrls";
+
 async function getExistingTables(db: D1Database): Promise<Set<string>> {
   const { results } = await db
     .prepare("SELECT name FROM sqlite_master WHERE type='table'")
@@ -7,15 +9,130 @@ async function getExistingTables(db: D1Database): Promise<Set<string>> {
   return new Set((results ?? []).map((r) => r.name));
 }
 
+function uniqueNonEmptyStrings(values: Array<string | null | undefined>): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const v of values) {
+    if (typeof v !== "string") continue;
+    const s = v.trim();
+    if (!s) continue;
+    if (seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
+async function deleteR2KeysStrict(options: {
+  r2: R2Bucket;
+  keys: string[];
+  label: string;
+}) {
+  const { r2, keys, label } = options;
+  if (keys.length === 0) return;
+
+  // R2Bucket.delete supports string or string[]. Use chunking to avoid huge payloads.
+  const chunkSize = 200;
+  const failed: string[] = [];
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < keys.length; i += chunkSize) {
+    chunks.push(keys.slice(i, i + chunkSize));
+  }
+
+  for (const chunk of chunks) {
+    try {
+      await r2.delete(chunk);
+    } catch {
+      // Fallback: try per-key to avoid failing the whole cascade due to one key.
+      for (const key of chunk) {
+        try {
+          await r2.delete(key);
+        } catch {
+          failed.push(key);
+        }
+      }
+    }
+  }
+
+  if (failed.length > 0) {
+    // Do not leak keys in error messages/logs.
+    throw new Error(`R2_DELETE_FAILED:${label}:${failed.length}`);
+  }
+}
+
+async function deleteR2PrefixStrict(options: {
+  r2: R2Bucket;
+  prefix: string;
+  label: string;
+}) {
+  const { r2, prefix, label } = options;
+  let cursor: string | undefined = undefined;
+  const toDelete: string[] = [];
+
+  // Collect first to avoid partial deletion if listing fails mid-way.
+  // (If list fails, we prefer to abort and not delete DB user.)
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const res = await r2.list({ prefix, cursor });
+    for (const obj of res.objects ?? []) {
+      if (obj?.key) toDelete.push(obj.key);
+    }
+    if (!res.truncated) break;
+    cursor = res.cursor;
+    if (!cursor) break;
+  }
+
+  const unique = uniqueNonEmptyStrings(toDelete);
+  await deleteR2KeysStrict({ r2, keys: unique, label });
+}
+
 export async function deleteUserCascade(options: {
   db: D1Database;
   userId: number;
   userEmail: string;
+  r2?: R2Bucket;
 }) {
-  const { db, userId, userEmail } = options;
+  const { db, userId, userEmail, r2 } = options;
 
   const tables = await getExistingTables(db);
   const has = (name: string) => tables.has(name);
+
+  // Pre-delete user-owned R2 objects (strict): if any R2 deletion fails, abort user deletion.
+  if (r2) {
+    const orderImageKeys: string[] = [];
+    if (has("user_orders")) {
+      const { results } = await db
+        .prepare("SELECT image_url FROM user_orders WHERE user_id = ?")
+        .bind(userId)
+        .all<{ image_url: string }>();
+      for (const row of results ?? []) {
+        const key = r2KeyFromSchemeUrl(String(row.image_url ?? ""));
+        if (key) orderImageKeys.push(key);
+      }
+    }
+
+    const scriptKeys: string[] = [];
+    if (has("script_shares")) {
+      const { results } = await db
+        .prepare("SELECT r2_key, cover_r2_key FROM script_shares WHERE owner_user_id = ?")
+        .bind(userId)
+        .all<{ r2_key: string; cover_r2_key: string | null }>();
+      for (const row of results ?? []) {
+        if (row?.r2_key) scriptKeys.push(row.r2_key);
+        if (row?.cover_r2_key) scriptKeys.push(row.cover_r2_key);
+      }
+    }
+
+    // Delete known keys first, then purge avatar prefix (handles historical avatar leftovers).
+    const uniqueKeys = uniqueNonEmptyStrings([...orderImageKeys, ...scriptKeys]);
+    await deleteR2KeysStrict({ r2, keys: uniqueKeys, label: "known-user-assets" });
+    await deleteR2PrefixStrict({
+      r2,
+      prefix: `avatars/${userId}/`,
+      label: "avatar-prefix",
+    });
+  }
 
   // Pre-fetch dependent ids that require ordered deletion.
   const feedbackIds: number[] = [];
