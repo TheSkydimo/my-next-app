@@ -39,6 +39,14 @@ function withIpv4FirstNodeOptions(env) {
   if (!existing.includes(flag)) {
     nextEnv.NODE_OPTIONS = existing ? `${existing} ${flag}` : flag;
   }
+  // Wrangler has built-in OpenNext auto-detection: when it sees an OpenNext project,
+  // it will delegate `wrangler deploy` to `opennextjs-cloudflare deploy` unless this
+  // env var is set. On Windows, that delegated flow can intermittently fail due to
+  // temp/bundling path issues (e.g. missing `.wrangler/tmp/**/middleware-loader.entry.ts`)
+  // even though the already-built `.open-next/worker.js` can be deployed successfully.
+  //
+  // Setting this prevents the extra delegation step and keeps deploy stable & noise-free.
+  nextEnv.OPEN_NEXT_DEPLOY ??= "true";
   return nextEnv;
 }
 

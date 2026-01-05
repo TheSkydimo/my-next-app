@@ -26,11 +26,21 @@ export function getAllowedSiteOrigins(env: unknown): string[] {
   return Array.from(new Set(out));
 }
 
-export function buildSiteCorsHeaders(env: unknown, request: Request): HeadersInit {
-  const origin = request.headers.get("Origin");
-  if (!origin) return {};
+function getRequestCorsOrigin(request: Request): string | null {
+  // Primary: standard CORS Origin header.
+  const origin = String(request.headers.get("Origin") ?? "").trim();
+  // Some contexts use an "opaque origin" and send Origin: null (literal string).
+  // In that case, fall back to parsing the Referer to recover the actual page origin.
+  const originNorm = origin && origin.toLowerCase() !== "null" ? normalizeOrigin(origin) : null;
+  if (originNorm) return originNorm;
 
-  const originNorm = normalizeOrigin(origin);
+  const referer = String(request.headers.get("Referer") ?? "").trim();
+  if (!referer) return null;
+  return normalizeOrigin(referer);
+}
+
+export function buildSiteCorsHeaders(env: unknown, request: Request): HeadersInit {
+  const originNorm = getRequestCorsOrigin(request);
   if (!originNorm) return {};
 
   const allowed = getAllowedSiteOrigins(env);
@@ -41,7 +51,8 @@ export function buildSiteCorsHeaders(env: unknown, request: Request): HeadersIni
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Vary": "Origin",
+    // When Origin is "null", we may fall back to Referer, so vary on both.
+    "Vary": "Origin, Referer",
   };
 }
 

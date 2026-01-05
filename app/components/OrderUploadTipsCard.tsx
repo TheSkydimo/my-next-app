@@ -5,7 +5,7 @@ import { Card, List, Space, Typography, theme } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import type { AppLanguage } from "../client-prefs";
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
 export default function OrderUploadTipsCard({
   language,
@@ -26,6 +26,17 @@ export default function OrderUploadTipsCard({
     language === "zh-CN"
       ? "建议上传电商订单详情页/发票截图，需清晰可读："
       : "Recommended: upload an e-commerce order details or invoice screenshot. The following should be clearly readable:";
+
+  const privacyNote =
+    language === "zh-CN"
+      ? {
+          title: "订单提示：",
+          body: "提交订单信息仅用于延保核验。为保护隐私，您可遮挡收货地址/电话/支付等信息，只需保留订单号、日期、店铺与商品型号。",
+        }
+      : {
+          title: "Order note: ",
+          body: "Submitted order information is only used for extended warranty verification. To protect your privacy, you may cover the shipping address/phone/payment etc. information—keep only the order number, date, store, and product model.",
+        };
 
   const bullets =
     language === "zh-CN"
@@ -67,6 +78,11 @@ export default function OrderUploadTipsCard({
         </Space>
 
         <Text type="secondary">{lead}</Text>
+
+        <Paragraph style={{ margin: 0 }}>
+          <Text strong>{privacyNote.title}</Text>
+          <Text type="secondary">{privacyNote.body}</Text>
+        </Paragraph>
 
         <List
           size="small"

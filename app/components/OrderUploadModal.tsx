@@ -169,9 +169,22 @@ export default function OrderUploadModal({
     <Modal
       open={open}
       title={title}
+      centered
       onCancel={handleClose}
       maskClosable={!loading}
       closable={!loading}
+      wrapClassName="upload-modal-overlay"
+      className="upload-modal-content order-upload-modal"
+      width="min(920px, 94vw)"
+      styles={{
+        body: {
+          // Keep a comfortable aspect ratio on short viewports:
+          // - make the modal wider on large screens (less vertical stacking)
+          // - cap body height and scroll internally when needed
+          maxHeight: "calc(100vh - 240px)",
+          overflowY: "auto",
+        },
+      }}
       footer={[
         <Button key="cancel" onClick={handleClose} disabled={loading}>
           {language === "zh-CN" ? "取消" : "Cancel"}
@@ -188,30 +201,36 @@ export default function OrderUploadModal({
       ]}
     >
       {notificationContextHolder}
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <OrderUploadTipsCard language={language} maxBytes={maxBytes} />
+      <div className="order-upload-modal__grid">
+        <div className="order-upload-modal__left">
+          <OrderUploadTipsCard language={language} maxBytes={maxBytes} />
+        </div>
 
-        {error && <Alert type="error" message={error} showIcon />}
-        
-        <Dragger {...uploadProps} style={{ padding: 20 }}>
-          <p className="ant-upload-drag-icon">
-            <InboxOutlined style={{ color: token.colorTextSecondary }} />
-          </p>
-          <p className="ant-upload-text" style={{ color: token.colorTextSecondary }}>
-            {language === "zh-CN" ? "点击或拖拽文件到此区域上传" : "Click or drag file to this area to upload"}
-          </p>
-          <p className="ant-upload-hint" style={{ color: token.colorTextTertiary }}>
-            {language === "zh-CN" ? "支持单次上传一张图片" : "Support for a single upload."}
-          </p>
-        </Dragger>
+        <div className="order-upload-modal__right">
+          {error && <Alert type="error" message={error} showIcon />}
 
-        <TextArea
-          aria-label={language === "zh-CN" ? "说明（可选）" : "Note (optional)"}
-          rows={3}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder={language === "zh-CN" ? "请输入说明（可选）" : "Enter note (optional)"}
-        />
+          <Dragger {...uploadProps} style={{ padding: 20 }}>
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined style={{ color: token.colorTextSecondary }} />
+            </p>
+            <p className="ant-upload-text" style={{ color: token.colorTextSecondary }}>
+              {language === "zh-CN"
+                ? "点击或拖拽文件到此区域上传"
+                : "Click or drag file to this area to upload"}
+            </p>
+            <p className="ant-upload-hint" style={{ color: token.colorTextTertiary }}>
+              {language === "zh-CN" ? "支持单次上传一张图片" : "Support for a single upload."}
+            </p>
+          </Dragger>
+
+          <TextArea
+            aria-label={language === "zh-CN" ? "说明（可选）" : "Note (optional)"}
+            rows={3}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={language === "zh-CN" ? "请输入说明（可选）" : "Enter note (optional)"}
+          />
+        </div>
       </div>
     </Modal>
   );

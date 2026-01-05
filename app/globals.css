@@ -6321,6 +6321,27 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 	}
 }
 
+/* 上传订单弹窗：宽度自适应 + 两列布局（降低“过高”感） */
+.order-upload-modal .order-upload-modal__grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 16px;
+	align-items: start;
+}
+
+@media (min-width: 860px) {
+	.order-upload-modal .order-upload-modal__grid {
+		grid-template-columns: 1.1fr 1fr;
+	}
+}
+
+.order-upload-modal .order-upload-modal__right {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-width: 0;
+}
+
 /* ========== Button palette overrides（统一按钮背景为透明） ========== */
 /* NOTE: 统一所有按钮背景为透明，仅通过描边/文字/阴影区分层级；同时用正确的 :root 选择器覆盖旧的 ::root 误写。 */
 
