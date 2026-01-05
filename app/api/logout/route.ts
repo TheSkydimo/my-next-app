@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { serializeCookie } from "../_utils/cookies";
+import { ADMIN_MODE_COOKIE_NAME } from "../_utils/adminModeCookie";
 import { getSessionCookieName } from "../_utils/session";
 import { isSecureRequest } from "../_utils/request";
 import { assertSameOriginOrNoOrigin } from "../_utils/requestOrigin";
@@ -31,10 +32,29 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
         maxAge: 0,
       })
     );
+    cookiesToClear.push(
+      serializeCookie(ADMIN_MODE_COOKIE_NAME, "", {
+        path: "/",
+        httpOnly: true,
+        secure,
+        sameSite: "Lax",
+        domain,
+        maxAge: 0,
+      })
+    );
   }
   // 2) Clear host-only cookie (no Domain attribute).
   cookiesToClear.push(
     serializeCookie(getSessionCookieName(), "", {
+      path: "/",
+      httpOnly: true,
+      secure,
+      sameSite: "Lax",
+      maxAge: 0,
+    })
+  );
+  cookiesToClear.push(
+    serializeCookie(ADMIN_MODE_COOKIE_NAME, "", {
       path: "/",
       httpOnly: true,
       secure,

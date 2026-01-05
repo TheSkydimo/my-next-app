@@ -9,6 +9,7 @@ import { getSessionSecret } from "../../_utils/sessionSecret";
 import { isSecureRequest } from "../../_utils/request";
 import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { getSessionCookieDomain } from "../../_utils/sessionCookieDomain";
+import { serializeAdminModeCookie } from "../../_utils/adminModeCookie";
 import {
   ensureUsersAvatarUrlColumn,
   ensureUsersIsAdminColumn,
@@ -120,7 +121,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
   // 登录成功：下发与客户端一致的 Session Cookie（用于“记住登录状态”）
   const sessionSecret = getSessionSecret(env);
-  const headers: HeadersInit = {};
+  const headers = new Headers();
 
   if (sessionSecret) {
     // Ensure column exists for single-session enforcement.
@@ -143,16 +144,27 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
 
     const secure = isSecureRequest(request);
     const domain = getSessionCookieDomain(env);
-    headers["Set-Cookie"] = serializeCookie(getSessionCookieName(), token, {
+    headers.append("Set-Cookie", serializeCookie(getSessionCookieName(), token, {
       httpOnly: true,
       secure,
       sameSite: "Lax",
       ...(domain ? { domain } : {}),
       path: "/",
       ...(rememberMe ? { maxAge: cookieMaxAgeSeconds } : {}),
-    });
+    }));
+
+    // Mark admin-mode for server-side redirects (root -> /admin/*).
+    headers.append(
+      "Set-Cookie",
+      serializeAdminModeCookie({
+        request,
+        env,
+        enabled: true,
+        ...(rememberMe ? { maxAgeSeconds: cookieMaxAgeSeconds } : {}),
+      })
+    );
   }
-  headers["Cache-Control"] = "no-store";
+  headers.set("Cache-Control", "no-store");
 
   // 登录成功，返回完整管理员信息（包括头像 URL）
   return Response.json({

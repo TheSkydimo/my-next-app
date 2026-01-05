@@ -12,6 +12,7 @@ import { getSessionSecret } from "../_utils/sessionSecret";
 import { isSecureRequest } from "../_utils/request";
 import { assertSameOriginOrNoOrigin } from "../_utils/requestOrigin";
 import { getSessionCookieDomain } from "../_utils/sessionCookieDomain";
+import { serializeAdminModeCookie } from "../_utils/adminModeCookie";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
 type UserRow = {
@@ -155,7 +156,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   // 登录成功：可选下发 Session Cookie（用于“记住登录状态”）
   const sessionSecret = getSessionSecret(env);
 
-  const headers: HeadersInit = {};
+  const headers = new Headers();
   if (sessionSecret) {
     // Ensure column exists for single-session enforcement.
     await ensureUsersSessionJtiColumn(db);
@@ -178,7 +179,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     const secure = isSecureRequest(request);
     const domain = getSessionCookieDomain(env);
 
-    headers["Set-Cookie"] = serializeCookie(getSessionCookieName(), token, {
+    headers.append("Set-Cookie", serializeCookie(getSessionCookieName(), token, {
       httpOnly: true,
       secure,
       sameSite: "Lax",
@@ -186,9 +187,16 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       path: "/",
       // remember=false 时不设置 Max-Age => session cookie（关闭浏览器即失效）
       ...(rememberMe ? { maxAge: cookieMaxAgeSeconds } : {}),
-    });
+    }));
   }
-  headers["Cache-Control"] = "no-store";
+
+  // User login should exit admin-mode if it was previously set.
+  headers.append(
+    "Set-Cookie",
+    serializeAdminModeCookie({ request, env, enabled: false })
+  );
+
+  headers.set("Cache-Control", "no-store");
 
   return Response.json({
     ok: true,
