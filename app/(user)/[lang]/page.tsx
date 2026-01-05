@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
-import type { AppLanguage } from "../../api/_utils/appLanguage";
 import { resolveAppLanguageFromLocaleSegment } from "../../_utils/routeLang";
-import LangRouteClient from "./LangRouteClient";
-import UserHomePage from "../_pages/UserHomePage";
+import { redirect } from "next/navigation";
 
 export default async function LangHomePage({
   params,
@@ -13,17 +11,10 @@ export default async function LangHomePage({
   const resolved = resolveAppLanguageFromLocaleSegment(segment);
   if (!resolved) notFound();
 
-  // IMPORTANT:
-  // Next.js only allows mutating cookies in Route Handlers / Server Actions.
-  // Pages are Server Components, so we set language on the client (localStorage + cookie)
-  // via `applyLanguage()` in LangRouteClient.
-  const store: AppLanguage = resolved;
-
-  return (
-    <LangRouteClient lang={store}>
-      <UserHomePage />
-    </LangRouteClient>
-  );
+  // We never render the "home" page for locale-prefixed entry.
+  // Instead, use the dedicated route handler to set `appLanguage` cookie and then land on `/orders`.
+  const from = resolved === "zh-CN" ? "zh" : "en";
+  redirect(`/api/lang/sync?from=${encodeURIComponent(from)}&next=/orders`);
 }
 
 
