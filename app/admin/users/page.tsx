@@ -81,6 +81,8 @@ export default function AdminUsersPage() {
   // Use refs to avoid re-creating fetchUsers on every paging/typing and accidentally re-triggering init effect.
   const paginationRef = useRef<Pagination | null>(null);
   const keywordRef = useRef<string>("");
+  // Prevent stale requests (e.g. Pagination fires multiple callbacks) from overwriting latest state.
+  const fetchSeqRef = useRef(0);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -139,6 +141,19 @@ export default function AdminUsersPage() {
     }
   }, [pagination]);
 
+  const setPaginationOptimistic = useCallback((next: { page?: number; pageSize?: number }) => {
+    if (!next.page && !next.pageSize) return;
+    setPagination((prev) => {
+      if (!prev) return prev;
+      const pageSize = next.pageSize ?? prev.pageSize;
+      const page = next.page ?? prev.page;
+      const updated: Pagination = { ...prev, page, pageSize };
+      // Keep ref in sync immediately (before async fetch resolves).
+      paginationRef.current = updated;
+      return updated;
+    });
+  }, []);
+
   useEffect(() => {
     keywordRef.current = keyword;
   }, [keyword]);
@@ -151,6 +166,7 @@ export default function AdminUsersPage() {
     bypassCache?: boolean;
   }) => {
     if (!adminEmail) return;
+    const seq = ++fetchSeqRef.current;
     const bypassCache = !!opts?.bypassCache;
     const q = (opts?.q ?? keywordRef.current).trim();
     const page = opts?.page ?? paginationRef.current?.page ?? 1;
@@ -168,6 +184,7 @@ export default function AdminUsersPage() {
       if (!bypassCache) {
         const cached = cache.get<{ users: UserItem[]; pagination: Pagination }>(url);
         if (cached && Array.isArray(cached.users) && cached.pagination) {
+          if (seq !== fetchSeqRef.current) return;
           setUsers(cached.users ?? []);
           setPagination(cached.pagination);
           setLoading(false);
@@ -187,12 +204,15 @@ export default function AdminUsersPage() {
         throw new Error(safeErrorFromResponse(res, text, messages.common.unknownError));
       }
       const data = (await res.json()) as { users: UserItem[]; pagination: Pagination };
+      if (seq !== fetchSeqRef.current) return;
       cache.set(url, data);
       setUsers(data.users ?? []);
       setPagination(data.pagination);
     } catch (e) {
+      if (seq !== fetchSeqRef.current) return;
       setError(e instanceof Error ? e.message : messages.common.unknownError);
     } finally {
+      if (seq !== fetchSeqRef.current) return;
       setLoading(false);
     }
   }, [adminEmail, cache, messages.common.unknownError]);
@@ -470,7 +490,20 @@ export default function AdminUsersPage() {
                       // Optional: allow quickly jumping to a page when pages are large.
                       showQuickJumper: true,
                       responsive: true,
-                      onChange: (p, ps) => void fetchUsers({ page: p, pageSize: ps }),
+                      onChange: (p, ps) => {
+                        const pageSize =
+                          typeof ps === "number" && Number.isFinite(ps)
+                            ? ps
+                            : paginationRef.current?.pageSize ?? pagination.pageSize;
+                        setPaginationOptimistic({ page: p, pageSize });
+                        void fetchUsers({ page: p, pageSize });
+                      },
+                      // Some antd versions fire pageSize changes via onShowSizeChange more reliably than onChange.
+                      onShowSizeChange: (_current, size) => {
+                        // Reset to first page when pageSize changes to avoid out-of-range pages.
+                        setPaginationOptimistic({ page: 1, pageSize: size });
+                        void fetchUsers({ page: 1, pageSize: size });
+                      },
                     }
                   : false
               }
