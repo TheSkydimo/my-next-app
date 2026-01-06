@@ -117,7 +117,7 @@
 				// Consider pointing this to a dev mailbox to avoid spamming real users.
 				"FEEDBACK_NOTIFY_TO": "support@skydimo.com",
 				// Prefer using a dedicated Turnstile site key for staging.
-				"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "REPLACE_WITH_STAGING_TURNSTILE_SITE_KEY"
+				"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a"
 			}
 		},
 		"development": {

@@ -10,6 +10,10 @@
 	--app-surface: #141414;
 	--app-split: rgba(255, 255, 255, 0.12);
 	--app-input-filled-bg: rgba(255, 255, 255, 0.08);
+	/* Admin：让默认按钮背景与左侧菜单栏背景一致 */
+	--admin-sidebar-bg: var(--background);
+	/* User：给 portal（如 Modal）也能读取到的“侧栏/容器背景”变量 */
+	--user-sidebar-bg: var(--app-surface);
 }
 
 /* Admin 布局在浅色主题下的文字和侧边栏对比度优化（与 User 一致风格） */
@@ -20,6 +24,12 @@
 :root[data-theme="light"] .admin-layout__sidebar {
 	border-right: none;
 	background: #f3f4f6;
+}
+
+/* Light：左侧菜单栏是浅灰，因此默认按钮背景也跟随 */
+:root[data-theme="light"] {
+	--admin-sidebar-bg: #f3f4f6;
+	--user-sidebar-bg: #ffffff;
 }
 
 :root[data-theme="light"] .admin-layout__display-name {
@@ -3863,6 +3873,23 @@ button:not(.btn):not(.ant-btn):not([class*="ant-"]):not(.user-layout__nav-link):
 	flex-direction: column;
 	gap: 16px;
 	overflow-y: auto;
+}
+
+/* Admin：默认按钮背景与左侧菜单栏一致（不影响 primary/danger/text/link） */
+.admin-layout .ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-link):not(.ant-btn-text) {
+	background: var(--admin-sidebar-bg);
+}
+
+/* User：默认按钮背景与左侧菜单栏/容器背景一致（由 user layout 通过 --user-sidebar-bg 注入）
+ * 说明：只作用于用户端壳（.user-shell），不影响管理端；不影响 primary/danger/text/link
+ */
+.user-shell .ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-link):not(.ant-btn-text) {
+	background: var(--user-sidebar-bg);
+}
+
+/* 上传订单弹窗在 body portal 渲染，不在 .user-shell 内；这里用弹窗 class 兜底 */
+.order-upload-modal .ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-link):not(.ant-btn-text) {
+	background: var(--user-sidebar-bg);
 }
 
 .admin-layout__profile {

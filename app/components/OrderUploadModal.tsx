@@ -191,7 +191,6 @@ export default function OrderUploadModal({
         </Button>,
         <Button
           key="submit"
-          type="primary"
           loading={loading}
           onClick={handleUpload}
           disabled={fileList.length === 0 || loading}

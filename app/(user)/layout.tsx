@@ -488,11 +488,14 @@ function AppLayout({
 
   return (
     <Layout
+      className="user-shell"
       style={{
         // Critical: body has overflow:hidden in globals.css. Make the user shell fixed-height
         // and let Content be the scroll container so long pages can be reached.
         height: "100vh",
         overflow: "hidden",
+        // Expose current sider/container bg for CSS to consume (e.g. default button background).
+        ["--user-sidebar-bg" as never]: layoutBgColor,
       }}
     >
       {/* 侧边栏 - 桌面端 */}

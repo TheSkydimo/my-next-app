@@ -447,7 +447,7 @@ export default function AdminNotificationSendForm() {
                   </Form.Item>
 
                   <Space wrap>
-                    <Button type="primary" htmlType="submit" loading={sending}>
+                    <Button htmlType="submit" loading={sending}>
                       {messages.notifications.sendButton}
                     </Button>
                     <Button

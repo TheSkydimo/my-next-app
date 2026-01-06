@@ -397,7 +397,7 @@ export default function AdminNotificationsHistoryPage() {
 
               <Form.Item style={{ marginBottom: 12 }}>
                 <Space>
-                  <Button type="primary" htmlType="submit" loading={loading}>
+                  <Button htmlType="submit" loading={loading}>
                     {messages.notificationsHistory.applyButton}
                   </Button>
                   <Button

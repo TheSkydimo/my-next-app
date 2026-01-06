@@ -82,7 +82,6 @@ export default function OrderUploadCtaCard({
 
         <Link href={href} style={{ alignSelf: isMobile ? "stretch" : "flex-start" }}>
           <Button
-            type="primary"
             icon={<CloudUploadOutlined />}
             size={isMobile ? "middle" : "large"}
             block={isMobile}

@@ -261,7 +261,6 @@ export default function UserDevicesPage() {
                 : "Upload order screenshots so we can extract and store your order info"}
             </Typography.Text>
             <Button
-              type="primary"
               icon={<CloudUploadOutlined />}
               size="large"
               onClick={() => {
