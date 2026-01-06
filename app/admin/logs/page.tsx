@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { AppLanguage } from "../../client-prefs";
-import { getInitialLanguage } from "../../client-prefs";
+import type { AppLanguage, AppTheme } from "../../client-prefs";
+import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
 import { getAdminMessages } from "../../admin-i18n";
 import { useAdmin } from "../../contexts/AdminContext";
+import { Button, Card, ConfigProvider, Space, Typography, Result, theme as antdTheme } from "antd";
 
 export default function AdminLogsPage() {
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
 
   const [language, setLanguage] = useState<AppLanguage>(() => getInitialLanguage());
+  const [appTheme, setAppTheme] = useState<AppTheme>(() => getInitialTheme());
   const messages = getAdminMessages(language);
 
   useEffect(() => {
@@ -33,6 +35,28 @@ export default function AdminLogsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ theme: AppTheme }>;
+      if (custom.detail?.theme) {
+        setAppTheme(custom.detail.theme);
+      }
+    };
+
+    window.addEventListener("app-theme-changed", handler as EventListener);
+    return () => {
+      window.removeEventListener("app-theme-changed", handler as EventListener);
+    };
+  }, []);
+
+  const themeConfig = useMemo(() => {
+    return {
+      algorithm: appTheme === "dark" ? antdTheme.darkAlgorithm : undefined,
+    };
+  }, [appTheme]);
+
   const logsUrl = useMemo(() => {
     const raw = process.env.NEXT_PUBLIC_ADMIN_LOGS_URL ?? "";
     return raw.trim();
@@ -46,61 +70,77 @@ export default function AdminLogsPage() {
 
   if (!adminEmail) {
     return (
-      <div className="vben-page">
-        <div className="vben-page__header">
-          <h1 className="vben-page__title">{messages.logs.title}</h1>
+      <ConfigProvider theme={themeConfig}>
+        <div className="vben-page">
+          <Card style={{ maxWidth: 820 }}>
+            <Result status="403" title={messages.common.adminLoginRequired} />
+            <div style={{ marginTop: 12 }}>
+              <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
+            </div>
+          </Card>
         </div>
-        <p>{messages.common.adminLoginRequired}</p>
-        <Link href="/admin/login">{messages.common.goAdminLogin}</Link>
-      </div>
+      </ConfigProvider>
     );
   }
 
   return (
-    <div className="vben-page">
-      <div className="vben-page__header">
-        <div className="vben-row vben-row--between vben-row--center">
-          <div>
-            <h1 className="vben-page__title">{messages.logs.title}</h1>
-            <p className="vben-page__subtitle">{messages.logs.desc}</p>
-          </div>
-          <Link href="/admin/profile" className="btn btn-secondary btn-sm">
-            {messages.users.backToHome}
-          </Link>
-        </div>
+    <ConfigProvider theme={themeConfig}>
+      <div className="vben-page">
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          <Space align="start" style={{ width: "100%", justifyContent: "space-between" }} wrap>
+            <div>
+              <Typography.Title level={4} style={{ margin: 0 }}>
+                {messages.logs.title}
+              </Typography.Title>
+              <Typography.Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0 }}>
+                {messages.logs.desc}
+              </Typography.Paragraph>
+            </div>
+            <Button href="/admin/profile">{messages.users.backToHome}</Button>
+          </Space>
+
+          <Card>
+            <Space direction="vertical" size={12} style={{ width: "100%" }}>
+              {logsUrl ? (
+                <div>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {messages.logs.urlLabel}
+                  </Typography.Text>
+                  <div style={{ wordBreak: "break-all" }}>{logsUrl}</div>
+                </div>
+              ) : (
+                <div>
+                  <Typography.Paragraph style={{ marginTop: 0, marginBottom: 8 }}>
+                    {messages.logs.urlNotConfigured}
+                  </Typography.Paragraph>
+                  <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    {messages.logs.configureHint}
+                  </Typography.Paragraph>
+                </div>
+              )}
+
+              <div>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {messages.logs.issuesUrlLabel}
+                </Typography.Text>
+                <div style={{ wordBreak: "break-all" }}>{issuesUrl}</div>
+              </div>
+
+              <Space wrap>
+                {logsUrl ? (
+                  <Button type="primary" href={logsUrl} target="_blank" rel="noreferrer">
+                    {messages.logs.openLogs}
+                  </Button>
+                ) : null}
+                <Button href={issuesUrl} target="_blank" rel="noreferrer">
+                  {messages.logs.openIssues}
+                </Button>
+              </Space>
+            </Space>
+          </Card>
+        </Space>
       </div>
-
-      <div className="vben-card">
-        {logsUrl ? (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>{messages.logs.urlLabel}</div>
-            <div style={{ wordBreak: "break-all" }}>{logsUrl}</div>
-          </div>
-        ) : (
-          <div style={{ marginBottom: 12 }}>
-            <p style={{ marginTop: 0 }}>{messages.logs.urlNotConfigured}</p>
-            <p style={{ opacity: 0.85, marginBottom: 0 }}>{messages.logs.configureHint}</p>
-          </div>
-        )}
-
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>{messages.logs.issuesUrlLabel}</div>
-          <div style={{ wordBreak: "break-all" }}>{issuesUrl}</div>
-        </div>
-
-        <div className="vben-row vben-row--gap-sm" style={{ flexWrap: "wrap" }}>
-          {logsUrl ? (
-            <a className="btn btn-primary" href={logsUrl} target="_blank" rel="noreferrer">
-              {messages.logs.openLogs}
-            </a>
-          ) : null}
-
-          <a className="btn btn-secondary" href={issuesUrl} target="_blank" rel="noreferrer">
-            {messages.logs.openIssues}
-          </a>
-        </div>
-      </div>
-    </div>
+    </ConfigProvider>
   );
 }
 
