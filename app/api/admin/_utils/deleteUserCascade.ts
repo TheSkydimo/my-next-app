@@ -72,7 +72,6 @@ async function deleteR2PrefixStrict(options: {
 
   // Collect first to avoid partial deletion if listing fails mid-way.
   // (If list fails, we prefer to abort and not delete DB user.)
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await r2.list({ prefix, cursor });
     for (const obj of res.objects ?? []) {

@@ -89,8 +89,37 @@ Deploy the application to Cloudflare:
 
 ```bash
 npm run deploy
+# or: npm run deploy:staging
 # or similar package manager command
 ```
+
+### Cloudflare Auth (必需)
+
+`npm run deploy:*` uses Wrangler in a non-interactive mode, so you must provide:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+This repo includes a template at `docs/cloudflare-env.example`.
+
+Windows PowerShell (current session):
+
+```powershell
+$env:CLOUDFLARE_API_TOKEN="YOUR_TOKEN"
+$env:CLOUDFLARE_ACCOUNT_ID="YOUR_ACCOUNT_ID"
+```
+
+### Staging vs Production (强制隔离)
+
+- **production**: `npm run deploy`
+  - Uses `wrangler.jsonc` → `env.production`
+  - Production custom domains/routes are recommended to be managed in Cloudflare dashboard.
+- **staging**: `npm run deploy:staging`
+  - Uses `wrangler.jsonc` → `env.staging`
+  - Must bind to **staging-only** resources (D1/R2/etc). Do **NOT** reuse production IDs/names.
+  - Recommended: protect the staging URL behind **Cloudflare Access** (allowlist dev emails only).
+Tip:
+- `npm run deploy:prod` is an alias of `npm run deploy`.
 
 ## Observability (Sentry + R2 Log Archive)
 

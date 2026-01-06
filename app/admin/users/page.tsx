@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ColumnsType } from "antd/es/table";
 import type { AppLanguage, AppTheme } from "../../client-prefs";
 import { getInitialLanguage, getInitialTheme } from "../../client-prefs";
@@ -62,6 +62,9 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [keyword, setKeyword] = useState("");
+  // Use refs to avoid re-creating fetchUsers on every paging/typing and accidentally re-triggering init effect.
+  const paginationRef = useRef<Pagination | null>(null);
+  const keywordRef = useRef<string>("");
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -105,6 +108,14 @@ export default function AdminUsersPage() {
       window.removeEventListener("app-theme-changed", handler as EventListener);
   }, []);
 
+  useEffect(() => {
+    paginationRef.current = pagination;
+  }, [pagination]);
+
+  useEffect(() => {
+    keywordRef.current = keyword;
+  }, [keyword]);
+
   const fetchUsers = useCallback(async (opts?: {
     q?: string;
     page?: number;
@@ -114,9 +125,9 @@ export default function AdminUsersPage() {
   }) => {
     if (!adminEmail) return;
     const bypassCache = !!opts?.bypassCache;
-    const q = (opts?.q ?? keyword).trim();
-    const page = opts?.page ?? pagination?.page ?? 1;
-    const pageSize = opts?.pageSize ?? pagination?.pageSize ?? 15;
+    const q = (opts?.q ?? keywordRef.current).trim();
+    const page = opts?.page ?? paginationRef.current?.page ?? 1;
+    const pageSize = opts?.pageSize ?? paginationRef.current?.pageSize ?? 15;
     try {
       const params = new URLSearchParams({
         role: "user",
@@ -157,7 +168,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminEmail, cache, keyword, messages.common.unknownError, pagination]);
+  }, [adminEmail, cache, messages.common.unknownError]);
 
   useEffect(() => {
     if (adminEmail) void fetchUsers({ q: "", page: 1, pageSize: 15 });
@@ -328,7 +339,19 @@ export default function AdminUsersPage() {
         },
       },
     ];
-  }, [actionLoading, adminEmail, api, fetchUsers, isMobile, isSuperAdmin, language, messages.common.unknownError, pagination, screens.md]);
+  }, [
+    actionLoading,
+    adminEmail,
+    api,
+    fetchUsers,
+    isMobile,
+    isSuperAdmin,
+    language,
+    messages.common.unknownError,
+    pagination,
+    screens.md,
+    viewerTz,
+  ]);
 
   if (!adminEmail) {
     return (
@@ -413,6 +436,8 @@ export default function AdminUsersPage() {
                       pageSize: pagination.pageSize,
                       total: pagination.total,
                       showSizeChanger: true,
+                      // Optional: allow quickly jumping to a page when pages are large.
+                      showQuickJumper: true,
                       responsive: true,
                       onChange: (p, ps) => void fetchUsers({ page: p, pageSize: ps }),
                     }

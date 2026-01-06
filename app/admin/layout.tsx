@@ -259,7 +259,10 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   // 登录页不做管理员登录校验，直接渲染内容
   if (isPublicRoute) {
     return (
-      <ConfigProvider {...commonConfigProviderProps}>{children}</ConfigProvider>
+      <ConfigProvider {...commonConfigProviderProps}>
+        {/* body is overflow:hidden globally; public admin routes still need a scroll container */}
+        <div style={{ height: "100vh", overflow: "auto" }}>{children}</div>
+      </ConfigProvider>
     );
   }
 
@@ -272,7 +275,8 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   if (!isAuthed) {
     return (
       <ConfigProvider {...commonConfigProviderProps}>
-        <div className="auth-page">
+        {/* body is overflow:hidden globally; auth shell needs its own scroll container */}
+        <div className="auth-page" style={{ height: "100vh", overflow: "auto" }}>
           <div className="auth-card">
             <h1>{messages.layout.unauthTitle}</h1>
             <p>{messages.layout.unauthDesc}</p>
@@ -562,7 +566,14 @@ function AdminAntdShell({
         />
       </Drawer>
 
-      <Layout>
+      <Layout
+        style={{
+          // Critical: body has overflow:hidden in globals.css. Make the admin shell a fixed-height
+          // viewport and let Content be the scroll container so long pages (tables) can be reached.
+          height: "100vh",
+          overflow: "hidden",
+        }}
+      >
         <Header
           style={{
             padding: "0 24px",
@@ -570,9 +581,7 @@ function AdminAntdShell({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            position: "sticky",
-            top: 0,
-            zIndex: 1000,
+            // Header stays visible while scrolling inside Content (body scroll is disabled globally).
             borderBottom: `1px solid ${token.colorSplit}`,
           }}
         >
@@ -655,11 +664,13 @@ function AdminAntdShell({
           style={{
             margin: "24px 16px",
             padding: 24,
-            minHeight: 280,
             background: layoutBgColor,
             borderRadius: 8,
             // Keep scrolling inside content area (body is overflow:hidden in globals.css)
             overflow: "auto",
+            // Make Content properly shrink within the fixed-height Layout so overflow works.
+            flex: 1,
+            minHeight: 0,
           }}
         >
           {children}

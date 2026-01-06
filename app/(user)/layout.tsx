@@ -406,7 +406,8 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     return (
       <ConfigProvider {...commonConfigProviderProps}>
         {notificationContextHolder}
-        {children}
+        {/* body is overflow:hidden globally; auth pages need their own scroll container */}
+        <div style={{ height: "100vh", overflow: "auto" }}>{children}</div>
       </ConfigProvider>
     );
   }
@@ -416,7 +417,8 @@ function UserLayoutInner({ children }: { children: React.ReactNode }) {
     return (
       <ConfigProvider {...commonConfigProviderProps}>
         {notificationContextHolder}
-        {children}
+        {/* body is overflow:hidden globally; public pages still need a scroll container */}
+        <div style={{ height: "100vh", overflow: "auto" }}>{children}</div>
       </ConfigProvider>
     );
   }
@@ -485,7 +487,14 @@ function AppLayout({
   const layoutBgColor = token.colorBgContainer;
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout
+      style={{
+        // Critical: body has overflow:hidden in globals.css. Make the user shell fixed-height
+        // and let Content be the scroll container so long pages can be reached.
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
       {/* 侧边栏 - 桌面端 */}
       {!isMobile && (
         <Sider
@@ -680,10 +689,11 @@ function AppLayout({
           style={{
             margin: "24px 16px",
             padding: 24,
-            minHeight: 280,
             background: layoutBgColor,
             borderRadius: 8,
-            overflow: "initial",
+            overflow: "auto",
+            flex: 1,
+            minHeight: 0,
           }}
         >
           <FeedbackBubble />

@@ -285,6 +285,7 @@ export default function AdminNotificationsHistoryPage() {
     deletingId,
     draftAndResend,
     levelTag,
+    language,
     messages.notificationsHistory.actionDelete,
     messages.notificationsHistory.actionEditResend,
     messages.notificationsHistory.actionView,
@@ -298,6 +299,7 @@ export default function AdminNotificationsHistoryPage() {
     messages.notificationsHistory.tableTitle,
     messages.notificationsHistory.tableType,
     statusTag,
+    viewerTz,
   ]);
 
   const pagination: TablePaginationConfig = useMemo(() => {

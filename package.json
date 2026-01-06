@@ -10,10 +10,12 @@
 		"lint": "next lint",
 		"security:preflight": "node scripts/security-preflight.mjs",
 		"clean:opennext": "node scripts/clean-open-next.mjs",
-		"deploy": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && node scripts/retry-wrangler-deploy.mjs deploy --config wrangler.jsonc --env=\"\" --keep-vars",
+		"deploy": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && node scripts/retry-wrangler-deploy.mjs deploy --config wrangler.jsonc --env=production --keep-vars",
+		"deploy:staging": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && node scripts/retry-wrangler-deploy.mjs deploy --config wrangler.jsonc --env=staging --keep-vars",
+		"deploy:prod": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && node scripts/retry-wrangler-deploy.mjs deploy --config wrangler.jsonc --env=production --keep-vars",
 		"upload": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload",
 		"preview": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare preview",
-		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
+		"cf-typegen": "wrangler types --config wrangler.jsonc --env production --env-interface CloudflareEnv ./cloudflare-env.d.ts",
 		"postinstall": "node scripts/patch-opennext-windows.mjs"
 	},
 	"dependencies": {

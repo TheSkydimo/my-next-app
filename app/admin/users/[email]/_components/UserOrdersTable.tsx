@@ -220,7 +220,7 @@ export function UserOrdersTable({
     }
 
     return cols;
-  }, [actionLoadingId, brokenImages, language, onDelete, showUserEmail]);
+  }, [actionLoadingId, brokenImages, language, onDelete, showUserEmail, viewerTz]);
 
   return (
     <Table<AdminOrderItem>
