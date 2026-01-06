@@ -18,6 +18,55 @@
 	"observability": {
 		"enabled": true
 	},
+	/**
+	 * Production (default) deployment:
+	 * - We intentionally use the base Worker name `my-next-app` so the production URL is:
+	 *   `my-next-app.<account>.workers.dev`
+	 * - Custom domains can still be bound in Dashboard if desired.
+	 */
+	"workers_dev": true,
+	"d1_databases": [
+		{
+			"binding": "my_user_db",
+			"database_name": "my_user_db",
+			"database_id": "694057fb-479a-4672-b68a-8af5eaa7a01f",
+			"remote": true
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "ORDER_IMAGES",
+			"bucket_name": "order-images"
+		},
+		{
+			// Structured log archive (NDJSON). Create this bucket in Cloudflare R2.
+			"binding": "APP_LOGS",
+			"bucket_name": "app-logs"
+		}
+	],
+	"vars": {
+		"APP_NAME": "订阅管理",
+		/**
+		 * Share session cookie across subdomains.
+		 * - Production example: ".skydimo.com"
+		 */
+		"SESSION_COOKIE_DOMAIN": ".skydimo.com",
+		/**
+		 * Allow official website to read minimal session state (CORS allowlist).
+		 * Comma-separated origins.
+		 * Example: "https://skydimo.com,https://www.skydimo.com"
+		 */
+		"SITE_ALLOWED_ORIGINS": "https://skydimo.com,https://www.skydimo.com",
+		// Email (SMTP)
+		// - Secret: SMTP_PASS (set via `wrangler secret put SMTP_PASS` or Dashboard secret)
+		"SMTP_HOST": "smtp.qiye.aliyun.com",
+		"SMTP_PORT": "465",
+		"SMTP_USER": "noreply@skydimo.com",
+		"SMTP_ENCRYPTION": "ssl",
+		"SMTP_FROM": "noreply@skydimo.com",
+		"FEEDBACK_NOTIFY_TO": "support@skydimo.com",
+		"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a"
+	},
 	"env": {
 		"staging": {
 			/**
@@ -69,55 +118,6 @@
 				"FEEDBACK_NOTIFY_TO": "support@skydimo.com",
 				// Prefer using a dedicated Turnstile site key for staging.
 				"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "REPLACE_WITH_STAGING_TURNSTILE_SITE_KEY"
-			}
-		},
-		"production": {
-			/**
-			 * Production deployment
-			 */
-			// For custom domains, bind routes/domains in Cloudflare dashboard (recommended).
-			"workers_dev": false,
-			"d1_databases": [
-				{
-					"binding": "my_user_db",
-					"database_name": "my_user_db",
-					"database_id": "694057fb-479a-4672-b68a-8af5eaa7a01f",
-					"remote": true
-				}
-			],
-			"r2_buckets": [
-				{
-					"binding": "ORDER_IMAGES",
-					"bucket_name": "order-images"
-				},
-				{
-					// Structured log archive (NDJSON). Create this bucket in Cloudflare R2.
-					"binding": "APP_LOGS",
-					"bucket_name": "app-logs"
-				}
-			],
-			"vars": {
-				"APP_NAME": "订阅管理",
-				/**
-				 * Share session cookie across subdomains.
-				 * - Production example: ".skydimo.com"
-				 */
-				"SESSION_COOKIE_DOMAIN": ".skydimo.com",
-				/**
-				 * Allow official website to read minimal session state (CORS allowlist).
-				 * Comma-separated origins.
-				 * Example: "https://skydimo.com,https://www.skydimo.com"
-				 */
-				"SITE_ALLOWED_ORIGINS": "https://skydimo.com,https://www.skydimo.com",
-				// Email (SMTP)
-				// - Secret: SMTP_PASS (set via `wrangler secret put SMTP_PASS` or Dashboard secret)
-				"SMTP_HOST": "smtp.qiye.aliyun.com",
-				"SMTP_PORT": "465",
-				"SMTP_USER": "noreply@skydimo.com",
-				"SMTP_ENCRYPTION": "ssl",
-				"SMTP_FROM": "noreply@skydimo.com",
-				"FEEDBACK_NOTIFY_TO": "support@skydimo.com",
-				"NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAACHg5i_pQPpC0Q8a"
 			}
 		},
 		"development": {
