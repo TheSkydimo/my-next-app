@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 // Keep in sync with `app/api/_utils/adminModeCookie.ts`.
 const ADMIN_MODE_COOKIE_NAME = "skydimo_admin_mode";
+// Keep in sync with `app/api/_utils/session.ts`.
+const USER_SESSION_COOKIE_NAME = "user_session";
 
 /**
  * Default landing page:
@@ -13,6 +15,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAdminMode = request.cookies.get(ADMIN_MODE_COOKIE_NAME)?.value === "1";
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+  const hasUserSession = !!request.cookies.get(USER_SESSION_COOKIE_NAME)?.value;
 
   // Locale-prefixed paths (marketing site uses /zh, /en, etc).
   // We do NOT serve a locale-prefixed routing tree; we only use it as a signal to
@@ -32,11 +35,13 @@ export function middleware(request: NextRequest) {
         ? localeMatch[2]
         : isAdminMode
           ? "/admin"
-          : "/orders";
+          : hasUserSession
+            ? "/orders"
+            : "/login";
 
     // Defense-in-depth: ensure `next` is a same-origin absolute-path.
     let safeNext =
-      next.startsWith("/") && !next.startsWith("//") ? next : "/orders";
+      next.startsWith("/") && !next.startsWith("//") ? next : hasUserSession ? "/orders" : "/login";
 
     // Admin-mode: always prefer admin app, regardless of locale-prefixed entry links.
     if (isAdminMode && !safeNext.startsWith("/admin")) {
@@ -59,7 +64,7 @@ export function middleware(request: NextRequest) {
 
   if (pathname === "/") {
     return NextResponse.redirect(
-      new URL(isAdminMode ? "/admin" : "/orders", request.url),
+      new URL(isAdminMode ? "/admin" : hasUserSession ? "/orders" : "/login", request.url),
       307
     );
   }

@@ -43,6 +43,22 @@ type Pagination = {
   totalPages: number;
 };
 
+const ADMIN_USERS_PAGE_SIZE_STORAGE_KEY = "admin_users_page_size";
+
+function readStoredAdminUsersPageSize(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(ADMIN_USERS_PAGE_SIZE_STORAGE_KEY);
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    // Keep in sync with API clamp (max 100).
+    if (n < 1 || n > 100) return null;
+    return Math.floor(n);
+  } catch {
+    return null;
+  }
+}
+
 function safeErrorFromResponse(res: Response, text: string, fallback: string) {
   if (res.status >= 500) return fallback;
   const msg = (text || fallback).slice(0, 300);
@@ -110,6 +126,17 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     paginationRef.current = pagination;
+    // Persist selected page size for this page in sessionStorage to avoid occasional resets on remount.
+    if (typeof window !== "undefined" && pagination?.pageSize) {
+      try {
+        window.sessionStorage.setItem(
+          ADMIN_USERS_PAGE_SIZE_STORAGE_KEY,
+          String(pagination.pageSize)
+        );
+      } catch {
+        // ignore
+      }
+    }
   }, [pagination]);
 
   useEffect(() => {
@@ -171,7 +198,9 @@ export default function AdminUsersPage() {
   }, [adminEmail, cache, messages.common.unknownError]);
 
   useEffect(() => {
-    if (adminEmail) void fetchUsers({ q: "", page: 1, pageSize: 15 });
+    if (!adminEmail) return;
+    const stored = readStoredAdminUsersPageSize();
+    void fetchUsers({ q: "", page: 1, pageSize: stored ?? 15 });
   }, [adminEmail, fetchUsers]);
 
   const columns: ColumnsType<UserItem> = useMemo(() => {
@@ -436,6 +465,8 @@ export default function AdminUsersPage() {
                       pageSize: pagination.pageSize,
                       total: pagination.total,
                       showSizeChanger: true,
+                      // Ensure current default (15) remains selectable and options are consistent.
+                      pageSizeOptions: [10, 15, 20, 50, 100],
                       // Optional: allow quickly jumping to a page when pages are large.
                       showQuickJumper: true,
                       responsive: true,

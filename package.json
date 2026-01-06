@@ -16,7 +16,8 @@
 		"upload": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload",
 		"preview": "npm run clean:opennext && npm run build:opennext && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare preview",
 		"cf-typegen": "wrangler types --config wrangler.jsonc --env production --env-interface CloudflareEnv ./cloudflare-env.d.ts",
-		"postinstall": "node scripts/patch-opennext-windows.mjs"
+		"postinstall": "node scripts/patch-opennext-windows.mjs",
+		"seed:users": "node scripts/seed-random-users.mjs"
 	},
 	"dependencies": {
 		"@ant-design/cssinjs": "^2.0.1",
