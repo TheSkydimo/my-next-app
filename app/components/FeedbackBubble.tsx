@@ -121,15 +121,12 @@ export default function FeedbackBubble() {
     setSending(true);
     setNotice(null);
 
-    const userEmail = userContext?.profile?.email ?? null;
-
     try {
       const res = await fetch("/api/feedback/quick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: content.trim(),
-          email: userEmail || undefined,
         }),
       });
 
@@ -210,7 +207,7 @@ export default function FeedbackBubble() {
       )}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button 
-          type="primary" 
+          className="feedback-bubble__send"
           icon={<SendOutlined />} 
           loading={sending}
           onClick={handleSend}
@@ -244,7 +241,8 @@ export default function FeedbackBubble() {
       placement="topRight"
     >
       <FloatButton
-        type="primary"
+        className="feedback-bubble__trigger"
+        type="default"
         icon={<MessageOutlined />}
         style={{ right: 24, bottom: 24 }}
         tooltip={msg.title}

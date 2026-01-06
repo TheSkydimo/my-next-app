@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS email_verification_codes (
 CREATE TABLE IF NOT EXISTS user_feedback (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
+  -- Store the email snapshot at the time of submission for easier contact/reconciliation.
+  user_email TEXT,
   type TEXT,
   content TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'unread',

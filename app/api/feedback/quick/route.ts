@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ensureUsersTable } from "../../_utils/usersTable";
+import { ensureUserFeedbackTables } from "../../_utils/userFeedbackTable";
 import { formatFrom, getEmailServiceStatus, getSmtpConfigWithPrefix, sendEmail } from "../../_utils/mailer";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { readJsonBody } from "../../_utils/body";
@@ -27,6 +28,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     const db = env.my_user_db as D1Database;
 
     await ensureUsersTable(db);
+    await ensureUserFeedbackTables(db);
 
     const authed = await requireUserFromRequest({ request, env, db });
     if (authed instanceof Response) return authed;
@@ -41,6 +43,21 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     });
     if (!limit.allowed) {
       return new Response("发送太频繁，请稍后再试", { status: 429 });
+    }
+
+    // Persist feedback to D1 first (email is taken from the authenticated session, never from client input).
+    try {
+      await db
+        .prepare(
+          `INSERT INTO user_feedback (user_id, user_email, type, content, status)
+           VALUES (?, ?, ?, ?, 'unread')`
+        )
+        .bind(user.id, user.email, "quick", content.trim())
+        .run();
+    } catch {
+      // Avoid leaking DB details into logs.
+      console.error("写入用户反馈失败");
+      return new Response("发送失败，请稍后再试", { status: 500 });
     }
 
     // Email notification (best-effort): notify support mailbox (required via FEEDBACK_NOTIFY_TO).

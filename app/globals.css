@@ -5501,37 +5501,33 @@ button:not(.btn):not(.ant-btn):not([class*="ant-"]):not(.user-layout__nav-link):
    Feedback Bubble 反馈气泡组件样式
    ============================================= */
 
-/* 气泡触发按钮 - 固定在右下角 */
-.feedback-bubble__trigger {
-	position: fixed;
-	bottom: 24px;
-	right: 24px;
-	z-index: 9999;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 56px;
-	height: 56px;
-	padding: 0;
-	border: none;
-	border-radius: 50%;
-	color: #ffffff;
-	cursor: pointer;
-	box-shadow:
-		0 4px 20px rgba(59, 130, 246, 0.4),
-		0 8px 32px rgba(99, 102, 241, 0.3);
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* 气泡触发按钮（使用 AntD FloatButton）
+ * - 变大一点，提升可见性
+ * - 背景跟随 user sidebar bg（不走 AntD primary 蓝色）
+ */
+.feedback-bubble__trigger.ant-float-btn {
+	width: 68px;
+	height: 68px;
 }
 
-.feedback-bubble__trigger:hover {
-	transform: translateY(-2px) scale(1.08);
-	box-shadow:
-		0 6px 28px rgba(59, 130, 246, 0.5),
-		0 12px 40px rgba(99, 102, 241, 0.35);
+.feedback-bubble__trigger.ant-float-btn .ant-float-btn-body {
+	width: 68px;
+	height: 68px;
 }
 
-.feedback-bubble__trigger:active {
-	transform: translateY(0) scale(0.95);
+.feedback-bubble__trigger.ant-float-btn .ant-float-btn-icon {
+	font-size: 30px;
+	line-height: 1;
+}
+
+.feedback-bubble__trigger.ant-float-btn .ant-float-btn-icon svg {
+	width: 1em;
+	height: 1em;
+}
+
+/* 背景色 */
+.feedback-bubble__trigger.ant-float-btn .ant-float-btn-body {
+	background: var(--user-sidebar-bg);
 }
 
 /* 反馈面板 */
@@ -5687,25 +5683,9 @@ button:not(.btn):not(.ant-btn):not([class*="ant-"]):not(.user-layout__nav-link):
 	justify-content: flex-end;
 }
 
-.feedback-bubble__send {
-	padding: 10px 24px;
-	border: none;
-	border-radius: 8px;
-	color: #ffffff;
-	font-family: inherit;
-	font-size: 14px;
-	font-weight: 600;
-	cursor: pointer;
-	transition: all 0.2s;
-}
-
-.feedback-bubble__send:hover:not(:disabled) {
-	transform: translateY(-1px);
-	box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
-}
-
-.feedback-bubble__send:disabled {
-	cursor: not-allowed;
+/* 发送按钮（使用 AntD Button）：只改背景 */
+.feedback-bubble__send.ant-btn {
+	background: var(--user-sidebar-bg);
 }
 
 /* 成功状态 */
@@ -5754,11 +5734,24 @@ button:not(.btn):not(.ant-btn):not([class*="ant-"]):not(.user-layout__nav-link):
 
 /* 响应式适配 */
 @media (max-width: 480px) {
-	.feedback-bubble__trigger {
-		bottom: 16px;
-		right: 16px;
-		width: 50px;
-		height: 50px;
+	.feedback-bubble__trigger.ant-float-btn {
+		width: 60px;
+		height: 60px;
+	}
+
+	.feedback-bubble__trigger.ant-float-btn .ant-float-btn-body {
+		width: 60px;
+		height: 60px;
+	}
+
+	.feedback-bubble__trigger.ant-float-btn .ant-float-btn-icon {
+		font-size: 26px;
+		line-height: 1;
+	}
+
+	.feedback-bubble__trigger.ant-float-btn .ant-float-btn-icon svg {
+		width: 1em;
+		height: 1em;
 	}
 
 	.feedback-bubble__panel {
