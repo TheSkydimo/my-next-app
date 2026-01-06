@@ -19,6 +19,8 @@ type ApiCacheContextValue = {
   set: (key: string, value: unknown) => void;
   /** Remove a cached entry. */
   remove: (key: string) => void;
+  /** Remove cached entries by key prefix. Useful for invalidating list caches after mutations. */
+  removeByPrefix: (prefix: string) => void;
   /** Clear all cached entries. */
   clear: () => void;
 };
@@ -103,14 +105,27 @@ export function ApiCacheProvider(props: {
     });
   }, []);
 
+  const removeByPrefix = useCallback((prefix: string) => {
+    if (!prefix) return;
+    setState((prev) => {
+      let changed = false;
+      const next: ApiCacheState = { ...prev };
+      for (const key of Object.keys(next)) {
+        if (key.startsWith(prefix)) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, []);
+
   const clear = useCallback(() => setState({}), []);
 
-  const value = useMemo<ApiCacheContextValue>(() => ({ get, set, remove, clear }), [
-    get,
-    set,
-    remove,
-    clear,
-  ]);
+  const value = useMemo<ApiCacheContextValue>(
+    () => ({ get, set, remove, removeByPrefix, clear }),
+    [get, set, remove, removeByPrefix, clear]
+  );
 
   return <ApiCacheContext.Provider value={value}>{children}</ApiCacheContext.Provider>;
 }

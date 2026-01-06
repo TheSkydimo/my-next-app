@@ -357,13 +357,13 @@ export default function AdminAdminsPage() {
                 allowClear
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                onSearch={(v) => void fetchAdmins({ q: v, page: 1 })}
+                onSearch={(v) => void fetchAdmins({ q: v, page: 1, bypassCache: true })}
                 enterButton={
                   <Button type="primary">{language === "zh-CN" ? "搜索" : "Search"}</Button>
                 }
                 disabled={loading}
               />
-              <Button onClick={() => void fetchAdmins()} loading={loading}>
+              <Button onClick={() => void fetchAdmins({ bypassCache: true })} loading={loading}>
                 {language === "zh-CN" ? "刷新" : "Refresh"}
               </Button>
             </Space>

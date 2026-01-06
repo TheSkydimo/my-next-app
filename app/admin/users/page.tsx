@@ -303,6 +303,9 @@ export default function AdminUsersPage() {
           description: language === "zh-CN" ? "已完成管理操作" : "Admin action completed",
           duration: 3,
         });
+        // Invalidate related caches so other pages (e.g. /admin/admins) won't stay stale.
+        cache.removeByPrefix("/api/admin/users?");
+        cache.removeByPrefix("/api/admin/users/");
         await fetchUsers({ bypassCache: true });
       } catch (e) {
         const msg = e instanceof Error ? e.message : messages.common.unknownError;
