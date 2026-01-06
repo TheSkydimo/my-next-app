@@ -353,13 +353,14 @@ export default function AdminAdminsPage() {
           <Card>
             <Space wrap style={{ width: "100%", justifyContent: "space-between" }}>
               <Input.Search
-                style={{ maxWidth: 520 }}
                 placeholder={language === "zh-CN" ? "按用户名/邮箱搜索" : "Search by username/email"}
                 allowClear
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onSearch={(v) => void fetchAdmins({ q: v, page: 1 })}
-                enterButton={language === "zh-CN" ? "搜索" : "Search"}
+                enterButton={
+                  <Button type="primary">{language === "zh-CN" ? "搜索" : "Search"}</Button>
+                }
                 disabled={loading}
               />
               <Button onClick={() => void fetchAdmins()} loading={loading}>

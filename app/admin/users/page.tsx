@@ -502,7 +502,6 @@ export default function AdminUsersPage() {
           <Card>
             <Space wrap style={{ width: "100%", justifyContent: "space-between" }}>
               <Input.Search
-                style={{ maxWidth: 520 }}
                 placeholder={messages.users.searchPlaceholder}
                 allowClear
                 value={keyword}
@@ -513,7 +512,7 @@ export default function AdminUsersPage() {
                   replaceListUrl({ q, page: 1, pageSize });
                   void fetchUsers({ q, page: 1, pageSize });
                 }}
-                enterButton={messages.users.searchButton}
+                enterButton={<Button type="primary">{messages.users.searchButton}</Button>}
                 disabled={loading}
               />
               <Space wrap>

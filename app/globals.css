@@ -224,17 +224,7 @@ body {
 	}
 }
 
-/* Admin 用户列表页面响应式 */
-@media (max-width: 640px) {
-	.admin-users__header {
-		flex-direction: column;
-		align-items: flex-start;
-	}
-
-	.admin-users__search-row {
-		flex-wrap: wrap;
-	}
-}
+/* Admin 用户列表页面响应式（已迁移至 AntD 布局，无需额外 class） */
 
 /* ========== Admin：Ant Design 分页按钮样式（提升对比度/可点击感） ========== */
 
@@ -341,8 +331,10 @@ body {
 	font-weight: 700;
 }
 
-/* 让表单控件更明显一些，避免看不到输入框 */
-input {
+/* 让原生表单控件更明显一些，避免看不到输入框
+ * 注意：不要影响 AntD（.ant-*）组件，否则会破坏 Input/Search/Button 的一致性
+ */
+input:not([class*="ant-"]) {
 	padding: 8px 10px;
 	border-radius: 4px;
 	border: 1px solid #ccc;
@@ -566,25 +558,25 @@ input {
 	background: rgba(148, 163, 184, 0.08);
 }
 
-/* 浅色主题下的通用输入框样式 */
-:root[data-theme="light"] input {
+/* 浅色主题下的通用原生输入框样式（不影响 AntD） */
+:root[data-theme="light"] input:not([class*="ant-"]) {
 	background: #ffffff;
 	border-color: #d1d5db;
 	color: #111827;
 }
 
-:root[data-theme="light"] input::placeholder {
+:root[data-theme="light"] input:not([class*="ant-"])::placeholder {
 	color: #9ca3af;
 }
 
-:root[data-theme="light"] input:focus {
+:root[data-theme="light"] input:not([class*="ant-"]):focus {
 	border-color: #3b82f6;
 	outline: none;
 	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 /* 原生 button 基础样式（兼容未使用 .btn 类的按钮，排除导航和工具栏按钮） */
-button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]) {
+button:not(.btn):not(.ant-btn):not([class*="ant-"]):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]) {
 	padding: 8px 14px;
 	border-radius: 9999px;
 	border: 1px solid rgba(99, 102, 241, 0.45);
@@ -601,7 +593,7 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		opacity 150ms ease-out;
 }
 
-button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]):hover {
+button:not(.btn):not(.ant-btn):not([class*="ant-"]):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]):hover {
 	transform: translateY(-1px);
 	border-color: rgba(99, 102, 241, 0.85);
 	color: #ffffff;
@@ -611,13 +603,13 @@ button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.ad
 		0 0 42px rgba(99, 102, 241, 0.18);
 }
 
-:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]) {
+:root[data-theme="light"] button:not(.btn):not(.ant-btn):not([class*="ant-"]):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]) {
 	background: transparent;
 	border-color: rgba(37, 99, 235, 0.45);
 	color: #111827;
 }
 
-:root[data-theme="light"] button:not(.btn):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]):hover {
+:root[data-theme="light"] button:not(.btn):not(.ant-btn):not([class*="ant-"]):not(.user-layout__nav-link):not(.user-topbar__icon-btn):not(.admin-topbar__icon-btn):not(.admin-topbar__avatar-btn):not([class*="auth-"]):not([class*="profile-"]):not([class*="feedback-bubble"]):not([class*="admin-topbar"]):hover {
 	border-color: rgba(37, 99, 235, 0.85);
 	color: #0f172a;
 	box-shadow:
