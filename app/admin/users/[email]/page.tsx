@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLanguage, AppTheme } from "../../../client-prefs";
 import { getInitialLanguage, getInitialTheme } from "../../../client-prefs";
@@ -36,12 +37,17 @@ function safeErrorFromResponse(
   text: string,
   fallback: string
 ) {
-  if (res.status >= 500) return fallback;
+  const requestId = res.headers.get("x-request-id");
+  if (res.status >= 500) {
+    return requestId ? `${fallback}（requestId: ${requestId}）` : fallback;
+  }
   const msg = (text || fallback).slice(0, 300);
   return msg || fallback;
 }
 
 export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
   const isSuperAdmin = adminContext.profile?.isSuperAdmin ?? false;
@@ -71,6 +77,14 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
       algorithm: appTheme === "dark" ? antdTheme.darkAlgorithm : undefined,
     };
   }, [appTheme]);
+
+  const safeReturnTo = useMemo(() => {
+    const raw = searchParams?.get("returnTo");
+    if (!raw) return null;
+    // 防止 open redirect：只允许回到用户管理页（包含分页/搜索 query）。
+    if (!raw.startsWith("/admin/users")) return null;
+    return raw;
+  }, [searchParams]);
 
   const userUrl = useMemo(() => {
     if (!userEmail) return null;
@@ -339,7 +353,7 @@ export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps
               <Button onClick={() => void copyEmail()} disabled={!userEmail}>
                 {language === "zh-CN" ? "复制邮箱" : "Copy email"}
               </Button>
-              <Button href="/admin/users">
+              <Button onClick={() => router.push(safeReturnTo ?? "/admin/users")}>
                 {language === "zh-CN" ? "返回用户列表" : "Back to users"}
               </Button>
             </Space>

@@ -51,7 +51,9 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
 
   if (q) {
     whereParts.push("(username LIKE ? OR email LIKE ?)");
-    const pattern = `%${q}%`;
+    // Performance: use prefix-match so SQLite can use the email UNIQUE index for common email searches.
+    // (Leading wildcard like %q% forces full table scan and can time out on large datasets.)
+    const pattern = `${q}%`;
     bindValues.push(pattern, pattern);
   }
 

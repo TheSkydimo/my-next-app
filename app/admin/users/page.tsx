@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ColumnsType } from "antd/es/table";
 import type { AppLanguage, AppTheme } from "../../client-prefs";
@@ -59,13 +60,36 @@ function readStoredAdminUsersPageSize(): number | null {
   }
 }
 
+function clampInt(raw: string | null, fallback: number, min: number, max: number) {
+  if (!raw) return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  const v = Math.floor(n);
+  if (v < min) return min;
+  if (v > max) return max;
+  return v;
+}
+
+const ADMIN_USERS_Q_MAX_LEN = 80;
+
+function normalizeUsersQueryInput(value: string): string {
+  return (value ?? "").trim().slice(0, ADMIN_USERS_Q_MAX_LEN);
+}
+
 function safeErrorFromResponse(res: Response, text: string, fallback: string) {
-  if (res.status >= 500) return fallback;
+  const requestId = res.headers.get("x-request-id");
+  if (res.status >= 500) {
+    return requestId ? `${fallback}（requestId: ${requestId}）` : fallback;
+  }
   const msg = (text || fallback).slice(0, 300);
   return msg || fallback;
 }
 
 export default function AdminUsersPage() {
+  const router = useRouter();
+  const pathname = usePathname() || "/admin/users";
+  const urlSearchParams = useSearchParams();
+
   const adminContext = useAdmin();
   const adminEmail = adminContext.profile?.email ?? null;
   const isSuperAdmin = adminContext.profile?.isSuperAdmin ?? false;
@@ -87,6 +111,7 @@ export default function AdminUsersPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const viewerTz = useMemo(() => getClientTimeZone(), []);
+  const initFromUrlDoneRef = useRef(false);
 
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
@@ -103,6 +128,24 @@ export default function AdminUsersPage() {
       algorithm: appTheme === "dark" ? antdTheme.darkAlgorithm : undefined,
     };
   }, [appTheme]);
+
+  const returnTo = useMemo(() => {
+    const qs = urlSearchParams?.toString() ?? "";
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, urlSearchParams]);
+
+  const replaceListUrl = useCallback(
+    (next: { q?: string; page: number; pageSize: number }) => {
+      const params = new URLSearchParams();
+      params.set("page", String(next.page));
+      params.set("pageSize", String(next.pageSize));
+      const q = normalizeUsersQueryInput(next.q ?? "");
+      if (q) params.set("q", q);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router]
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -168,7 +211,7 @@ export default function AdminUsersPage() {
     if (!adminEmail) return;
     const seq = ++fetchSeqRef.current;
     const bypassCache = !!opts?.bypassCache;
-    const q = (opts?.q ?? keywordRef.current).trim();
+    const q = normalizeUsersQueryInput(opts?.q ?? keywordRef.current);
     const page = opts?.page ?? paginationRef.current?.page ?? 1;
     const pageSize = opts?.pageSize ?? paginationRef.current?.pageSize ?? 15;
     try {
@@ -219,8 +262,19 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     if (!adminEmail) return;
+    if (typeof window === "undefined") return;
+    if (initFromUrlDoneRef.current) return;
+    initFromUrlDoneRef.current = true;
+
+    const sp = new URLSearchParams(window.location.search);
+    const q = normalizeUsersQueryInput(sp.get("q") ?? "");
     const stored = readStoredAdminUsersPageSize();
-    void fetchUsers({ q: "", page: 1, pageSize: stored ?? 15 });
+    const pageSize = clampInt(sp.get("pageSize"), stored ?? 15, 1, 100);
+    const page = clampInt(sp.get("page"), 1, 1, 1_000_000);
+
+    setKeyword(q);
+    keywordRef.current = q;
+    void fetchUsers({ q, page, pageSize });
   }, [adminEmail, fetchUsers]);
 
   const columns: ColumnsType<UserItem> = useMemo(() => {
@@ -287,7 +341,12 @@ export default function AdminUsersPage() {
         dataIndex: "email",
         key: "email",
         render: (email: string) => (
-          <Link href={`/admin/users/${encodeURIComponent(email)}`}>
+          <Link
+            href={{
+              pathname: `/admin/users/${encodeURIComponent(email)}`,
+              query: { returnTo },
+            }}
+          >
             <Typography.Link>{email}</Typography.Link>
           </Link>
         ),
@@ -399,6 +458,7 @@ export default function AdminUsersPage() {
     messages.common.unknownError,
     pagination,
     screens.md,
+    returnTo,
     viewerTz,
   ]);
 
@@ -447,7 +507,12 @@ export default function AdminUsersPage() {
                 allowClear
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                onSearch={(v) => void fetchUsers({ q: v, page: 1 })}
+                onSearch={(v) => {
+                  const q = normalizeUsersQueryInput(v ?? "");
+                  const pageSize = paginationRef.current?.pageSize ?? readStoredAdminUsersPageSize() ?? 15;
+                  replaceListUrl({ q, page: 1, pageSize });
+                  void fetchUsers({ q, page: 1, pageSize });
+                }}
                 enterButton={messages.users.searchButton}
                 disabled={loading}
               />
@@ -455,7 +520,9 @@ export default function AdminUsersPage() {
                 <Button
                   onClick={() => {
                     setKeyword("");
-                    void fetchUsers({ q: "", page: 1 });
+                    const pageSize = paginationRef.current?.pageSize ?? readStoredAdminUsersPageSize() ?? 15;
+                    replaceListUrl({ q: "", page: 1, pageSize });
+                    void fetchUsers({ q: "", page: 1, pageSize });
                   }}
                   disabled={loading}
                 >
@@ -495,11 +562,15 @@ export default function AdminUsersPage() {
                           typeof ps === "number" && Number.isFinite(ps)
                             ? ps
                             : paginationRef.current?.pageSize ?? pagination.pageSize;
+                        const q = (keywordRef.current ?? "").trim();
+                        replaceListUrl({ q, page: p, pageSize });
                         setPaginationOptimistic({ page: p, pageSize });
                         void fetchUsers({ page: p, pageSize });
                       },
                       // Some antd versions fire pageSize changes via onShowSizeChange more reliably than onChange.
                       onShowSizeChange: (_current, size) => {
+                        const q = (keywordRef.current ?? "").trim();
+                        replaceListUrl({ q, page: 1, pageSize: size });
                         // Reset to first page when pageSize changes to avoid out-of-range pages.
                         setPaginationOptimistic({ page: 1, pageSize: size });
                         void fetchUsers({ page: 1, pageSize: size });
