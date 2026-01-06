@@ -59,6 +59,28 @@ function pickDbName(env) {
   return "my_user_db";
 }
 
+function assertNotProductionTarget(options) {
+  const env = String(options?.env || "");
+  const dbName = String(options?.dbName || "");
+  /**
+   * Security baseline:
+   * - Seeding random users is strictly forbidden in production.
+   * - This script MUST refuse production even if someone tries to pass flags.
+   * - No override flag is provided on purpose.
+   */
+  if (env === "production") {
+    throw new Error(
+      "[seed] Refusing to run: production env is forbidden. Use --env staging (or development) only."
+    );
+  }
+  // Hard block known production DB name as an extra safety net.
+  if (dbName === "my_user_db") {
+    throw new Error(
+      "[seed] Refusing to run: target database looks like production (my_user_db). Use --db my_user_db_staging or a dev DB."
+    );
+  }
+}
+
 function pickWranglerBin() {
   // Use local wrangler installed in node_modules (preferred).
   const bin = process.platform === "win32" ? "wrangler.cmd" : "wrangler";
@@ -113,7 +135,7 @@ Usage:
   npm run seed:users -- --env staging --count 40 --remote
 
 Options:
-  --env <development|staging|production>   Target env (default: development)
+  --env <development|staging>              Target env (default: development). Production is forbidden.
   --count <n>                              Number of users (default: 40)
   --remote                                Use Cloudflare remote D1 (recommended for staging/prod)
   --local                                 Use local D1 (default for development)
@@ -129,6 +151,9 @@ Options:
   const vipRatio = clamp01(opts.vipRatio);
   const adminRatio = clamp01(opts.adminRatio);
   const dbName = (opts.db && String(opts.db).trim()) || pickDbName(env);
+
+  // Safety: never allow seeding into production.
+  assertNotProductionTarget({ env, dbName });
 
   // Default: remote for staging/prod, local for dev.
   const remote = opts.remote || (env !== "development" && env !== "dev");

@@ -14,6 +14,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 - **要求**：不要在生产环境设置 `ALLOW_ADMIN_SEED="true"`
 - **原因**：`/api/admin/seed` 只用于初始化，生产必须不可达（返回 404）
 
+> 另外：仓库内的测试数据脚本 `scripts/seed-random-users.mjs` 也**严禁用于生产**，脚本已内置硬阻断，检测到 `--env production` 或目标数据库为 `my_user_db` 会直接退出失败。
+
 ### 3) 生产环境必须关闭 DEV_* 辅助开关
 - **要求**：不要设置：
   - `DEV_BYPASS_TURNSTILE=1`
