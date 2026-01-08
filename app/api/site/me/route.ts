@@ -7,6 +7,7 @@ import { buildSiteCorsHeaders } from "../../_utils/siteCors";
 type Row = {
   id: number;
   username: string;
+  email: string;
   avatar_url: string | null;
 };
 
@@ -27,7 +28,7 @@ export const OPTIONS = withApiMonitoring(async function OPTIONS(request: Request
  *
  * Security:
  * - Auth via httpOnly session cookie only (no userId/email params).
- * - Only returns non-sensitive fields: username + avatarUrl.
+ * - Returns minimal fields for navbar usage.
  * - no-store to prevent any edge/browser caching of user-specific data.
  * - CORS allowlist (SITE_ALLOWED_ORIGINS) for reading from skydimo.com.
  */
@@ -42,7 +43,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
   }
 
   const { results } = await db
-    .prepare("SELECT id, username, avatar_url FROM users WHERE id = ? LIMIT 1")
+    .prepare("SELECT id, username, email, avatar_url FROM users WHERE id = ? LIMIT 1")
     .bind(userId)
     .all<Row>();
 
@@ -58,6 +59,7 @@ export const GET = withApiMonitoring(async function GET(request: Request) {
       user: {
         id: row.id,
         username: row.username,
+        email: row.email,
         avatarUrl: convertDbAvatarUrlToPublicUrl(row.avatar_url),
       },
     },
