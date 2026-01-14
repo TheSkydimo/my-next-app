@@ -50,6 +50,75 @@ function withIpv4FirstNodeOptions(env) {
   return nextEnv;
 }
 
+function parseWranglerEnvFromArgs(args) {
+  for (let i = 0; i < args.length; i++) {
+    const a = String(args[i] ?? "");
+    if (a.startsWith("--env=")) return a.slice("--env=".length).trim() || null;
+    if (a === "--env") {
+      const v = String(args[i + 1] ?? "").trim();
+      return v || null;
+    }
+  }
+  return null;
+}
+
+function parseDotenvLike(text) {
+  const out = {};
+  const lines = String(text ?? "").split(/\r?\n/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const idx = line.indexOf("=");
+    if (idx === -1) continue;
+    const key = line.slice(0, idx).trim();
+    let val = line.slice(idx + 1).trim();
+    if (!key) continue;
+
+    // Strip simple quotes
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
+    out[key] = val;
+  }
+  return out;
+}
+
+async function loadLocalEnvForWrangler(args) {
+  // Goal: make non-interactive `wrangler deploy` work by loading CLOUDFLARE_API_TOKEN
+  // from gitignored env files, without hardcoding any secret into the repo.
+  if (process.env.CLOUDFLARE_API_TOKEN) return;
+
+  const projectRoot = process.cwd();
+  const wranglerEnv = parseWranglerEnvFromArgs(args);
+
+  const candidates = [
+    // Common local-only files (gitignored)
+    ".env.local",
+    wranglerEnv ? `.env.${wranglerEnv}.local` : null,
+    // Fallbacks (also typically gitignored in this repo)
+    wranglerEnv ? `.env.${wranglerEnv}` : null,
+    ".env",
+  ].filter(Boolean);
+
+  for (const rel of candidates) {
+    const p = path.join(projectRoot, rel);
+    try {
+      const content = await fs.readFile(p, "utf8");
+      const parsed = parseDotenvLike(content);
+      const token = String(parsed.CLOUDFLARE_API_TOKEN ?? "").trim();
+      if (token) {
+        process.env.CLOUDFLARE_API_TOKEN = token;
+        return;
+      }
+    } catch {
+      // ignore missing/unreadable files
+    }
+  }
+}
+
 async function runOnce(args) {
   return await new Promise((resolve) => {
     const child = spawn("wrangler", args, {
@@ -124,6 +193,9 @@ async function main() {
   const args = process.argv.slice(2);
   // Default command if none provided
   const finalArgs = args.length > 0 ? args : ["deploy"];
+
+  // Ensure auth env is available for non-interactive runs (Cursor/CI).
+  await loadLocalEnvForWrangler(finalArgs);
 
   const { restore } = await suppressDevVarsForDeploy();
   try {

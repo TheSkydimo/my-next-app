@@ -4,6 +4,7 @@ import { readJsonBody } from "../../_utils/body";
 import { getRuntimeEnvVar } from "../../_utils/runtimeEnv";
 import { formatFrom, getSmtpConfigWithPrefix, sendEmail } from "../../_utils/mailer";
 import { isValidEmail, sha256 } from "../../_utils/auth";
+import { maskIp } from "@/server/logging/redact";
 import { assertSameOriginOrNoOrigin } from "../../_utils/requestOrigin";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
 
@@ -33,6 +34,18 @@ function safeTrimAndLimit(input: unknown, limit: number) {
   const s = String(input ?? "").trim();
   if (!s) return "";
   return s.length > limit ? `${s.slice(0, limit)}…` : s;
+}
+
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  if (!domain) return "***";
+  if (local.length <= 2) return `${local[0] ?? "*"}*@${domain}`;
+  const head = local.slice(0, 2);
+  const tail = local.slice(-1);
+  return `${head}***${tail}@${domain}`;
 }
 
 export const POST = withApiMonitoring(async function POST(request: Request) {
@@ -68,7 +81,9 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     const db = env.my_user_db as D1Database;
 
     const ip = (request.headers.get("CF-Connecting-IP") || "").trim() || "unknown";
+    const ipMasked = maskIp(ip) ?? "unknown";
     const emailHash = await sha256(email.toLowerCase());
+    const emailMasked = maskEmail(email);
 
     const ipLimit = await consumeRateLimit({
       db,
@@ -109,16 +124,17 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     });
     const ua = safeTrimAndLimit(request.headers.get("user-agent"), 512);
 
-    const subject = `[AuthError] ${stage} - ${email}`;
+    const subject = `[AuthError] ${stage} - ${emailMasked}`;
     const cleanMessage = message || "(no message)";
 
     const emailText = `登录阶段错误反馈
 
 接收时间: ${timestamp}
 阶段: ${stage}
-用户邮箱: ${email}
+用户邮箱: ${emailMasked}
+邮箱Hash: ${emailHash.slice(0, 16)}
 页面: ${pagePath || "(unknown)"}
-IP: ${ip}
+IP: ${ipMasked}
 User-Agent: ${ua || "(unknown)"}
 X-Request-Id: ${requestId || "(none)"}
 
@@ -146,9 +162,10 @@ ${cleanMessage}
   <div class="content">
     <div class="meta">📅 接收时间: ${escapeHtml(timestamp)}</div>
     <div class="meta">🧭 阶段: <span class="pill">${escapeHtml(stage)}</span></div>
-    <div class="meta">📧 用户邮箱: ${escapeHtml(email)}</div>
+    <div class="meta">📧 用户邮箱: ${escapeHtml(emailMasked)}</div>
+    <div class="meta">🔎 邮箱Hash: ${escapeHtml(emailHash.slice(0, 16))}</div>
     <div class="meta">📄 页面: ${escapeHtml(pagePath || "(unknown)")}</div>
-    <div class="meta">🌐 IP: ${escapeHtml(ip)}</div>
+    <div class="meta">🌐 IP: ${escapeHtml(ipMasked)}</div>
     <div class="meta">🧩 User-Agent: ${escapeHtml(ua || "(unknown)")}</div>
     <div class="meta">🆔 X-Request-Id: ${escapeHtml(requestId || "(none)")}</div>
     <h3 style="margin: 14px 0 8px;">错误信息</h3>

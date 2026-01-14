@@ -98,7 +98,14 @@ function buildEmailTemplate(options: {
     "change-email": "Email change verification code",
   };
 
-  const subject = lang === "en-US" ? enTitle[purpose] : zhTitle[purpose];
+  // 主题中必须包含验证码，让用户在邮件列表中一眼看到（数字放最前，避免被截断）。
+  // - 不包含应用名（按之前需求）
+  // - 仍保留用途文案，便于用户区分场景
+  const baseTitle = lang === "en-US" ? enTitle[purpose] : zhTitle[purpose];
+  const subject =
+    lang === "en-US"
+      ? `${code} - ${baseTitle}`
+      : `${code} - ${baseTitle}`;
 
   // 特别按用户提供的固定文案：登录（user-login）中英文内容需要严格一致
   if (purpose === "user-login") {

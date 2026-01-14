@@ -248,6 +248,7 @@ export default function UserProfilePage() {
       setSendingCode(true);
       const res = await fetch("/api/email/send-code", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,

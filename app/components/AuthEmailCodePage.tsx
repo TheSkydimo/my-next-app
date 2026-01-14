@@ -538,11 +538,15 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
       try {
         const res = await fetch("/api/email/send-code", {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email,
             purpose: emailPurpose,
             language: lang === "en" ? "en-US" : "zh-CN",
+            // Fallback only: normally `/api/turnstile/verify` exchanges the token for an httpOnly cookie.
+            // When cookies are available, server will accept the pass cookie and ignore this token.
+            turnstileToken: turnstileToken || undefined,
           }),
         });
 
@@ -821,6 +825,7 @@ export function AuthEmailCodePage(props: { variant: Variant }) {
           emailCode: normalizedCode,
           emailCodeChallengeId,
           remember: rememberMe,
+          language: lang === "en" ? "en-US" : "zh-CN",
         }),
         headers: { "Content-Type": "application/json" },
         credentials: "include",

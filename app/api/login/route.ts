@@ -14,6 +14,7 @@ import { assertSameOriginOrNoOrigin } from "../_utils/requestOrigin";
 import { getSessionCookieDomain } from "../_utils/sessionCookieDomain";
 import { serializeAdminModeCookie } from "../_utils/adminModeCookie";
 import { withApiMonitoring } from "@/server/monitoring/withApiMonitoring";
+import { resolveRequestLanguage } from "../_utils/requestLanguage";
 
 type UserRow = {
   id: number;
@@ -33,38 +34,57 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     emailCode: string;
     emailCodeChallengeId: string;
     remember?: boolean;
+    language?: unknown;
   }>(request);
   if (!parsed.ok) {
     return new Response("Invalid JSON", { status: 400 });
   }
-  const { email, emailCode, emailCodeChallengeId, remember } = parsed.value;
+  const { email, emailCode, emailCodeChallengeId, remember, language } = parsed.value;
+
+  const lang = resolveRequestLanguage({ request, bodyLanguage: language });
+  const messages =
+    lang === "en-US"
+      ? {
+          emailRequired: "Email is required.",
+          emailInvalid: "Invalid email format.",
+          codeRequired: "Verification code is required.",
+          codeInvalidOrExpired: "Verification code is invalid or expired.",
+          loginFailedRetry: "Login failed. Please try again later.",
+        }
+      : {
+          emailRequired: "邮箱不能为空",
+          emailInvalid: "邮箱格式不正确",
+          codeRequired: "邮箱验证码不能为空",
+          codeInvalidOrExpired: "邮箱验证码错误或已过期",
+          loginFailedRetry: "登录失败，请稍后再试",
+        };
 
   if (!email) {
-    return new Response("邮箱不能为空", { status: 400 });
+    return new Response(messages.emailRequired, { status: 400 });
   }
 
   if (email.length > 320) {
-    return new Response("邮箱格式不正确", { status: 400 });
+    return new Response(messages.emailInvalid, { status: 400 });
   }
 
   if (!isValidEmail(email)) {
-    return new Response("邮箱格式不正确", { status: 400 });
+    return new Response(messages.emailInvalid, { status: 400 });
   }
 
   if (!emailCode) {
-    return new Response("邮箱验证码不能为空", { status: 400 });
+    return new Response(messages.codeRequired, { status: 400 });
   }
 
   if (!emailCodeChallengeId) {
-    return new Response("邮箱验证码错误或已过期", { status: 400 });
+    return new Response(messages.codeInvalidOrExpired, { status: 400 });
   }
 
   if (emailCodeChallengeId.length > 64) {
-    return new Response("邮箱验证码错误或已过期", { status: 400 });
+    return new Response(messages.codeInvalidOrExpired, { status: 400 });
   }
 
   if (emailCode.length > 32) {
-    return new Response("邮箱验证码错误或已过期", { status: 400 });
+    return new Response(messages.codeInvalidOrExpired, { status: 400 });
   }
 
   const { env } = await getCloudflareContext();
@@ -76,7 +96,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
     await ensureUsersAvatarUrlColumn(db);
   } catch {
     console.error("确保 users 表字段存在失败");
-    return new Response("服务器内部错误", { status: 500 });
+    return new Response(messages.loginFailedRetry, { status: 500 });
   }
 
   const okCode = await verifyAndUseEmailCode({
@@ -88,7 +108,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   });
 
   if (!okCode) {
-    return new Response("邮箱验证码错误或已过期", { status: 400 });
+    return new Response(messages.codeInvalidOrExpired, { status: 400 });
   }
 
   // 返回完整用户信息，包括 avatar_url，以便登录后直接使用，无需再次请求
@@ -117,21 +137,21 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
         inserted = true;
         break;
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
+        const errMsg = e instanceof Error ? e.message : String(e);
 
-        if (msg.includes("UNIQUE constraint failed: users.email")) {
+        if (errMsg.includes("UNIQUE constraint failed: users.email")) {
           // 理论上不会走到这里（因为前面已查过），但并发情况下可能发生：直接继续查
           break;
         }
 
-        if (msg.includes("UNIQUE constraint failed: users.username")) {
+        if (errMsg.includes("UNIQUE constraint failed: users.username")) {
           // 自动生成的用户名碰撞：重试
           finalUsername = generateNumericUsername(10);
           continue;
         }
 
         console.error("创建用户失败");
-        return new Response("登录失败，请稍后再试", { status: 500 });
+        return new Response(messages.loginFailedRetry, { status: 500 });
       }
     }
 
@@ -150,7 +170,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   }
 
   if (!row) {
-    return new Response("登录失败，请稍后重试", { status: 500 });
+    return new Response(messages.loginFailedRetry, { status: 500 });
   }
 
   // 登录成功：可选下发 Session Cookie（用于“记住登录状态”）
@@ -160,10 +180,10 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
   if (sessionSecret) {
     // Ensure column exists for single-session enforcement.
     await ensureUsersSessionJtiColumn(db);
-    const rememberMe = remember !== false; // default: true
-    // Security: even for session cookies (no Max-Age), keep a bounded server-side token TTL.
-    const cookieMaxAgeSeconds = 60 * 60 * 24 * 30; // 30 days
-    const tokenMaxAgeSeconds = rememberMe ? cookieMaxAgeSeconds : 60 * 60 * 12; // 12 hours (session cookie)
+    void remember; // NOTE: App-style login uses a fixed 7-day session; we keep the field for API compatibility.
+    // Requirement: token/cookie 有效期 7 天；每次“登录软件”会刷新（见 /api/app/session/refresh）。
+    const cookieMaxAgeSeconds = 60 * 60 * 24 * 7; // 7 days
+    const tokenMaxAgeSeconds = cookieMaxAgeSeconds;
     const { token, payload } = await createSessionToken({
       secret: sessionSecret,
       userId: row.id,
@@ -185,8 +205,7 @@ export const POST = withApiMonitoring(async function POST(request: Request) {
       sameSite: "Lax",
       ...(domain ? { domain } : {}),
       path: "/",
-      // remember=false 时不设置 Max-Age => session cookie（关闭浏览器即失效）
-      ...(rememberMe ? { maxAge: cookieMaxAgeSeconds } : {}),
+      maxAge: cookieMaxAgeSeconds,
     }));
   }
 

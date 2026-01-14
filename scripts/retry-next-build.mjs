@@ -23,6 +23,11 @@ function shouldRetryFromOutput(output) {
     (s.includes("Cannot find module") &&
       (s.includes(".next\\server\\pages\\") || s.includes(".next/server/pages/")) &&
       (s.includes("prerendering page") || s.includes("Export encountered an error"))) ||
+    // Windows race: Next tries to require a build artifact under `.next/server/*` that wasn't written yet
+    // e.g. "Cannot find module '...\\.next\\server\\next-font-manifest.json'"
+    (s.includes("Cannot find module") &&
+      (s.includes(".next\\server\\") || s.includes(".next/server/")) &&
+      s.includes("next-font-manifest.json")) ||
     (s.includes("ENOENT") && s.includes(".next")) ||
     s.includes("Failed to collect page data")
   );
